@@ -67,57 +67,49 @@ const DataTransformationAccordion: React.FC<DataTransformationAccordionProps> = 
   };
 
   return (
-    <div className="p-4">
+    <div className="px-2">
       {/* Normalization Mode Dropdown */}
-      <div className="mb-8">
-        <span className="text-xl mb-4 block">Transformation Mode</span>
+      <div className="mb-4">
         <Select
           value={normalizationMode}
+          label="Transformation Mode"
+          size="md"
           onChange={(value) => setNormalizationMode(value || 'together')}
           data={[
-            { value: 'together', label: 'Transform both images together' },
-            { value: 'individual', label: 'Transform each image individually' },
+            { value: 'together', label: 'Both images together' },
+            { value: 'individual', label: 'Each image individually' },
           ]}
-          className="text-xl"
-          size="md"
-          styles={{
-            input: { fontSize: '1.25rem', height: '2rem' },
-            dropdown: { fontSize: '1.25rem' },
-            option: { fontSize: '1.25rem' },
-            label: { fontSize: '1.25rem' }
-          }}
         />
       </div>
 
       {/* Log Scale Toggle */}
-      <div className="flex items-center mb-4">
-        <span className="text-xl mb-4">Log Scale</span>
-          <div className="flex-1 flex justify-end">
-            <Switch
-              checked={isLogScale}
-              onChange={(event) => handleLogScaleToggle(event.currentTarget.checked)}
-              size="lg"
-              className="w-16 h-12"
-              disabled={isLoading}
-              styles={{
-                track: {
-                  borderWidth: '2px',
-                  borderColor: isLogScale ? '#3B82F6' : 'grey',
-                  backgroundColor: isLogScale ? '#EFF6FF' : '#F3F4F6'
-                },
-                thumb: {
-                  borderWidth: '2px',
-                  borderColor: isLogScale ? '#3B82F6' : 'grey',
-                  backgroundColor: 'white'
-                }
-              }}
-          />
-        </div>
+      <div className="mb-4">
+        <Switch
+          checked={isLogScale}
+          label="Log Scale"
+          labelPosition="left"
+          onChange={(event) => handleLogScaleToggle(event.currentTarget.checked)}
+          size="md"
+          className="w-full"
+          disabled={isLoading}
+          styles={{
+            track: {
+              borderWidth: '2px',
+              borderColor: isLogScale ? '#3B82F6' : 'grey',
+              backgroundColor: isLogScale ? '#EFF6FF' : '#F3F4F6'
+            },
+            thumb: {
+              borderWidth: '2px',
+              borderColor: isLogScale ? '#3B82F6' : 'grey',
+              backgroundColor: 'white'
+            }
+          }}
+        />
       </div>
 
       {/* Range slider */}
-      <div className="mb-6">
-        <span className="text-xl mb-6 block">Min-Max Percentile</span>
+      <div className="mb-4">
+        <span className="text-md mb-1 block">Min-Max Percentile</span>
         {/* <RangeSlider
           min={0}
           max={100}
@@ -147,8 +139,8 @@ const DataTransformationAccordion: React.FC<DataTransformationAccordionProps> = 
           }}
         /> */}
 
-        <div className="flex items-center justify-between mb-4">
-          <span className="text-xl text-gray-600">Min % :</span>
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-sm text-gray-600">Min %:</span>
           <input
             type="number"
             value={lowerPercentile}
@@ -158,15 +150,15 @@ const DataTransformationAccordion: React.FC<DataTransformationAccordionProps> = 
                 setLowerPercentile(value);
               }
             }}
-            className="w-28 p-2 border border-gray-300 rounded text-center text-md"
+            className="w-28 p-2 border border-gray-300 rounded text-center text-xs"
             step="0.01"
             min="0"
             max={upperPercentile}
           />
         </div>
 
-        <div className="flex items-center justify-between">
-          <span className="text-xl text-gray-600">Max % :</span>
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-sm text-gray-600">Max %:</span>
           <input
             type="number"
             value={upperPercentile}
@@ -176,7 +168,7 @@ const DataTransformationAccordion: React.FC<DataTransformationAccordionProps> = 
                 setUpperPercentile(value);
               }
             }}
-            className="w-28 p-2 border border-gray-300 rounded text-center text-md"
+            className="w-28 p-2 border border-gray-300 rounded text-center text-xs"
             step="0.01"
             min={lowerPercentile}
             max="100"
@@ -184,61 +176,40 @@ const DataTransformationAccordion: React.FC<DataTransformationAccordionProps> = 
         </div>
 
         {/* Normalization Dropdown */}
-        <div className="mt-8 mb-8">
-          <span className="text-xl mb-4 block">Normalization</span>
+        <div className="mb-4">
           <Select
             value={normalization}
+            label="Normalization"
+            size="md"
             onChange={(value) => setNormalization(value || 'none')}
             data={[
               { value: 'none', label: 'None' },
               { value: 'minmax', label: 'Min-Max' },
               { value: 'mean', label: 'Mean' },
             ]}
-            className="text-xl"
-            size="md"
-            styles={{
-              input: { fontSize: '1.25rem', height: '2rem' },
-              dropdown: { fontSize: '1.25rem' },
-              option: { fontSize: '1.25rem' },
-              label: { fontSize: '1.25rem' }
-            }}
           />
         </div>
 
         {/* Colormap Selection Dropdowns */}
-        <div className="mt-8 mb-8">
-          <span className="text-xl mb-4 block">Image Colormap</span>
+        <div className="mb-4">
           <Select
             value={imageColormap}
+            label="Image Colormap"
+            size="md"
             onChange={(value) => setImageColormap(value || 'Viridis')}
             data={SEQUENTIAL_COLORMAP_OPTIONS}
-            className="text-xl"
-            size="md"
             maxDropdownHeight={400}
-            styles={{
-              input: { fontSize: '1.25rem', height: '2rem' },
-              dropdown: { fontSize: '1.25rem' },
-              option: { fontSize: '1.25rem' },
-              label: { fontSize: '1.25rem' }
-            }}
           />
         </div>
 
-        <div className="mt-8 mb-8">
-          <span className="text-xl mb-4 block">Difference Colormap</span>
+        <div className="mb-4">
           <Select
             value={differenceColormap}
+            label="Difference Colormap"
+            size="md"
             onChange={(value) => setDifferenceColormap(value || 'RdBu')}
             data={SEQUENTIAL_COLORMAP_OPTIONS}
-            className="text-2xl"
-            size="md"
             maxDropdownHeight={400}
-            styles={{
-              input: { fontSize: '1.25rem', height: '2rem' },
-              dropdown: { fontSize: '1.25rem' },
-              option: { fontSize: '1.25rem' },
-              label: { fontSize: '1.25rem' }
-            }}
           />
         </div>
       </div>

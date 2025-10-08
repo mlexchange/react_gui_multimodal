@@ -26,18 +26,11 @@ interface LargeNumberInputProps extends Omit<NumberInputProps, 'label'> {
 // Custom wrapper component for NumberInput with large labels
 const LargeNumberInput: React.FC<LargeNumberInputProps> = ({
     label,
-    description,
     ...numberInputProps
 }) => {
     return (
         <div className="space-y-1">
-            <label className="block text-xl font-medium text-gray-700">{label}</label>
-            {description && (
-                <p className="text-sm text-gray-500">{description}</p>
-            )}
-            <NumberInput {...numberInputProps}
-              size='md'
-            />
+            <NumberInput {...numberInputProps} label={label} size="sm" />
         </div>
     );
 };
@@ -83,8 +76,7 @@ export default function CalibrationAccordion({
         <div className="space-y-4">
             {/* Sample-Detector Distance */}
             <LargeNumberInput
-                label="Sample-Detector Distance (mm)"
-                description="Distance between sample and detector"
+                label="Sample-detector distance (mm)"
                 value={localParams.sample_detector_distance}
                 onChange={handleParamChange('sample_detector_distance')}
                 decimalScale={2}
@@ -96,16 +88,14 @@ export default function CalibrationAccordion({
             {/* Beam Center Coordinates */}
             <div className="space-y-2">
                 <LargeNumberInput
-                    label="Beam Center X (pixels)"
-                    description="X-coordinate of beam center"
+                    label="Beam center X (pixels)"
                     value={localParams.beam_center_x}
                     onChange={handleParamChange('beam_center_x')}
                     decimalScale={2}
                     step={0.1}
                 />
                 <LargeNumberInput
-                    label="Beam Center Y (pixels)"
-                    description="Y-coordinate of beam center"
+                    label="Beam center Y (pixels)"
                     value={localParams.beam_center_y}
                     onChange={handleParamChange('beam_center_y')}
                     decimalScale={2}
@@ -116,8 +106,7 @@ export default function CalibrationAccordion({
             {/* Pixel Size */}
             <div className="space-y-2">
                 <LargeNumberInput
-                    label="Pixel Size X (μm)"
-                    description="Pixel size in X direction"
+                    label="Pixel size X (μm)"
                     value={localParams.pixel_size_x}
                     onChange={handleParamChange('pixel_size_x')}
                     decimalScale={2}
@@ -125,8 +114,7 @@ export default function CalibrationAccordion({
                     min={0}
                 />
                 <LargeNumberInput
-                    label="Pixel Size Y (μm)"
-                    description="Pixel size in Y direction"
+                    label="Pixel size Y (μm)"
                     value={localParams.pixel_size_y}
                     onChange={handleParamChange('pixel_size_y')}
                     decimalScale={2}
@@ -138,7 +126,6 @@ export default function CalibrationAccordion({
             {/* Wavelength */}
             <LargeNumberInput
                 label="Wavelength (Å)"
-                description="X-ray wavelength"
                 value={localParams.wavelength}
                 onChange={handleParamChange('wavelength')}
                 decimalScale={2}
@@ -149,16 +136,14 @@ export default function CalibrationAccordion({
             {/* Detector Tilt */}
             <div className="space-y-2">
                 <LargeNumberInput
-                    label="Detector Tilt (degrees)"
-                    description="Tilt angle of detector"
+                    label="Detector tilt (degrees)"
                     value={localParams.tilt}
                     onChange={handleParamChange('tilt')}
                     decimalScale={2}
                     step={0.1}
                 />
                 <LargeNumberInput
-                    label="Tilt Plane Rotation (degrees)"
-                    description="Rotation of tilt plane"
+                    label="Tilt plane rotation (degrees)"
                     value={localParams.tilt_plan_rotation}
                     onChange={handleParamChange('tilt_plan_rotation')}
                     decimalScale={2}
@@ -168,7 +153,8 @@ export default function CalibrationAccordion({
 
             {/* Update Button */}
             <Button
-                className="w-full mt-4 text-xl"
+                size="md"
+                className="w-full mt-4"
                 color={isModified ? "blue" : "gray"}
                 onClick={handleSubmit}
                 disabled={!isModified}

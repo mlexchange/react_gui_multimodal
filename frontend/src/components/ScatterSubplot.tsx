@@ -794,16 +794,16 @@ const ScatterSubplot: React.FC<ScatterSubplotProps> = React.memo(({
         {isThirdCollapsed && (
           <>
           {/* Operation selection dropdown between images */}
-          <div className="absolute top-1/2 left-[27%] -translate-y-1/2 z-10 text-5xl font-bold">
+          <div className="absolute top-1/2 left-[27%] -translate-y-1/2 z-10 font-bold">
             <Select
               value={operationType}
               onChange={(value) => setOperationType(value as OperationType)}
               data={operationOptions}
               style={{ width: '170px' }}
-              size="lg"
+              size="md"
             />
           </div>
-          <div className="absolute top-1/2 left-[67%] -translate-y-1/2 text-5xl font-bold">=</div>
+          <div className="absolute top-1/2 left-[67%] -translate-y-1/2 font-bold">=</div>
         </>
         )}
 

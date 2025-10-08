@@ -57,21 +57,21 @@ const RawDataOverviewAccordion: React.FC<RawDataOverviewAccordionProps> = ({
   const rightSelectValue = typeof rightImageIndex === 'number' ? rightImageIndex.toString() : '';
 
   return (
-    <div className="p-2">
+    <div className="px-2">
       <div>
         {/* Total files text */}
         {numOfFiles !== null && (
         <div className="flex justify-start">
-            <Text className="text-xl">
+            <Text className="text-lg">
             Number of images: {numOfFiles}
             </Text>
         </div>
         )}
-        <div className="flex justify-between items-center mt-4 mb-3">
-          <Text className="text-xl">Image Selection</Text>
+        <div className="flex justify-between items-center mb-3">
+          <Text className="text-lg">Image Selection</Text>
         </div>
 
-        <Text className="text-md text-gray-600 mb-6">
+        <Text className="text-sm text-gray-600 mb-6">
           Select the images to compare from the dropdown menus or click on the data point directly in the figure.
         </Text>
 
@@ -84,12 +84,9 @@ const RawDataOverviewAccordion: React.FC<RawDataOverviewAccordionProps> = ({
               placeholder="Select left image"
               data={imageOptions}
               searchable
-              className="w-full"
-              styles={{
-                input: { fontSize: '1.25rem', height: '2.5rem' },
-                label: { fontSize: '1.25rem', marginBottom: '0.5rem' },
-                dropdown: { fontSize: '1.125rem' },
-                option: { fontSize: '1.125rem' }
+              classNames={{
+                input: 'w-full',
+                label: 'text-lg',
               }}
             />
           </div>
@@ -102,12 +99,9 @@ const RawDataOverviewAccordion: React.FC<RawDataOverviewAccordionProps> = ({
               placeholder="Select right image"
               data={imageOptions}
               searchable
-              className="w-full"
-              styles={{
-                input: { fontSize: '1.25rem', height: '2.5rem' },
-                label: { fontSize: '1.25rem', marginBottom: '0.5rem' },
-                dropdown: { fontSize: '1.125rem' },
-                option: { fontSize: '1.125rem' }
+              classNames={{
+                input: 'w-full',
+                label: 'text-lg',
               }}
             />
           </div>
@@ -123,11 +117,9 @@ const RawDataOverviewAccordion: React.FC<RawDataOverviewAccordionProps> = ({
               { value: 'max', label: 'Max Intensity Only' },
               { value: 'avg', label: 'Avg Intensity Only' },
             ]}
-            styles={{
-              input: { fontSize: '1.25rem', height: '2.5rem' },
-              label: { fontSize: '1.25rem', marginBottom: '0.5rem' },
-              dropdown: { fontSize: '1.25rem' },
-              option: { fontSize: '1.25rem' }
+            classNames={{
+              input: 'w-full',
+              label: 'text-lg',
             }}
           />
 
@@ -137,8 +129,8 @@ const RawDataOverviewAccordion: React.FC<RawDataOverviewAccordionProps> = ({
               onClick={fetchSpectrumData}
               loading={isFetchingData}
               color="blue"
-              size="xl"
-              className="w-12/12 px-12 py-3 bg-blue-500 text-white text-[1.75rem] font-semibold rounded-lg shadow hover:bg-blue-600 transition mx-auto block"
+              size="md"
+              className="w-12/12 px-12 py-3 bg-blue-500 text-white font-semibold rounded-lg shadow hover:bg-blue-600 transition mx-auto block"
               style={{ marginTop: '8px' }}
             >
               Fetch Data

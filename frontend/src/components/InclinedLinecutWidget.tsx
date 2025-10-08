@@ -93,8 +93,8 @@ const InclinedLinecutWidget: React.FC<InclinedLinecutWidgetProps> = ({
       defaultValue={linecutType ? `${linecutType}-linecuts` : undefined}
       chevronPosition="right"
       classNames={{
-        chevron: "text-xl font-bold",
-        label: "text-2xl font-bold",
+        chevron: "text-md font-bold",
+        label: "text-md font-bold",
         content: "p-0",
       }}
       className="w-full relative"
@@ -108,15 +108,15 @@ const InclinedLinecutWidget: React.FC<InclinedLinecutWidgetProps> = ({
             {linecuts.map((linecut) => (
               <div
                 key={linecut.id}
-                className="mb-5 pt-7 pb-5 pl-2 pr-3 relative shadow-lg border rounded-lg"
+                className="mb-5 pt-2 pb-5 pl-2 pr-3 relative shadow-lg border rounded-lg"
                 role="region"
                 aria-labelledby={`linecut-${linecut.id}-title`}
               >
                 {/* Header Section */}
+                <div className="text-md text-center font-medium">
+                  Linecut {linecut.id}
+                </div>
                 <div className="flex items-center justify-between w-full mb-4">
-                  <h3 className="text-xl font-semibold">
-                    Linecut {linecut.id}
-                  </h3>
                   <div className="flex items-center">
                     {/* Left color bar with tooltip */}
                     <div className="group relative">
@@ -173,7 +173,7 @@ const InclinedLinecutWidget: React.FC<InclinedLinecutWidgetProps> = ({
                 <div className="space-y-4">
                   {/* Width Control in q-space */}
                   <div>
-                    <h4 className="text-xl mb-2">Width ({units})</h4>
+                    <h4 className="text-md mb-2">Width ({units})</h4>
                     <div className="flex items-center gap-4">
                       <div className="flex-1">
                         <InputSlider
@@ -201,7 +201,7 @@ const InclinedLinecutWidget: React.FC<InclinedLinecutWidgetProps> = ({
 
                   {/* Angle Control */}
                   <div>
-                    <h4 className="text-xl mb-2">Angle (degrees)</h4>
+                    <h4 className="text-md mb-2">Angle (degrees)</h4>
                     <div className="flex items-center gap-4">
                       <div className="flex-1">
                         <InputSlider

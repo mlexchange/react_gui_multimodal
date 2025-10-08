@@ -294,14 +294,14 @@ const RawDataOverviewFig: React.FC<RawDataOverviewFigProps> = ({
     height: dimensions.height ? dimensions.height - 40 : undefined,
     title: {
       text: 'Intensity per Image Index',
-      font: { size: 24 }
+      font: { size: 18 }
     },
     xaxis: {
       title: {
         text: 'Image Index',
-        font: { size: 18 }
+        font: { size: 14 }
       },
-      tickfont: { size: 18 },
+      tickfont: { size: 14 },
       tickmode: 'linear' as const,
       dtick: Math.ceil(indices.length / 20),
       range: [-2, Math.max(indices.length, 10)], // Move these properties inside xaxis
@@ -310,9 +310,9 @@ const RawDataOverviewFig: React.FC<RawDataOverviewFigProps> = ({
     yaxis: {
       title: {
         text: 'Intensity',
-        font: { size: 18 }
+        font: { size: 14 }
       },
-      tickfont: { size: 18 },
+      tickfont: { size: 14 },
       range: [-2, null], // This starts at 0 and auto-calculates the upper limit
       autorange: 'max' as AutorangeType, // This includes 0 and extends to maximum value
     },
@@ -320,7 +320,7 @@ const RawDataOverviewFig: React.FC<RawDataOverviewFigProps> = ({
       x: 10,
       y: 1,
       orientation: 'v' as const,
-      font: { size: 16 },
+      font: { size: 12 },
     },
     hovermode: 'closest' as const,
     clickmode: 'event' as const,
@@ -335,7 +335,7 @@ const RawDataOverviewFig: React.FC<RawDataOverviewFigProps> = ({
   return (
     <div ref={containerRef} className="w-full h-[400px] relative flex flex-col">
       {/* Progress Bar */}
-      <div className="w-full p-2">
+      <div className="w-full">
         <ProgressBar
           progress={progress}
           isVisible={showProgressBar}
@@ -346,7 +346,7 @@ const RawDataOverviewFig: React.FC<RawDataOverviewFigProps> = ({
       <div className="flex-grow relative">
         {isFetchingData && progress < 100 && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-50 z-10">
-            <div className="text-xl font-semibold">
+            <div className="text-lg font-semibold">
               {progress > 0 ? `Loading... ${Math.round(progress)}%` : 'Initializing...'}
             </div>
           </div>
@@ -374,7 +374,7 @@ const RawDataOverviewFig: React.FC<RawDataOverviewFigProps> = ({
         ) : (
           !isFetchingData && (
           <div className="flex items-center justify-center h-full">
-            <p className="text-xl text-gray-500">No data available</p>
+            <p className="text-lg text-gray-500">No data available</p>
           </div>
           )
         )}

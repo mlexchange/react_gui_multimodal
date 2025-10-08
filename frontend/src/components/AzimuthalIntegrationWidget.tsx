@@ -101,8 +101,8 @@ export default function AzimuthalIntegrationWidget({
       defaultValue="azimuthal-integrations"
       chevronPosition="right"
       classNames={{
-        chevron: "text-xl font-bold",
-        label: "text-2xl font-bold",
+        chevron: "text-md font-bold",
+        label: "text-md font-bold",
         content: "p-0",
       }}
       className="w-full relative"
@@ -117,14 +117,15 @@ export default function AzimuthalIntegrationWidget({
               return (
                 <div
                   key={integration.id}
-                  className="mb-5 pt-7 pb-5 pl-2 pr-3 relative shadow-lg border rounded-lg"
+                  className="mb-5 pt-2 pb-5 pl-2 pr-3 relative shadow-lg border rounded-lg"
                   role="region"
                   aria-labelledby={`integration-${integration.id}`}
                 >
+                {/* Integration Title with Color Pickers */}
+                <div className="text-md text-center font-medium">
+                  Integral {integration.id}
+                </div>
                 <div className="flex items-center justify-between w-full mb-4">
-                    <h3 className="text-xl font-semibold">
-                        Integral {integration.id}
-                    </h3>
                     <div className="flex items-center">
                         {/* Left color bar */}
                         <div className="group relative">
@@ -180,7 +181,7 @@ export default function AzimuthalIntegrationWidget({
 
 
                   <div className="mb-6">
-                    <h4 className="text-xl mb-2">Q-Range (nm⁻¹)</h4>
+                    <h4 className="text-md mb-2">Q-Range (nm⁻¹)</h4>
                     <div className="space-y-2">
                       <InputSliderRange
                         value={[currentQRange[0], currentQRange[1]]}
@@ -191,7 +192,7 @@ export default function AzimuthalIntegrationWidget({
                       />
                       <div className="flex flex-col space-y-2">
                         <div className="flex items-center justify-between w-full">
-                          <label className="text-xl text-gray-600">Min:</label>
+                          <label className="text-sm text-gray-600">Min:</label>
                           <input
                             type="number"
                             value={currentQRange[0].toFixed(2)}
@@ -212,7 +213,7 @@ export default function AzimuthalIntegrationWidget({
                           />
                         </div>
                         <div className="flex items-center justify-between w-full">
-                          <label className="text-xl text-gray-600">Max:</label>
+                          <label className="text-sm text-gray-600">Max:</label>
                           <input
                             type="number"
                             value={currentQRange[1].toFixed(2)}
@@ -237,7 +238,7 @@ export default function AzimuthalIntegrationWidget({
                   </div>
 
                   <div className="mb-4">
-                    <h4 className="text-xl mb-2">Azimuthal Range (degrees)</h4>
+                    <h4 className="text-md mb-2">Azimuthal Range (degrees)</h4>
                     <div className="space-y-2">
                       <InputSliderRange
                         value={[integration.azimuthRange[0], integration.azimuthRange[1]]}
@@ -248,7 +249,7 @@ export default function AzimuthalIntegrationWidget({
                       />
                       <div className="flex flex-col space-y-2">
                         <div className="flex items-center justify-between w-full">
-                          <label className="text-xl text-gray-600">Min:</label>
+                          <label className="text-sm text-gray-600">Min:</label>
                           <input
                             type="number"
                             value={integration.azimuthRange[0]}
@@ -269,7 +270,7 @@ export default function AzimuthalIntegrationWidget({
                           />
                         </div>
                         <div className="flex items-center justify-between w-full">
-                          <label className="text-xl text-gray-600">Max:</label>
+                          <label className="text-sm text-gray-600">Max:</label>
                           <input
                             type="number"
                             value={integration.azimuthRange[1]}
