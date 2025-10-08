@@ -3,7 +3,7 @@ import { MantineProvider, Container, Accordion, Select, Menu, Button} from '@man
 import { FiArrowRight, FiArrowLeft } from 'react-icons/fi'; // Collapsing arrows
 import '@mantine/core/styles.css';
 import './index.css'; // Import the CSS file
-import alsLogo from '/src/als_logo.jpeg';
+import alsLogo from '/src/assets/cropped-favicon-270x270.png';
 import ScatterSubplot from './components/ScatterSubplot';
 
 import HorizontalLinecutWidget from './components/HorizontalLinecutWidget';
