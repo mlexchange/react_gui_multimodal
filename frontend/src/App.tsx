@@ -41,7 +41,8 @@ import RawDataOverviewFig from './components/RawDataOverviewFig';
 
 function App() {
   const [isSecondCollapsed, setSecondCollapsed] = useState(false);
-  const [isThirdCollapsed, setThirdCollapsed] = useState(true);
+  const [isThirdCollapsed] = useState(true);
+  // const [isThirdCollapsed, setThirdCollapsed] = useState(true);
   const linecutOrder = ['Horizontal', 'Vertical', 'Inclined', 'Azimuthal'];
 
   const {
@@ -254,6 +255,7 @@ function App() {
               {isSecondCollapsed ? <FiArrowRight size={20} /> : <FiArrowLeft size={20} />}
         </div>
         {/* Right collapsing arrow */}
+        {/*}
         <div
               className="absolute top-[50px] -right-0 flex items-center justify-center bg-gray-200 rounded-full w-10 h-10 cursor-pointer shadow-md z-[1000]"
               onClick={() => {
@@ -262,6 +264,7 @@ function App() {
             >
               {isThirdCollapsed ? <FiArrowLeft size={20} /> : <FiArrowRight size={20} />}
         </div>
+        */}
       </div>
 
       {/* Main Layout */}
