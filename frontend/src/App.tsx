@@ -272,7 +272,7 @@ function App() {
         fluid
         style={{
           display: 'flex',
-          height: '100vh',
+          height: 'calc(100vh - 50px)',
           width: '100%',
           padding: 0,
         }}
@@ -280,11 +280,11 @@ function App() {
       {/* <div className="flex flex-row h-[150vh] w-[100vw] p-0"> */}
         {/* First Column */}
         {!isSecondCollapsed && (
-          <div className={`border border-gray-300 shadow-lg bg-gray-100 relative transition-all duration-300 flex-shrink-0 flex flex-col h-[calc(100vh-50px)]
+          <div className={`border border-gray-300 shadow-lg bg-slate-200 relative transition-all duration-300 flex-shrink-0 flex flex-col h-full
             ${isSecondCollapsed ? 'w-0' : 'w-[20%]'}`}
           >
             {/* Fixed Header Section */}
-            <div className="flex-shrink-0 sticky top-0 bg-gray-100 z-10">
+            <div className="flex-shrink-0 sticky top-0 bg-slate-200 z-10">
               <h1 className="text-xl font-bold mb-4 mt-4 text-center">Scatter Controls</h1>
               <hr className="w-full border border-gray-300" />
             </div>
@@ -520,7 +520,7 @@ function App() {
       )}
         {/* Second Column */}
         <div
-          className={`h-[calc(100vh-50px)] border-r-2 border-gray-300 transition-all duration-300
+          className={`h-full border-r-2 border-gray-300 transition-all duration-300 overflow-y-auto
             ${isSecondCollapsed
             ? 'flex-grow-0 w-0 overflow-hidden'
             : isThirdCollapsed
@@ -529,7 +529,7 @@ function App() {
           }`}
         >
           {/* {!isSecondCollapsed && ( */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="h-full">
             <Accordion
               multiple
               defaultValue={['scatter-images-accordion', 'intensity-spectrum-accordion', 'linecuts-accordion-second-col']} // Expanded by default
