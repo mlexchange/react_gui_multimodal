@@ -40,7 +40,6 @@ interface ScatterSubplotProps {
   rightImageColorPalette: string[];
   setZoomedXPixelRange: (range: [number, number] | null) => void;
   setZoomedYPixelRange: (range: [number, number] | null) => void;
-  isThirdCollapsed: boolean;
   setResolutionMessage: (message: string) => void;
   isLogScale: boolean;
   lowerPercentile: number;
@@ -78,7 +77,6 @@ const ScatterSubplot: React.FC<ScatterSubplotProps> = React.memo(({
   inclinedLinecuts,
   setZoomedXPixelRange,
   setZoomedYPixelRange,
-  isThirdCollapsed,
   setResolutionMessage,
   isLogScale,
   lowerPercentile,
@@ -673,14 +671,14 @@ const ScatterSubplot: React.FC<ScatterSubplotProps> = React.memo(({
         ...plotData?.layout.coloraxis,
         colorbar: {
           ...plotData?.layout.coloraxis?.colorbar,
-          len: isThirdCollapsed ? 1.0 : 0.53,
+          len: 0.53,
         }
       },
       coloraxis2: {
         ...plotData?.layout.coloraxis2,
         colorbar: {
           ...plotData?.layout.coloraxis2?.colorbar,
-          len: isThirdCollapsed ? 1.0 : 0.53,
+          len: 0.53,
         }
       },
     };
@@ -725,7 +723,7 @@ const ScatterSubplot: React.FC<ScatterSubplotProps> = React.memo(({
 
     // Return only the base layout for medium and full resolution
     return baseLayout;
-  }, [dragMode, isThirdCollapsed, plotData, resolutionData, currentResolution]);
+  }, [dragMode, plotData, resolutionData, currentResolution]);
 
 
 
@@ -791,7 +789,7 @@ const ScatterSubplot: React.FC<ScatterSubplotProps> = React.memo(({
         ) : (
           <p>Loading scatter subplot...</p>
         )}
-        {isThirdCollapsed && (
+        {(
           <>
           {/* Operation selection dropdown between images */}
           <div className="absolute top-1/2 left-[27%] -translate-y-1/2 z-10 font-bold">

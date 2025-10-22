@@ -1,8 +1,7 @@
 import { Accordion, Select, Menu, Button, Popover } from '@mantine/core';
-import { FiArrowRight, FiArrowLeft } from 'react-icons/fi';
-import { Info } from 'lucide-react';
+import { InfoIcon } from 'lucide-react';
 import { notifications } from '@mantine/notifications';
-import { ScatteringProps, CalibrationParams } from './types';
+import { CalibrationParams } from './types';
 
 // Import hooks
 import useMultimodal from './hooks/useMultimodal';
@@ -32,7 +31,7 @@ import RawDataOverviewFig from './RawDataOverviewFig';
 import { handleExperimentTypeChange, addLinecut } from './utils/linecutHandlers';
 import { leftImageColorPalette, rightImageColorPalette } from './utils/constants';
 
-export default function Scattering({ isCollapsed, isThirdCollapsed }: ScatteringProps) {
+export default function Scattering() {
   const linecutOrder = ['Horizontal', 'Vertical', 'Inclined', 'Azimuthal'];
 
   const {
@@ -215,17 +214,9 @@ export default function Scattering({ isCollapsed, isThirdCollapsed }: Scattering
   };
 
   return (
-    <>
+    <div className="flex h-full w-full bg-slate-200  overflow-hidden">
       {/* First Column - Scatter Controls */}
-      {!isCollapsed && (
-        <div className={`border border-gray-300 shadow-lg bg-slate-200 relative transition-all duration-300 flex-shrink-0 flex flex-col h-full
-          ${isCollapsed ? 'w-0' : 'w-[20%]'}`}
-        >
-          {/* Fixed Header Section */}
-          <div className="flex-shrink-0 sticky top-0 bg-slate-200 z-10">
-            <h1 className="text-xl font-bold mb-4 mt-4 text-center">Scatter Controls</h1>
-            <hr className="w-full border border-gray-300" />
-          </div>
+        <div className={`border border-gray-300 shadow-lg relative transition-all duration-300 flex-shrink-0 flex flex-col h-full w-[20%]`}>
         {/* Scrollable Content Section */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden">
           {/* Dropdown for Experiment Type */}
@@ -451,17 +442,10 @@ export default function Scattering({ isCollapsed, isThirdCollapsed }: Scattering
           </Accordion>
           </div>
         </div>
-    )}
 
       {/* Second Column - Scatter Visualization */}
       <div
-        className={`h-full border-r-2 border-gray-300 transition-all duration-300 overflow-y-auto
-          ${isCollapsed
-          ? 'flex-grow-0 w-0 overflow-hidden'
-          : isThirdCollapsed
-          ? 'flex-grow w-[80%]'
-          : 'flex-grow w-[30%]'
-        }`}
+        className={`h-full border-r-2 border-gray-300 transition-all duration-300 overflow-y-auto flex-grow w-[80%]`}
       >
         <div className="h-full">
           <Accordion
@@ -488,7 +472,6 @@ export default function Scattering({ isCollapsed, isThirdCollapsed }: Scattering
                 rightImageColorPalette={rightImageColorPalette}
                 setZoomedXPixelRange={setZoomedXPixelRange}
                 setZoomedYPixelRange={setZoomedYPixelRange}
-                isThirdCollapsed={isThirdCollapsed}
                 setResolutionMessage={setResolutionMessage}
                 isLogScale={isLogScale}
                 lowerPercentile={lowerPercentile}
@@ -519,7 +502,7 @@ export default function Scattering({ isCollapsed, isThirdCollapsed }: Scattering
                     <Popover width={900} position="top">
                       <Popover.Target>
                         <div className="cursor-pointer">
-                          <Info className="ml-2 w-5 h-5" />
+                          <InfoIcon className="ml-2 w-5 h-5" />
                         </div>
                       </Popover.Target>
                       <Popover.Dropdown>
@@ -670,6 +653,6 @@ export default function Scattering({ isCollapsed, isThirdCollapsed }: Scattering
           </Accordion>
          </div>
       </div>
-    </>
+    </div>
   );
 }

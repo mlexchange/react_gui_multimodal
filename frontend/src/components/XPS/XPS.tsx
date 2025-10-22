@@ -1,24 +1,25 @@
 import { Accordion } from '@mantine/core';
-import { XPSProps } from './types';
+// import { XPSProps } from './types';
 import RealSpaceImagesAccordion from './RealSpaceImagesAccordion';
 import NumberOfParticlesAccordion from './NumberOfParticlesAccordion';
 import XPSSpectraAccordion from './XPSSpectraAccordion';
 import XPSControlsPanel from './XPSControlsPanel';
 
-export default function XPS({ isCollapsed, isSecondCollapsed }: XPSProps) {
+export default function XPS() {
   return (
-    <>
+    <div className="flex h-full w-full bg-slate-200 overflow-hidden">
+      {/* Fourth Column - XPS Controls */}
+      {(
+        <div className={`border border-gray-300 shadow-lg h-full relative transition-all duration-300 flex-shrink-0 w-[15%]`}
+        >
+          <XPSControlsPanel />
+        </div>
+      )}
+
       {/* Third Column - XPS Data Visualization */}
       <div
-        className={`h-full border-r-2 border-gray-300 transition-all duration-300
-          ${isCollapsed
-            ? 'flex-grow-0 w-0 overflow-hidden'
-            : isSecondCollapsed
-            ? 'flex-grow w-[80%]'
-            : 'flex-grow w-[30%]'
-          }`}
+        className={`h-full border-r-2 border-gray-300 transition-all duration-300 flex-grow w-[30%]`}
       >
-        {!isCollapsed && (
           <Accordion
             multiple
             defaultValue={['real-space-images-accordion', 'number-of-particles-accordion', 'xps-spectra-accordion']}
@@ -44,17 +45,8 @@ export default function XPS({ isCollapsed, isSecondCollapsed }: XPSProps) {
               </Accordion.Panel>
             </Accordion.Item>
           </Accordion>
-        )}
       </div>
 
-      {/* Fourth Column - XPS Controls */}
-      {!isCollapsed && (
-        <div className={`border border-gray-300 shadow-lg h-full bg-gray-100 relative transition-all duration-300 flex-shrink-0
-          ${isCollapsed ? 'w-0' : 'w-[15%]'}`}
-        >
-          <XPSControlsPanel />
-        </div>
-      )}
-    </>
+    </div>
   );
 }
