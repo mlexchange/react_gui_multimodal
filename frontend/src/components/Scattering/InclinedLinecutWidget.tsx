@@ -1,9 +1,9 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { FaEye, FaEyeSlash, FaTrash } from 'react-icons/fa';
 import { Accordion } from '@mantine/core';
-import InputSlider from './InputSlider';
-import ColorPickerPopup from './ColorPickerPopup';
-import { InclinedLinecut } from '../types';
+import { InputSlider } from '@blueskyproject/finch';
+import ColorPickerPopup from '../ColorPickerPopup';
+import { InclinedLinecut } from './types';
 
 interface InclinedLinecutWidgetProps {
   linecutType: string;
@@ -183,19 +183,8 @@ const InclinedLinecutWidget: React.FC<InclinedLinecutWidgetProps> = ({
                           value={linecut.qWidth ?? 0}
                           step={0.01}
                           onChange={(value) => updateInclinedLinecutWidth(linecut.id, value)}
-                          disabled={linecut.hidden}
                         />
                       </div>
-                      <input
-                        type="number"
-                        value={(linecut.qWidth ?? 0).toFixed(2)}
-                        onChange={(e) => updateInclinedLinecutWidth(linecut.id, Number(e.target.value) || 0)}
-                        className="w-20 px-2 py-1 border rounded text-center"
-                        disabled={linecut.hidden}
-                        min={0}
-                        max={10}
-                        step={0.01}
-                      />
                     </div>
                   </div>
 
@@ -211,19 +200,8 @@ const InclinedLinecutWidget: React.FC<InclinedLinecutWidgetProps> = ({
                           value={linecut.angle ?? 0}
                           step={1}
                           onChange={(value) => updateInclinedLinecutAngle(linecut.id, value)}
-                          disabled={linecut.hidden}
                         />
                       </div>
-                      <input
-                        type="number"
-                        value={linecut.angle ?? 0}
-                        onChange={(e) => updateInclinedLinecutAngle(linecut.id, Number(e.target.value) || 0)}
-                        className="w-20 px-2 py-1 border rounded text-center"
-                        disabled={linecut.hidden}
-                        min={-90}
-                        max={90}
-                        step={1}
-                      />
                     </div>
                   </div>
                 </div>

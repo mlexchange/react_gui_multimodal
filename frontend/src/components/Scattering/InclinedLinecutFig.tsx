@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import Plot from 'react-plotly.js';
-import { InclinedLinecut } from '../types';
-import { calculateInclinedLineEndpoints } from '../utils/calculateInclinedLinecutEndpoints';
+import { InclinedLinecut } from './types';
+import { calculateInclinedLineEndpoints } from './utils/calculateInclinedLinecutEndpoints';
 
 interface InclinedLinecutFigProps {
     linecuts: InclinedLinecut[];

@@ -1,9 +1,9 @@
 import React, { useRef, useState, useCallback } from 'react';
 import { Accordion } from '@mantine/core';
 import { FaEye, FaEyeSlash, FaTrash } from 'react-icons/fa';
-import InputSliderRange from './InputSliderRange';
-import { AzimuthalIntegration } from '../types';
-import ColorPickerPopup from './ColorPickerPopup';
+import InputSliderRange from '../InputSliderRange';
+import { AzimuthalIntegration } from './types';
+import ColorPickerPopup from '../ColorPickerPopup';
 
 interface AzimuthalIntegrationWidgetProps {
     integrations: AzimuthalIntegration[];

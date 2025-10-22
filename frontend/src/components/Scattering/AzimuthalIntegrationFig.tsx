@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useMemo } from "react";
 import Plot from "react-plotly.js";
-import { AzimuthalIntegration, AzimuthalData } from "../types";
+import { AzimuthalIntegration, AzimuthalData } from './types';
 
 interface AzimuthalIntegrationFigProps {
   integrations: AzimuthalIntegration[];
@@ -161,7 +161,7 @@ export default AzimuthalIntegrationFig;
 
 // import React, { useRef, useState, useEffect, useMemo } from "react";
 // import Plot from "react-plotly.js";
-// import { AzimuthalIntegration, AzimuthalData } from "../types";
+// import { AzimuthalIntegration, AzimuthalData } from './types';
 
 // interface AzimuthalIntegrationFigProps {
 //   integrations: AzimuthalIntegration[];

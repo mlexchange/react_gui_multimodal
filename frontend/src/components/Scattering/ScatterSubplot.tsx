@@ -9,21 +9,21 @@ import {
   AzimuthalData,
   CalibrationParams,
   TransformDataFunction,
-} from "../types";
-import { downsampleArray } from "../utils/downsampleArray";
-import { handleRelayout } from '../utils/handleRelayout';
-import { extractBinary, reconstructFloat32Array } from '../utils/dataProcessingScatterSubplot';
-import { generateHorizontalLinecutOverlay } from "../utils/generateHorizontalLinecutOverlay";
-import { generateVerticalLinecutOverlay } from "../utils/generateVerticalLinecutOverlay";
-import { generateInclinedLinecutOverlay } from "../utils/generateInclinedLinecutOverlay";
-import { generateAzimuthalOverlay } from "../utils/generateAzimuthalOverlay";
-import { getArrayMinMax } from "../utils/getArrayMinAndMax";
-// import { calculateMinMax } from "../utils/transformationUtils";
-import { calculateDifferenceArray } from "../utils/calculateDifferenceArray";
+} from './types';
+import { downsampleArray } from './utils/downsampleArray';
+import { handleRelayout } from './utils/handleRelayout';
+import { extractBinary, reconstructFloat32Array } from './utils/dataProcessingScatterSubplot';
+import { generateHorizontalLinecutOverlay } from './utils/generateHorizontalLinecutOverlay';
+import { generateVerticalLinecutOverlay } from './utils/generateVerticalLinecutOverlay';
+import { generateInclinedLinecutOverlay } from './utils/generateInclinedLinecutOverlay';
+import { generateAzimuthalOverlay } from './utils/generateAzimuthalOverlay';
+import { getArrayMinMax } from './utils/getArrayMinAndMax';
+// import { calculateMinMax } from './utils/transformationUtils';
+import { calculateDifferenceArray } from './utils/calculateDifferenceArray';
 import { Select } from '@mantine/core';
 
 import AzimuthalLoadingSpinner from "./AzimuthalLoadingSpinner";
-import { calculateDivisionArray } from "../utils/calculateDivisionArray";
+import { calculateDivisionArray } from './utils/calculateDivisionArray';
 
 // Add a type for operation
 type OperationType = 'subtract' | 'divide';
