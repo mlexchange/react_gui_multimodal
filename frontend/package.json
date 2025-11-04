@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@blueskyproject/finch": "^0.1.4",
+    "@blueskyproject/tiled": "^0.0.18",
     "@esbuild-plugins/node-globals-polyfill": "^0.2.3",
     "@esbuild-plugins/node-modules-polyfill": "^0.2.2",
     "@mantine/core": "^7.15.0",

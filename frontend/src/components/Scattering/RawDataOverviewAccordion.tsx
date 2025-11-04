@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, Select, Button } from '@mantine/core';
+import { Text, Select } from '@mantine/core';
 
 // Define display options type
 export type DisplayOption = 'both' | 'max' | 'avg';
@@ -12,9 +12,8 @@ interface RawDataOverviewAccordionProps {
   numOfFiles: number | null;
   displayOption?: DisplayOption;
   setDisplayOption?: (option: DisplayOption) => void;
-  fetchSpectrumData?: () => Promise<void>;
-  isFetchingData?: boolean;
   imageNames?: string[];
+  isFetchingData?: boolean;
 }
 
 const RawDataOverviewAccordion: React.FC<RawDataOverviewAccordionProps> = ({
@@ -25,9 +24,8 @@ const RawDataOverviewAccordion: React.FC<RawDataOverviewAccordionProps> = ({
   numOfFiles,
   displayOption = 'both',
   setDisplayOption = () => {},
-  fetchSpectrumData = async () => {},
-  isFetchingData = false,
   imageNames = [],
+  isFetchingData = false,
 }) => {
   // Create select options from image names array
   const imageOptions = imageNames.map((name, index) => ({
@@ -122,20 +120,6 @@ const RawDataOverviewAccordion: React.FC<RawDataOverviewAccordionProps> = ({
               label: 'text-lg',
             }}
           />
-
-          {/* Centered and Larger Fetch Data Button */}
-          <div className="flex justify-center">
-            <Button
-              onClick={fetchSpectrumData}
-              loading={isFetchingData}
-              color="blue"
-              size="md"
-              className="w-12/12 px-12 py-3 bg-blue-500 text-white font-semibold rounded-lg shadow hover:bg-blue-600 transition mx-auto block"
-              style={{ marginTop: '8px' }}
-            >
-              Fetch Data
-            </Button>
-          </div>
         </div>
       </div>
     </div>

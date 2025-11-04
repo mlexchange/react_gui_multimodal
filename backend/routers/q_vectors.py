@@ -1,13 +1,12 @@
 import msgpack
 import numpy as np
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Query
 from fastapi.responses import Response
 from pydantic import BaseModel
 from pyFAI.integrator.azimuthal import AzimuthalIntegrator
 
 # import pyFAI
 # from pyFAI.units import get_unit_fiber
-from routers.initial_scans_fetching import get_initial_scans
 
 
 class CalibrationParameters(BaseModel):
@@ -50,14 +49,10 @@ def q_vectors(
     tilt_plan_rotation: float = Query(
         default=0.0, description="Rotation of tilt plane in degrees"
     ),
-    # Other parameters
-    scans=Depends(get_initial_scans),
+    # Image dimensions
+    image_height: int = Query(description="Height of the image in pixels"),
+    image_width: int = Query(description="Width of the image in pixels"),
 ):
-    # Convert the input scatter images to NumPy arrays for processing
-    # The full resolution images are used to maintain maximum data quality
-    scatter_image_array_1 = np.array(scans["scatter_image_array_1_full_res"])
-    # scatter_image_array_2 = np.array(scans["scatter_image_array_2_full_res"])
-
     # Package all calibration parameters into a dictionary for easier handling
     azimuthal_integration_calibration_params = {
         "sample_detector_distance": sample_detector_distance,
@@ -88,8 +83,8 @@ def q_vectors(
     unit_qx = "qx_nm^-1"
     unit_qy = "qy_nm^-1"
 
-    # Ensure the detector shape is defined
-    image_shape = scatter_image_array_1.shape  # e.g., (height, width)
+    # Use the image dimensions passed as parameters
+    image_shape = (image_height, image_width)
 
     # Compute q arrays with the specified units
     q_x = ai.array_from_unit(shape=image_shape, unit=unit_qx)  # [0, :]

@@ -1,17 +1,14 @@
-# import asyncio
+import os
 import concurrent.futures
+import asyncio
 
 import msgpack
 import numpy as np
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from dotenv import load_dotenv
+from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import Response
-from routers.initial_scans_fetching import get_initial_scans
-
-# from src.get_images_arrays_and_names import get_images_arrays_and_names
-from src.get_single_image_array_and_name import get_single_image_array_and_name
-
-# import time
-
+from tiled.client import from_uri
+from src.get_scans import extract_folder_path_from_url, get_scans_from_folder
 
 router = APIRouter()
 
@@ -25,7 +22,6 @@ async def websocket_endpoint(websocket: WebSocket):
     active_connections.append(websocket)
     try:
         while True:
-            # Keep connection alive until client disconnects
             data = await websocket.receive_text()
             if data == "ping":
                 await websocket.send_text("pong")
@@ -42,124 +38,76 @@ async def send_progress_update(progress_percentage, message=""):
                     {"progress": progress_percentage, "message": message}
                 )
             except Exception:
-                # Handle any connection errors silently
                 pass
 
 
-# Process a single image and return its metrics
-# import time
-
-
 def process_single_image(args):
-    index, uri, mask_detector, tiled_uri, data_local_path, DEV_MODE = args
+    """Process a single scan to get its max/avg intensity"""
+    index, scan_uri, tiled_base_uri, tiled_api_key = args
     try:
-        # t0 = time.time()
+        # Construct full URI
+        full_uri = f"{tiled_base_uri}{scan_uri}" if not scan_uri.startswith("http") else scan_uri
 
-        # Get the image array and name
-        image_array, image_name = get_single_image_array_and_name(
-            uri, mask_detector, tiled_uri, data_local_path, DEV_MODE
-        )
-        # t1 = time.time()
+        # Load image from Tiled
+        image_client = from_uri(full_uri, api_key=tiled_api_key)
+        image_array = image_client.read()
 
         # Calculate metrics
         max_intensity = np.nanmax(image_array)
         avg_intensity = np.nanmean(image_array)
-        # t2 = time.time()
 
-        # print(f"Image {index}: Load={t1-t0:.4f}s, Process={t2-t1:.4f}s")
+        # Extract scan name from URI (last part)
+        scan_name = scan_uri.split('/')[-1]
 
-        return index, max_intensity, avg_intensity, image_name, True
+        return index, max_intensity, avg_intensity, scan_name, scan_uri, True
     except Exception as e:
-        print(f"Error processing image {index}: {str(e)}")
-        return index, 0.0, 0.0, f"Error: {uri}", False
-
-
-# @router.get("/api/raw-data-overview")
-# async def create_raw_data_overview():
-#     results_get_initial_scans = await get_initial_scans()
-
-#     num_of_files = results_get_initial_scans["num_of_files"]
-#     all_files_uris = results_get_initial_scans["all_files_uris"]
-#     mask_detector = results_get_initial_scans["mask_detector"]
-#     tiled_uri = results_get_initial_scans["tiled_uri"]
-#     data_local_path = results_get_initial_scans["data_local_path"]
-#     DEV_MODE = results_get_initial_scans["DEV_MODE"]
-
-#     # Send initial progress
-#     await send_progress_update(0, f"Processing 0/{num_of_files} images")
-
-#     # Preallocate arrays for efficiency
-#     max_intensities = np.zeros(num_of_files, dtype=float)
-#     avg_intensities = np.zeros(num_of_files, dtype=float)
-#     image_names = []
-
-#     # Chunk processing to manage memory and provide progress updates
-#     chunk_size = 10  # Adjust based on your memory constraints
-#     for chunk_start in range(0, num_of_files, chunk_size):
-#         chunk_end = min(chunk_start + chunk_size, num_of_files)
-#         chunk_indices = list(range(chunk_start, chunk_end))
-
-#         # Batch process images in the current chunk
-#         image_arrays, chunk_image_names = get_images_arrays_and_names(
-#             all_files_uris,
-#             chunk_indices,
-#             mask_detector,
-#             tiled_uri,
-#             data_local_path,
-#             DEV_MODE,
-#             {},  # accumulated_data can be an empty dict for batch processing
-#             initialization_mode=True,
-#         )
-
-#         # Compute max and average intensities for the chunk
-#         max_intensities[chunk_start:chunk_end] = np.nanmax(image_arrays, axis=(1, 2))
-#         avg_intensities[chunk_start:chunk_end] = np.nanmean(image_arrays, axis=(1, 2))
-#         image_names.extend(chunk_image_names)
-
-#         # Calculate and send progress update
-#         progress = ((chunk_end) / num_of_files) * 100
-#         await send_progress_update(
-#             progress, f"Processing {chunk_end}/{num_of_files} images"
-#         )
-
-#     # Prepare serializable data
-#     serializable_data = {
-#         "max_intensities": max_intensities.tolist(),
-#         "avg_intensities": avg_intensities.tolist(),
-#         "image_names": image_names,
-#     }
-
-#     # Send completion notification
-#     await send_progress_update(100, "Data processing complete")
-
-#     # Pack data using msgpack
-#     packed_data = msgpack.packb(serializable_data, use_bin_type=True)
-
-#     return Response(content=packed_data, media_type="application/octet-stream")
+        print(f"Error processing scan {index} ({scan_uri}): {str(e)}")
+        return index, 0.0, 0.0, f"Error: {scan_uri}", scan_uri, False
 
 
 @router.get("/api/raw-data-overview")
-async def create_raw_data_overview():
-    results_get_initial_scans = await get_initial_scans()
+async def create_raw_data_overview(folder_url: str):
+    """
+    Get metadata for all scans in a folder.
 
-    num_of_files = results_get_initial_scans["num_of_files"]
-    all_files_uris = results_get_initial_scans["all_files_uris"]
-    mask_detector = results_get_initial_scans["mask_detector"]
-    tiled_uri = results_get_initial_scans["tiled_uri"]
-    data_local_path = results_get_initial_scans["data_local_path"]
-    DEV_MODE = results_get_initial_scans["DEV_MODE"]
+    Returns scan URIs, names, and intensity statistics for the Raw Data Overview.
+    Does NOT return actual image arrays.
+    """
+    # Load environment variables
+    load_dotenv("../.env")
+    TILED_URL = os.getenv("SCATTERING_TILED_URL")
+    TILED_API_KEY = os.getenv("SCATTERING_TILED_API_KEY")
+
+    if not TILED_URL or not TILED_API_KEY:
+        raise HTTPException(
+            status_code=500, detail="Environment variables not set correctly"
+        )
+
+    # Connect to Tiled
+    tiled_client = from_uri(TILED_URL, api_key=TILED_API_KEY)
+    TILED_BASE_URI = tiled_client.uri
+
+    # Extract folder path and get scans using consolidated utilities
+    folder_path = extract_folder_path_from_url(folder_url)
+
+    scan_uris = get_scans_from_folder(tiled_client, folder_path, TILED_BASE_URI)
+
+    # Remove leading slashes
+    scan_uris = [uri.lstrip('/') for uri in scan_uris]
+    
+    num_of_files = len(scan_uris)
 
     # Send initial progress
-    await send_progress_update(0, f"Initializing processing for {num_of_files} images")
+    asyncio.create_task(send_progress_update(0, f"Initializing processing for {num_of_files} scans"))
 
     # Preallocate arrays for efficiency
     max_intensities = np.zeros(num_of_files, dtype=float)
     avg_intensities = np.zeros(num_of_files, dtype=float)
-    image_names = [""] * num_of_files  # Pre-allocate with empty strings
+    scan_names = [""] * num_of_files
 
     # Prepare arguments for the worker function
     args_list = [
-        (i, all_files_uris[i], mask_detector, tiled_uri, data_local_path, DEV_MODE)
+        (i, scan_uris[i], TILED_BASE_URI, TILED_API_KEY)
         for i in range(num_of_files)
     ]
 
@@ -173,27 +121,29 @@ async def create_raw_data_overview():
             executor.submit(process_single_image, args): args[0] for args in args_list
         }
 
-        # Process results as they complete
         for future in concurrent.futures.as_completed(future_to_index):
-            index, max_intensity, avg_intensity, image_name, success = future.result()
+            index, max_intensity, avg_intensity, scan_name, scan_uri, success = future.result()
 
             if success:
                 max_intensities[index] = max_intensity
                 avg_intensities[index] = avg_intensity
-                image_names[index] = image_name
+                scan_names[index] = scan_name
 
-            # Update progress
             processed_count += 1
             progress = (processed_count / num_of_files) * 100
-            await send_progress_update(
+            asyncio.create_task(send_progress_update(
                 progress, f"Processing {processed_count}/{num_of_files} images"
-            )
+            ))
+            # Yield to event loop to allow progress updates to be sent
+            await asyncio.sleep(0)
 
     # Prepare serializable data
     serializable_data = {
+        "num_scans": num_of_files,
+        "scan_uris": scan_uris,
+        "scan_names": scan_names,
         "max_intensities": max_intensities.tolist(),
         "avg_intensities": avg_intensities.tolist(),
-        "image_names": image_names,
     }
 
     # Send completion notification

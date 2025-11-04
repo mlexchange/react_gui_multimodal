@@ -3,6 +3,9 @@ import { InfoIcon } from 'lucide-react';
 import { notifications } from '@mantine/notifications';
 import { CalibrationParams } from './types';
 
+import { Tiled } from '@blueskyproject/tiled';
+import '@blueskyproject/tiled/style.css';
+
 // Import hooks
 import useMultimodal from './hooks/useMultimodal';
 import useAzimuthalIntegration from './hooks/useAzimuthalIntegration';
@@ -31,7 +34,14 @@ import RawDataOverviewFig from './RawDataOverviewFig';
 import { handleExperimentTypeChange, addLinecut } from './utils/linecutHandlers';
 import { leftImageColorPalette, rightImageColorPalette } from './utils/constants';
 
-export default function Scattering() {
+const tiledUrl = import.meta.env.SCATTERING_TILED_URL;
+const tiledApiKey = import.meta.env.SCATTERING_TILED_API_KEY;
+
+interface ScatteringProps {
+  standalone?: boolean;
+}
+
+export default function Scattering({ standalone = false }: ScatteringProps) {
   const linecutOrder = ['Horizontal', 'Vertical', 'Inclined', 'Azimuthal'];
 
   const {
@@ -63,21 +73,6 @@ export default function Scattering() {
   const qXVector = qXMatrix[0];
   // get the first column of qYMatrix as qYVector
   const qYVector = qYMatrix.map(row => row[0]);
-
-  const {
-      azimuthalIntegrations,
-      azimuthalData1,
-      azimuthalData2,
-      maxQValue,
-      globalQRange,
-      isProcessing,
-      addAzimuthalIntegration,
-      updateAzimuthalQRange,
-      updateAzimuthalRange,
-      updateAzimuthalColor,
-      deleteAzimuthalIntegration,
-      toggleAzimuthalVisibility,
-  } = useAzimuthalIntegration(calibrationParams);
 
 
   const {
@@ -148,6 +143,7 @@ export default function Scattering() {
     setLeftImageIndex,
     rightImageIndex,
     setRightImageIndex,
+    selectedFolderUrl,
     isFetchingData,
     isLoadingImages,
     setIsLoadingImages,
@@ -159,15 +155,36 @@ export default function Scattering() {
     maxIntensities,
     avgIntensities,
     imageNames,
+    scanUris,
 
     fetchSpectrumData,
     handleImageIndicesChange,
+    handleTiledSelection,
 
     displayOption,
     setDisplayOption,
 
   } = useRawDataOverview();
 
+  // Get scan URIs for selected images
+  // These will be used for azimuthal integration API calls
+  const leftScanUri = (leftImageIndex !== "" && scanUris.length > 0) ? scanUris[leftImageIndex] : null;
+  const rightScanUri = (rightImageIndex !== "" && scanUris.length > 0) ? scanUris[rightImageIndex] : null;
+
+  const {
+      azimuthalIntegrations,
+      azimuthalData1,
+      azimuthalData2,
+      maxQValue,
+      globalQRange,
+      isProcessing,
+      addAzimuthalIntegration,
+      updateAzimuthalQRange,
+      updateAzimuthalRange,
+      updateAzimuthalColor,
+      deleteAzimuthalIntegration,
+      toggleAzimuthalVisibility,
+  } = useAzimuthalIntegration(calibrationParams, leftScanUri, rightScanUri);
 
 
     const handleCalibrationUpdate = async (params: CalibrationParams) => {
@@ -214,10 +231,21 @@ export default function Scattering() {
   };
 
   return (
-    <div className="flex h-full w-full bg-slate-200  overflow-hidden">
+    <div className={`flex ${standalone ? 'h-screen' : 'h-full'} w-full bg-slate-200  overflow-hidden`}>
       {/* First Column - Scatter Controls */}
         <div className={`border border-gray-300 shadow-lg relative transition-all duration-300 flex-shrink-0 flex flex-col h-full w-[20%]`}>
         {/* Scrollable Content Section */}
+        <div className="flex-shrink-0 sticky top-0 z-10">
+          <div className="w-full mb-4 mt-4 text-center justify-center items-center">
+            <Tiled
+              tiledBaseUrl={tiledUrl}
+              apiKey={tiledApiKey}
+              isButtonMode={true}
+              onSelectCallback={handleTiledSelection}
+            />
+          </div>
+          <hr className="w-full border border-gray-300" />
+        </div>
         <div className="flex-1 overflow-y-auto overflow-x-hidden">
           {/* Dropdown for Experiment Type */}
           <Select
@@ -259,7 +287,6 @@ export default function Scattering() {
                 numOfFiles={numOfFiles}
                 displayOption={displayOption}
                 setDisplayOption={setDisplayOption}
-                fetchSpectrumData={fetchSpectrumData}
                 isFetchingData={isFetchingData}
                 imageNames={imageNames}
               />
@@ -491,6 +518,7 @@ export default function Scattering() {
                 mainTransformDataFunction={mainTransformDataFunction}
                 leftImageIndex={leftImageIndex}
                 rightImageIndex={rightImageIndex}
+                scanUris={scanUris}
                 isLoadingImages={isLoadingImages}
                 setIsLoadingImages={setIsLoadingImages}
                 isAzimuthalProcessing={isProcessing}

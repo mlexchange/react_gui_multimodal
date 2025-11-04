@@ -1,10 +1,13 @@
 import os
 import urllib.parse as urlparse
 
-import fabio
-import numpy as np
+from dotenv import load_dotenv
 from src.preprocess_image import get_processed_image
 from tiled.client import from_uri
+
+load_dotenv("../.env")
+TILED_URL = os.getenv("SCATTERING_TILED_URL")
+TILED_API_KEY = os.getenv("SCATTERING_TILED_API_KEY")
 
 
 def fetch_image_uri_by_index(index, files_uris, accumulated_data, initialization_mode):
@@ -39,8 +42,6 @@ def get_images_arrays_and_names(
     images_indices,
     mask_detector,
     tiled_uri,
-    data_local_path,
-    DEV_MODE,
     accumulated_data,
     initialization_mode=False,
 ):
@@ -48,61 +49,30 @@ def get_images_arrays_and_names(
     image_arrays = []
     image_names = []
 
-    if DEV_MODE:
-
-        # Load local images
-        if len(files_uris) == 1:
-            files_uris = [files_uris[0]] * len(images_indices)
-
-        for i in range(len(images_indices)):
-
-            if initialization_mode or not accumulated_data["image_names"]:
-                image_name = files_uris[images_indices[i]]
-            else:
-                image_name = accumulated_data["image_names"][images_indices[i]]
-            image_path = os.path.join(data_local_path, image_name)
-
-            # Use fabio to read .edf files
-            if image_name.endswith(".edf"):
-                image_array = fabio.open(image_path).data  # Get image data from .edf
-            else:
-                image_array = np.load(
-                    image_path, allow_pickle=True
-                )  # For other file types like .npy
-
-            processed_image = get_processed_image(
-                image_array,
-                mask_detector,
-            )
-
-            image_arrays.append(processed_image)
-            image_names.append(image_name)
-
-    else:
-
+    try:
         all_images_uris = []
         for index in images_indices:
-            all_images_uris.append(
-                fetch_image_uri_by_index(
-                    index, files_uris, accumulated_data, initialization_mode
-                )
-            )
+            all_images_uris.append(fetch_image_uri_by_index(index, files_uris, accumulated_data, initialization_mode))
+    except Exception as e:
+        print(f"Error fetching image URIs: {str(e)}")
+        return image_arrays, image_names
 
-        # Load images from the tiled server
-        for i in range(len(all_images_uris)):
+    # Load images from the tiled server
+    for i in range(len(all_images_uris)):
 
-            image_uri = all_images_uris[i]
-            tiled_uri = tiled_uri if tiled_uri.endswith("/") else tiled_uri + "/"
-            file_uri = urlparse.urljoin(tiled_uri, image_uri)
-            image_client = from_uri(file_uri)
-            image_array = image_client.read()  # Retrieve the NumPy array
+        image_uri = all_images_uris[i]
+        tiled_uri = tiled_uri if tiled_uri.endswith("/") else tiled_uri + "/"
+        file_uri = urlparse.urljoin(tiled_uri, image_uri)
 
-            processed_image = get_processed_image(
-                image_array,
-                mask_detector,
-            )
+        image_client = from_uri(file_uri, api_key=TILED_API_KEY)
+        image_array = image_client.read()  # Retrieve the NumPy array
 
-            image_arrays.append(processed_image)
-            image_names.append(image_uri)
+        processed_image = get_processed_image(
+            image_array,
+            mask_detector,
+        )
+
+        image_arrays.append(processed_image)
+        image_names.append(image_uri)
 
     return image_arrays, image_names

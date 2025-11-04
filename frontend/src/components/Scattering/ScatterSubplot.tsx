@@ -61,6 +61,7 @@ interface ScatterSubplotProps {
   mainTransformDataFunction: TransformDataFunction;
   leftImageIndex?: number | "";
   rightImageIndex?: number | "";
+  scanUris?: string[];
   isLoadingImages?: boolean;
   setIsLoadingImages?: (isLoading: boolean) => void;
   isAzimuthalProcessing?: boolean;
@@ -98,6 +99,7 @@ const ScatterSubplot: React.FC<ScatterSubplotProps> = React.memo(({
   mainTransformDataFunction,
   leftImageIndex,
   rightImageIndex,
+  scanUris,
   isLoadingImages,
   setIsLoadingImages,
   isAzimuthalProcessing = false,
@@ -435,27 +437,47 @@ const ScatterSubplot: React.FC<ScatterSubplotProps> = React.memo(({
   // Initial data fetch
   useEffect(() => {
 
-    // Skip if indices aren't valid numbers
+    // Skip if indices aren't valid numbers or scanUris isn't available
     if (typeof leftImageIndex !== 'number' || typeof rightImageIndex !== 'number') {
       return;
     }
 
-    // // Show loading spinner
+    if (!scanUris || scanUris.length === 0) {
+      return;
+    }
+
+    // Get scan URIs for the selected indices
+    const leftScanUri = scanUris[leftImageIndex];
+    const rightScanUri = scanUris[rightImageIndex];
+
+    if (!leftScanUri || !rightScanUri) {
+      console.error('Scan URIs not found for selected indices');
+      return;
+    }
+
+    // Show loading spinner
     setIsLoadingImages(true);
 
-    // Construct the URL with query parameters for the indices
-    const url = new URL("/api/scatter-subplot", window.location.origin);
-    url.searchParams.append("left_image_index", leftImageIndex.toString());
-    url.searchParams.append("right_image_index", rightImageIndex.toString());
+    // Construct URLs for both scans
+    const leftUrl = new URL("/api/fetch-scan-image", window.location.origin);
+    leftUrl.searchParams.append("scan_uri", leftScanUri);
 
-    fetch(url.toString())
-      .then(response => response.arrayBuffer())
-      .then(buffer => {
-        const decoded = decode(new Uint8Array(buffer)) as any;
+    const rightUrl = new URL("/api/fetch-scan-image", window.location.origin);
+    rightUrl.searchParams.append("scan_uri", rightScanUri);
+
+    // Fetch both images in parallel
+    Promise.all([
+      fetch(leftUrl.toString()).then(res => res.arrayBuffer()),
+      fetch(rightUrl.toString()).then(res => res.arrayBuffer())
+    ])
+      .then(([leftBuffer, rightBuffer]) => {
+        // Decode both responses
+        const decodedLeft = decode(new Uint8Array(leftBuffer)) as any;
+        const decodedRight = decode(new Uint8Array(rightBuffer)) as any;
 
         // Reconstruct full resolution data
-        const fullArray1 = reconstructFloat32Array(extractBinary(decoded.array_1), decoded.metadata.shape_1);
-        const fullArray2 = reconstructFloat32Array(extractBinary(decoded.array_2), decoded.metadata.shape_2);
+        const fullArray1 = reconstructFloat32Array(extractBinary(decodedLeft.image), decodedLeft.metadata.shape);
+        const fullArray2 = reconstructFloat32Array(extractBinary(decodedRight.image), decodedRight.metadata.shape);
         const fullDiff = calculateDifferenceArray(fullArray1, fullArray2);
         // const fullDiff = calculateResult(fullArray1, fullArray2);
 
@@ -504,52 +526,143 @@ const ScatterSubplot: React.FC<ScatterSubplotProps> = React.memo(({
           }
         });
 
-        // Initialize plot with clipped low resolution data but full range colorbar
-        const plotlyData = decoded.metadata.plotly;
-        plotlyData.data[0].z = array1DownsampledLowRes;
-        plotlyData.data[1].z = array2DownsampledLowRes;
-        plotlyData.data[2].z = diffDownsampledLowRes;
-
+        // Calculate global min/max values for consistent color scaling
         const globalMinValue = Math.min(minValue1, minValue2);
         const globalMaxValue = Math.max(maxValue1, maxValue2);
+        const maxAbsDiff = Math.max(Math.abs(minValueDiff), Math.abs(maxValueDiff));
 
-        // Set the data range for display
-        plotlyData.data[0].zmin = globalMinValue;
-        plotlyData.data[0].zmax = globalMaxValue;
-        plotlyData.data[1].zmin = globalMinValue;
-        plotlyData.data[1].zmax = globalMaxValue;
-        plotlyData.data[2].zmin = minValueDiff;
-        plotlyData.data[2].zmax = maxValueDiff;
-
-        // Set the colorbar range to show full data range
-        if (plotlyData.layout.coloraxis) {
-          plotlyData.layout.coloraxis.cmin = globalMinValue;
-          plotlyData.layout.coloraxis.cmax = globalMaxValue;
-        }
-        if (plotlyData.layout.coloraxis2) {
-          const maxAbsDiff = Math.max(Math.abs(minValueDiff), Math.abs(maxValueDiff));
-          plotlyData.layout.coloraxis2.cmin = -maxAbsDiff;
-          plotlyData.layout.coloraxis2.cmax = maxAbsDiff;
-          plotlyData.layout.coloraxis2.cmid = 0;
-        }
+        // Create Plotly data structure
+        const plotlyData = {
+          data: [
+            {
+              type: 'heatmap',
+              z: array1DownsampledLowRes,
+              zmin: globalMinValue,
+              zmax: globalMaxValue,
+              coloraxis: 'coloraxis',
+              xaxis: 'x',
+              yaxis: 'y',
+              hovertemplate: 'x: %{x}<br>y: %{y}<br>intensity: %{z}<extra></extra>',
+            },
+            {
+              type: 'heatmap',
+              z: array2DownsampledLowRes,
+              zmin: globalMinValue,
+              zmax: globalMaxValue,
+              coloraxis: 'coloraxis',
+              xaxis: 'x2',
+              yaxis: 'y2',
+              hovertemplate: 'x: %{x}<br>y: %{y}<br>intensity: %{z}<extra></extra>',
+            },
+            {
+              type: 'heatmap',
+              z: diffDownsampledLowRes,
+              zmin: -maxAbsDiff,
+              zmax: maxAbsDiff,
+              coloraxis: 'coloraxis2',
+              xaxis: 'x3',
+              yaxis: 'y3',
+              hovertemplate: 'x: %{x}<br>y: %{y}<br>difference: %{z}<extra></extra>',
+            }
+          ],
+          layout: {
+            grid: {
+              rows: 1,
+              columns: 3,
+              pattern: 'independent',
+              xgap: 0.1,
+              ygap: 0
+            },
+            xaxis: {
+              title: 'X (pixels)',
+              scaleanchor: 'y',
+              scaleratio: 1,
+              constrain: 'domain',
+            },
+            yaxis: {
+              title: 'Y (pixels)',
+              scaleanchor: 'x',
+              scaleratio: 1,
+              constrain: 'domain',
+            },
+            xaxis2: {
+              title: 'X (pixels)',
+              scaleanchor: 'y2',
+              scaleratio: 1,
+              constrain: 'domain',
+            },
+            yaxis2: {
+              title: 'Y (pixels)',
+              scaleanchor: 'x2',
+              scaleratio: 1,
+              constrain: 'domain',
+            },
+            xaxis3: {
+              title: 'X (pixels)',
+              scaleanchor: 'y3',
+              scaleratio: 1,
+              constrain: 'domain',
+            },
+            yaxis3: {
+              title: 'Y (pixels)',
+              scaleanchor: 'x3',
+              scaleratio: 1,
+              constrain: 'domain',
+            },
+            coloraxis: {
+              colorscale: 'Viridis',
+              cmin: globalMinValue,
+              cmax: globalMaxValue,
+              colorbar: {
+                x: 0.305,
+                y: 0.5,
+                len: 0.8,
+                thickness: 15,
+                title: {
+                  text: 'Intensity',
+                  side: 'right'
+                }
+              }
+            },
+            coloraxis2: {
+              colorscale: 'RdBu',
+              cmin: -maxAbsDiff,
+              cmax: maxAbsDiff,
+              cmid: 0,
+              colorbar: {
+                x: 1.02,
+                y: 0.5,
+                len: 0.8,
+                thickness: 15,
+                title: {
+                  text: 'Difference',
+                  side: 'right'
+                }
+              }
+            },
+            margin: { l: 50, r: 50, t: 30, b: 50 },
+            showlegend: false,
+          }
+        };
 
         setPlotData(plotlyData);
-        setIsLoadingImages(false); // Hide loading spinner
+        setIsLoadingImages?.(false); // Hide loading spinner
 
       })
       .catch(error => {
         console.error("Error fetching scatter subplot:", error);
+        setIsLoadingImages?.(false); // Hide loading spinner on error
       });
 
   }, [
     leftImageIndex,
     rightImageIndex,
+    scanUris,
     setImageHeight,
     setImageWidth,
     setImageData1,
     setImageData2,
     setIsLoadingImages,
-    // calculateResult,
   ]);
 
 
@@ -787,7 +900,12 @@ const ScatterSubplot: React.FC<ScatterSubplotProps> = React.memo(({
             }}
           />
         ) : (
-          <p>Loading scatter subplot...</p>
+          <div className="flex items-center justify-center w-full h-full">
+            <div className="text-center p-8">
+              <p className="text-xl text-gray-600 mb-2">No data loaded</p>
+              <p className="text-sm text-gray-500">Please select a folder using the "Select Data" button above</p>
+            </div>
+          </div>
         )}
         {(
           <>

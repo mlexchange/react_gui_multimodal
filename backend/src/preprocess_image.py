@@ -9,6 +9,9 @@ def get_processed_image(image, mask_detector):
     # Convert image to float32 first
     processed_image = image.copy().astype(np.float32)
 
+    if mask_detector is None:
+        return processed_image
+
     # Invert the mask first (1 - mask)
     inverted_mask = 1 - mask_detector
 

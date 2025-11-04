@@ -1,12 +1,13 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { notifications } from '@mantine/notifications';
 import { decode } from "@msgpack/msgpack";
-import { DisplayOption } from '../components/RawDataOverviewAccordion';
+import { DisplayOption } from '../RawDataOverviewAccordion';
 
 interface RawDataOverview {
     max_intensities: number[];
     avg_intensities: number[];
     image_names: string[];
+    scan_uris: string[];
 }
 
 interface ProgressUpdate {
@@ -14,12 +15,25 @@ interface ProgressUpdate {
     message: string;
 }
 
-export default function useRawDataOverview() {
-    // State for the left image index with initial value of 0
-    const [leftImageIndex, setLeftImageIndex] = useState<number | "">(0);
+interface TiledItemLinks {
+    self: string;
+    full?: string;
+    block?: string;
+    buffers?: string;
+    partition?: string;
+    search?: string;
+    default?: string;
+}
 
-    // State for the right image index with initial value of 1
-    const [rightImageIndex, setRightImageIndex] = useState<number | "">(1);
+export default function useRawDataOverview() {
+    // State for the left image index with initial value of empty string
+    const [leftImageIndex, setLeftImageIndex] = useState<number | "">("");
+
+    // State for the right image index with initial value of empty string
+    const [rightImageIndex, setRightImageIndex] = useState<number | "">("");
+
+    // State for storing the selected Tiled folder URL
+    const [selectedFolderUrl, setSelectedFolderUrl] = useState<string | null>(null);
 
     // // State for tracking loading status
     // const [isLoading, setIsLoading] = useState(false);
@@ -37,7 +51,8 @@ export default function useRawDataOverview() {
     const [spectrumData, setSpectrumData] = useState<RawDataOverview>({
         max_intensities: [],
         avg_intensities: [],
-        image_names: []
+        image_names: [],
+        scan_uris: []
     });
 
     // Progress state for data fetching
@@ -113,7 +128,7 @@ export default function useRawDataOverview() {
     }, []);
 
     // Function to fetch spectrum data from the backend
-    const fetchSpectrumData = useCallback(async () => {
+    const fetchSpectrumData = useCallback(async (folderUrl?: string) => {
         try {
             setIsFetchingData(true);
             // setIsLoading(true);
@@ -132,8 +147,15 @@ export default function useRawDataOverview() {
                 autoClose: false,
             });
 
-            // Keep the /api prefix to match your backend structure
-            const response = await fetch('/api/raw-data-overview');
+            // Build URL with folder_url parameter
+            if (!folderUrl) {
+                throw new Error('Folder URL is required');
+            }
+
+            const url = new URL('/api/raw-data-overview', window.location.origin);
+            url.searchParams.append('folder_url', folderUrl);
+
+            const response = await fetch(url.toString());
 
             if (!response.ok) {
                 throw new Error(`Failed to fetch spectrum data: ${response.statusText}`);
@@ -143,17 +165,27 @@ export default function useRawDataOverview() {
             const buffer = await response.arrayBuffer();
             const decoded = decode(new Uint8Array(buffer)) as any;
 
-            // Set number of files
-            if (decoded.max_intensities) {
-                setNumOfFiles(decoded.max_intensities.length);
-            }
+            // Set number of scans
+            const numScans = decoded.num_scans || 0;
+            setNumOfFiles(numScans);
 
             // Update spectrum data
             setSpectrumData({
                 max_intensities: decoded.max_intensities || [],
                 avg_intensities: decoded.avg_intensities || [],
-                image_names: decoded.image_names || []
+                image_names: decoded.scan_names || [],
+                scan_uris: decoded.scan_uris || []
             });
+
+            // Auto-select first two scans if we have at least 2
+            if (numScans >= 2) {
+                setLeftImageIndex(0);
+                setRightImageIndex(1);
+            } else if (numScans === 1) {
+                // If only one scan, select it for both
+                setLeftImageIndex(0);
+                setRightImageIndex(0);
+            }
 
             // Set progress to 100% when done
             setProgress({
@@ -219,6 +251,17 @@ export default function useRawDataOverview() {
         }
     }, []);
 
+    // Handler for Tiled folder selection
+    const handleTiledSelection = useCallback((links: TiledItemLinks) => {
+        console.log('Tiled folder selected:', links);
+
+        // Store the folder URL
+        setSelectedFolderUrl(links.self);
+
+        // Trigger data fetch with the folder URL
+        fetchSpectrumData(links.self);
+    }, [fetchSpectrumData]);
+
 
     return {
         // State
@@ -226,6 +269,7 @@ export default function useRawDataOverview() {
         setLeftImageIndex,
         rightImageIndex,
         setRightImageIndex,
+        selectedFolderUrl,
         isFetchingData,
         isLoadingImages,
         setIsLoadingImages,
@@ -239,10 +283,12 @@ export default function useRawDataOverview() {
         maxIntensities: spectrumData.max_intensities,
         avgIntensities: spectrumData.avg_intensities,
         imageNames: spectrumData.image_names,
+        scanUris: spectrumData.scan_uris,
 
         // Handlers
         fetchSpectrumData,
         handleImageIndicesChange,
+        handleTiledSelection,
 
         displayOption,
         setDisplayOption,

@@ -1,4 +1,6 @@
 # from tiled.client.array import ArrayClient
+from urllib.parse import urlparse
+from fastapi import HTTPException
 from tiled.client.container import Container
 
 # # Initialize the Tiled server
@@ -65,5 +67,88 @@ def get_scan_options(raw_client, TILED_BASE_URI):
             scan_uri = trim_base_from_uri(node_client.uri, TILED_BASE_URI)
             # trimmed_scan_name = scan_uri.replace("raw/", "")
             scan_uri_list.append(scan_uri)
+
+    return scan_uri_list
+
+
+def extract_folder_path_from_url(folder_url: str) -> str:
+    """
+    Extract the folder path from a Tiled URL.
+
+    Args:
+        folder_url: Full Tiled URL like 'http://host:port/api/v1/metadata/path/to/folder'
+
+    Returns:
+        Folder path like 'path/to/folder'
+    """
+    parsed_url = urlparse(folder_url)
+    path = parsed_url.path
+
+    # Remove '/api/v1/metadata/' prefix if present
+    if '/metadata/' in path:
+        folder_path = path.split('/metadata/', 1)[1]
+    else:
+        folder_path = path.lstrip('/')
+
+    return folder_path.lstrip('/')
+
+
+def get_scans_from_folder(tiled_client, folder_path: str, tiled_base_uri: str) -> list:
+    """
+    Get all scan URIs from a specific folder in Tiled.
+
+    Args:
+        tiled_client: Tiled client instance
+        folder_path: Path to folder like 'path/to/folder'
+        tiled_base_uri: Base Tiled URI
+
+    Returns:
+        List of scan URIs
+    """
+    scan_uri_list = []
+
+    # Navigate to the folder
+    path_parts = folder_path.split('/')
+    current_client = tiled_client
+
+    for part in path_parts:
+        if part:  # Skip empty parts
+            try:
+                current_client = current_client[part]
+            except KeyError:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Folder path '{folder_path}' not found in Tiled. Failed at part '{part}'"
+                )
+
+    # Get all scans from this folder
+    if isinstance(current_client, Container):
+        for key in current_client.keys():
+            node_client = current_client[key]
+
+            # Check if this is a scan we can read
+            if hasattr(node_client, 'specs'):
+                specs = node_client.specs
+                if any(spec.name == "edf" or spec.name == "gb" for spec in specs):
+                    scan_uri = trim_base_from_uri(node_client.uri, tiled_base_uri)
+                    scan_uri_list.append(scan_uri)
+
+            # Check for detector-specific folders
+            if isinstance(node_client, Container):
+                for child_key in node_client.keys():
+                    child_client = node_client[child_key]
+
+                    if hasattr(child_client, 'specs'):
+                        specs = child_client.specs
+                        if any(spec.name == "edf" or spec.name == "gb" for spec in specs):
+                            scan_uri = trim_base_from_uri(child_client.uri, tiled_base_uri)
+                            scan_uri_list.append(scan_uri)
+    else:
+        # If it's not a container, it might be a single scan
+        if hasattr(current_client, 'specs'):
+            specs = current_client.specs
+            if any(spec.name == "edf" or spec.name == "gb" for spec in specs):
+                scan_uri = trim_base_from_uri(current_client.uri, tiled_base_uri)
+                scan_uri_list.append(scan_uri)
 
     return scan_uri_list

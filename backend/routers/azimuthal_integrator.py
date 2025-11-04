@@ -1,14 +1,17 @@
+import os
 from typing import Tuple
 
 import msgpack
 import numpy as np
+from dotenv import load_dotenv
 
 # import pyFAI
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Query
 from fastapi.responses import Response
 from pydantic import BaseModel
 from pyFAI.integrator.azimuthal import AzimuthalIntegrator
-from routers.initial_scans_fetching import get_initial_scans
+from tiled.client import from_uri
+from src.get_single_image_array_and_name import get_single_image_array_and_name
 
 # OpenCL support is currently commented out but could be enabled for GPU acceleration
 # import pyopencl as cl
@@ -59,6 +62,9 @@ def parse_range_parameter(
 
 @router.get("/azimuthal-integrator")
 async def azimuthal_integration(
+    # Image selection parameters - now using URIs directly
+    left_scan_uri: str = Query(..., description="Tiled URI for the first scan (e.g., 'rawdata/scan_1')"),
+    right_scan_uri: str = Query(..., description="Tiled URI for the second scan (e.g., 'rawdata/scan_2')"),
     # Calibration parameters as query parameters with defaults
     sample_detector_distance: float = Query(
         default=274.83,
@@ -84,7 +90,6 @@ async def azimuthal_integration(
         default=0.0, description="Rotation of tilt plane in degrees"
     ),
     # Other parameters
-    scans=Depends(get_initial_scans),
     azimuth_range_deg: str | None = None,
     q_range: str | None = None,
 ):
@@ -92,19 +97,40 @@ async def azimuthal_integration(
     Performs azimuthal integration on two scatter images to convert 2D detector images
     into 1D intensity vs. q plots. This process averages the intensity around circles
     centered on the beam position, accounting for the experimental geometry.
+
+    Now uses direct scan URIs instead of folder_url + indices for more efficient access.
     """
 
-    # # Parse the range parameters
+    # Load environment variables
+    load_dotenv("../.env")
+    TILED_URL = os.getenv("SCATTERING_TILED_URL")
+    TILED_API_KEY = os.getenv("SCATTERING_TILED_API_KEY")
+
+    # Connect to Tiled to get base URI
+    tiled_client = from_uri(TILED_URL, api_key=TILED_API_KEY)
+    TILED_BASE_URI = tiled_client.uri
+
+    # Fetch the two images directly by their URIs
+    scatter_image_array_1, _ = get_single_image_array_and_name(
+        left_scan_uri,
+        mask_detector=None,
+        tiled_uri=TILED_BASE_URI
+    )
+
+    scatter_image_array_2, _ = get_single_image_array_and_name(
+        right_scan_uri,
+        mask_detector=None,
+        tiled_uri=TILED_BASE_URI
+    )
+
+    # Parse the range parameters
     azimuth_range = parse_range_parameter(azimuth_range_deg, None)
     q_range_tuple = parse_range_parameter(q_range, None)
 
-    # print(f"Azimuthal range: {azimuth_range}", type(azimuth_range))
-    # print(f"Q range: {q_range_tuple}")
-
     # Convert the input scatter images to NumPy arrays for processing
     # The full resolution images are used to maintain maximum data quality
-    scatter_image_array_1 = np.array(scans["scatter_image_array_1_full_res"])
-    scatter_image_array_2 = np.array(scans["scatter_image_array_2_full_res"])
+    scatter_image_array_1 = np.array(scatter_image_array_1)
+    scatter_image_array_2 = np.array(scatter_image_array_2)
 
     # Package all calibration parameters into a dictionary for easier handling
     azimuthal_integration_calibration_params = {

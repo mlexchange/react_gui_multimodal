@@ -54,12 +54,18 @@ function isAzimuthalIntegratorResponse(value: unknown): value is AzimuthalIntegr
 
 /**
  * Custom hook for managing azimuthal integration data
- * Now accepts calibration parameters and q-vectors from parent
+ * Now accepts calibration parameters and scan URIs from parent
  *
  * @param calibrationParams - Calibration parameters from parent component
+ * @param leftScanUri - Tiled URI for the first/left scan
+ * @param rightScanUri - Tiled URI for the second/right scan
  * @returns Functions and state for azimuthal integration
  */
-export default function useAzimuthalIntegration(calibrationParams: CalibrationParams) {
+export default function useAzimuthalIntegration(
+    calibrationParams: CalibrationParams,
+    leftScanUri: string | null,
+    rightScanUri: string | null
+) {
     // ======== STATE MANAGEMENT ========
 
     // Azimuthal integrations list and associated data
@@ -153,6 +159,13 @@ export default function useAzimuthalIntegration(calibrationParams: CalibrationPa
         azimuthRange: [number, number]
     ) => {
 
+        // Validate that scan URIs are available
+        if (!leftScanUri || !rightScanUri) {
+            console.warn('Cannot fetch azimuthal data: scan URIs not available');
+            setIsProcessing(false);
+            return;
+        }
+
         // Set loading state
         setIsProcessing(true);
 
@@ -170,6 +183,10 @@ export default function useAzimuthalIntegration(calibrationParams: CalibrationPa
             if (needsNewData) {
                 // Create a URL for the azimuthal integrator endpoint
                 const url = new URL('/api/azimuthal-integrator', window.location.origin);
+
+                // Add scan URIs (required parameters)
+                url.searchParams.set('left_scan_uri', leftScanUri);
+                url.searchParams.set('right_scan_uri', rightScanUri);
 
                 // Add all calibration parameters to the URL
                 Object.entries(calibrationParams).forEach(([key, value]) => {
@@ -246,7 +263,9 @@ export default function useAzimuthalIntegration(calibrationParams: CalibrationPa
         createCacheKey,
         filterByQRange,
         maxQValue,
-        updateIntegrationData
+        updateIntegrationData,
+        leftScanUri,
+        rightScanUri
     ]);
 
     // ======== DEBOUNCED FUNCTIONS ========

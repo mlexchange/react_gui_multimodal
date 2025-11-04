@@ -199,6 +199,12 @@ export default function useMultimodal() {
         url.searchParams.set(key, value.toString());
       });
 
+      // Add image dimensions from the loaded image data
+      const imageHeight = imageData1.length;
+      const imageWidth = imageData1[0]?.length || 0;
+      url.searchParams.set('image_height', imageHeight.toString());
+      url.searchParams.set('image_width', imageWidth.toString());
+
       // Fetch the data
       const response = await fetch(url.toString());
 
@@ -222,7 +228,7 @@ export default function useMultimodal() {
     } catch (error) {
       console.error('Error fetching q-matrices:', error);
     }
-  }, [calibrationParams]);
+  }, [calibrationParams, imageData1]);
 
   /**
    * Update calibration parameters and trigger q-matrix refresh
@@ -233,9 +239,13 @@ export default function useMultimodal() {
   }, []);
 
   // Fetch q-matrices when calibration parameters change
+  // Only fetch if we have actual image data loaded (not initial empty state)
   useEffect(() => {
-    fetchQVectors();
-  }, [fetchQVectors]);
+    // Only fetch Q-vectors if images are loaded
+    if (imageData1.length > 0 || imageData2.length > 0) {
+      fetchQVectors();
+    }
+  }, [fetchQVectors, imageData1.length, imageData2.length]);
 
   return {
     // Existing state

@@ -39,7 +39,8 @@ function App() {
 
   return (
     <MantineProvider>
-      <HubAppLayout headerTitle="Multimodal Analysis" routes={routes} />
+      {/* <HubAppLayout headerTitle="Multimodal Analysis" routes={routes} /> */}
+      <Scattering standalone={true} />
     </MantineProvider>
   );
 }

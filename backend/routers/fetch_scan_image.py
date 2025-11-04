@@ -1,0 +1,78 @@
+import os
+
+import msgpack
+import numpy as np
+from dotenv import load_dotenv
+from fastapi import APIRouter, HTTPException
+from fastapi.responses import Response
+from tiled.client import from_uri
+from src.preprocess_image import get_processed_image
+
+router = APIRouter()
+
+
+@router.get("/api/fetch-scan-image")
+async def fetch_scan_image(scan_uri: str):
+    """
+    Get the image array for a single scan.
+
+    Args:
+        scan_uri: The scan URI like "rawdata/NaCl_small/NaCl_1_10_sample_2_2m"
+
+    Returns:
+        msgpack binary containing the image array and metadata
+    """
+
+    # Load environment variables
+    load_dotenv("../.env")
+    TILED_URL = os.getenv("SCATTERING_TILED_URL")
+    TILED_API_KEY = os.getenv("SCATTERING_TILED_API_KEY")
+
+    if not TILED_URL or not TILED_API_KEY:
+        raise HTTPException(
+            status_code=500, detail="Environment variables not set correctly"
+        )
+
+    # Connect to Tiled and get image client
+    tiled_client = from_uri(TILED_URL, api_key=TILED_API_KEY)
+    TILED_BASE_URI = tiled_client.uri
+
+    # Construct full URI for the scan
+    scan_uri = scan_uri.lstrip('/')
+    full_uri = f"{TILED_BASE_URI}{scan_uri}"
+
+    try:
+        # Load image from Tiled
+        image_client = from_uri(full_uri, api_key=TILED_API_KEY)
+        image_array = image_client.read()
+
+        # Apply preprocessing (masking, etc.)
+        processed_image = get_processed_image(image_array, mask_detector=None)
+
+        # Convert to float32
+        processed_image = processed_image.astype(np.float32)
+
+        # Serialize to bytes
+        image_bytes = processed_image.tobytes()
+
+        # Prepare metadata
+        metadata = {
+            "shape": processed_image.shape,
+            "dtype": str(processed_image.dtype),
+            "scan_uri": scan_uri,
+        }
+
+        # Pack data
+        packed_data = msgpack.packb(
+            {
+                "metadata": metadata,
+                "image": msgpack.ExtType(1, image_bytes),
+            }
+        )
+        
+        return Response(content=packed_data, media_type="application/octet-stream")
+
+    except Exception as e:
+        error_msg = f"Failed to load scan {scan_uri}: {str(e)}"
+        print(f"[ERROR] {error_msg}")
+        raise HTTPException(status_code=500, detail=error_msg)
