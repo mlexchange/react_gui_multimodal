@@ -156,18 +156,21 @@ export default function useHorizontalLinecut(
    * Synchronizes pixel positions when qYMatrix changes
    */
   useEffect(() => {
-    // Skip if qYMatrix is empty or no linecuts exist
-    if (!qYMatrix || !qYMatrix.length || !horizontalLinecuts.length) return;
+    // Skip if qYMatrix is empty
+    if (!qYMatrix || !qYMatrix.length) return;
 
     // Update all linecuts with new pixel positions based on their q-values
-    setHorizontalLinecuts(prev =>
-      prev.map(linecut => {
+    setHorizontalLinecuts(prev => {
+      // Skip if no linecuts exist
+      if (!prev.length) return prev;
+
+      return prev.map(linecut => {
         // Recalculate pixel position based on current q-value and new mapping
         const pixelPosition = findClosestPixelForQValue(linecut.position);
         return { ...linecut, pixelPosition };
-      })
-    );
-  }, [qYMatrix, horizontalLinecuts, findClosestPixelForQValue]);
+      });
+    });
+  }, [qYMatrix, findClosestPixelForQValue]);
 
   return {
     horizontalLinecuts,

@@ -155,18 +155,21 @@ export default function useVerticalLinecut(
    * Synchronizes pixel positions when qXMatrix changes
    */
   useEffect(() => {
-    // Skip if qXMatrix is empty or no linecuts exist
-    if (!qXMatrix || !qXMatrix.length || !verticalLinecuts.length) return;
+    // Skip if qXMatrix is empty
+    if (!qXMatrix || !qXMatrix.length) return;
 
     // Update all linecuts with new pixel positions based on their q-values
-    setVerticalLinecuts(prev =>
-      prev.map(linecut => {
+    setVerticalLinecuts(prev => {
+      // Skip if no linecuts exist
+      if (!prev.length) return prev;
+
+      return prev.map(linecut => {
         // Recalculate pixel position based on current q-value and new mapping
         const pixelPosition = findClosestPixelForQValue(linecut.position);
         return { ...linecut, pixelPosition };
-      })
-    );
-  }, [qXMatrix, verticalLinecuts, findClosestPixelForQValue]);
+      });
+    });
+  }, [qXMatrix, findClosestPixelForQValue]);
 
   return {
     verticalLinecuts,
