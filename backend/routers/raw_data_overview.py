@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import Response
 from tiled.client import from_uri
-from src.get_scans import extract_folder_path_from_url, get_scans_from_folder
+from src.get_scans import get_scans_from_folder
 
 router = APIRouter()
 
@@ -66,9 +66,13 @@ def process_single_image(args):
 
 
 @router.get("/api/raw-data-overview")
-async def create_raw_data_overview(folder_url: str):
+async def create_raw_data_overview(container_path: str):
     """
     Get metadata for all scans in a folder.
+
+    Args:
+        container_path: The Tiled container path (e.g., 'path/to/folder')
+                       without the base URL or '/metadata/' prefix
 
     Returns scan URIs, names, and intensity statistics for the Raw Data Overview.
     Does NOT return actual image arrays.
@@ -87,10 +91,8 @@ async def create_raw_data_overview(folder_url: str):
     tiled_client = from_uri(TILED_URL, api_key=TILED_API_KEY)
     TILED_BASE_URI = tiled_client.uri
 
-    # Extract folder path and get scans using consolidated utilities
-    folder_path = extract_folder_path_from_url(folder_url)
-
-    scan_uris = get_scans_from_folder(tiled_client, folder_path, TILED_BASE_URI)
+    # Get scans using the container path directly (no URL extraction needed)
+    scan_uris = get_scans_from_folder(tiled_client, container_path, TILED_BASE_URI)
 
     # Remove leading slashes
     scan_uris = [uri.lstrip('/') for uri in scan_uris]

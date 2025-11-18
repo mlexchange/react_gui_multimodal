@@ -143,7 +143,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     setLeftImageIndex,
     rightImageIndex,
     setRightImageIndex,
-    selectedFolderUrl,
+    selectedContainerPath,
     isFetchingData,
     isLoadingImages,
     setIsLoadingImages,

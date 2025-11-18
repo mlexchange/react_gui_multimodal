@@ -25,6 +25,34 @@ interface TiledItemLinks {
     default?: string;
 }
 
+/**
+ * Extract the container path from a Tiled URL.
+ *
+ * @param tiledUrl - Full Tiled URL like 'http://host:port/api/v1/metadata/path/to/folder'
+ * @returns Container path like 'path/to/folder'
+ */
+function extractContainerPath(tiledUrl: string): string {
+    try {
+        const url = new URL(tiledUrl);
+        const path = url.pathname;
+
+        // Extract everything after '/metadata/'
+        if (path.includes('/metadata/')) {
+            return path.split('/metadata/')[1];
+        }
+
+        // Fallback: strip leading slashes
+        return path.replace(/^\/+/, '');
+    } catch (error) {
+        console.error('Error parsing Tiled URL:', error);
+        // If URL parsing fails, try simple string split
+        if (tiledUrl.includes('/metadata/')) {
+            return tiledUrl.split('/metadata/')[1];
+        }
+        return tiledUrl;
+    }
+}
+
 export default function useRawDataOverview() {
     // State for the left image index with initial value of empty string
     const [leftImageIndex, setLeftImageIndex] = useState<number | "">("");
@@ -32,8 +60,8 @@ export default function useRawDataOverview() {
     // State for the right image index with initial value of empty string
     const [rightImageIndex, setRightImageIndex] = useState<number | "">("");
 
-    // State for storing the selected Tiled folder URL
-    const [selectedFolderUrl, setSelectedFolderUrl] = useState<string | null>(null);
+    // State for storing the selected Tiled container path
+    const [selectedContainerPath, setSelectedContainerPath] = useState<string | null>(null);
 
     // // State for tracking loading status
     // const [isLoading, setIsLoading] = useState(false);
@@ -128,7 +156,7 @@ export default function useRawDataOverview() {
     }, []);
 
     // Function to fetch spectrum data from the backend
-    const fetchSpectrumData = useCallback(async (folderUrl?: string) => {
+    const fetchSpectrumData = useCallback(async (containerPath?: string) => {
         try {
             setIsFetchingData(true);
             // setIsLoading(true);
@@ -147,13 +175,13 @@ export default function useRawDataOverview() {
                 autoClose: false,
             });
 
-            // Build URL with folder_url parameter
-            if (!folderUrl) {
-                throw new Error('Folder URL is required');
+            // Build URL with container_path parameter
+            if (!containerPath) {
+                throw new Error('Container path is required');
             }
 
             const url = new URL('/api/raw-data-overview', window.location.origin);
-            url.searchParams.append('folder_url', folderUrl);
+            url.searchParams.append('container_path', containerPath);
 
             const response = await fetch(url.toString());
 
@@ -255,11 +283,14 @@ export default function useRawDataOverview() {
     const handleTiledSelection = useCallback((links: TiledItemLinks) => {
         console.log('Tiled folder selected:', links);
 
-        // Store the folder URL
-        setSelectedFolderUrl(links.self);
+        // Extract container path from the full URL
+        const containerPath = extractContainerPath(links.self);
 
-        // Trigger data fetch with the folder URL
-        fetchSpectrumData(links.self);
+        // Store the container path
+        setSelectedContainerPath(containerPath);
+
+        // Trigger data fetch with the container path
+        fetchSpectrumData(containerPath);
     }, [fetchSpectrumData]);
 
 
@@ -269,7 +300,7 @@ export default function useRawDataOverview() {
         setLeftImageIndex,
         rightImageIndex,
         setRightImageIndex,
-        selectedFolderUrl,
+        selectedContainerPath,
         isFetchingData,
         isLoadingImages,
         setIsLoadingImages,

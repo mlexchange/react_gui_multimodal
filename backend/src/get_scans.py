@@ -1,5 +1,4 @@
 # from tiled.client.array import ArrayClient
-from urllib.parse import urlparse
 from fastapi import HTTPException
 from tiled.client.container import Container
 
@@ -69,28 +68,6 @@ def get_scan_options(raw_client, TILED_BASE_URI):
             scan_uri_list.append(scan_uri)
 
     return scan_uri_list
-
-
-def extract_folder_path_from_url(folder_url: str) -> str:
-    """
-    Extract the folder path from a Tiled URL.
-
-    Args:
-        folder_url: Full Tiled URL like 'http://host:port/api/v1/metadata/path/to/folder'
-
-    Returns:
-        Folder path like 'path/to/folder'
-    """
-    parsed_url = urlparse(folder_url)
-    path = parsed_url.path
-
-    # Remove '/api/v1/metadata/' prefix if present
-    if '/metadata/' in path:
-        folder_path = path.split('/metadata/', 1)[1]
-    else:
-        folder_path = path.lstrip('/')
-
-    return folder_path.lstrip('/')
 
 
 def get_scans_from_folder(tiled_client, folder_path: str, tiled_base_uri: str) -> list:
