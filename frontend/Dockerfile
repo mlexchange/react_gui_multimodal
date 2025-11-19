@@ -5,7 +5,7 @@
 
 # Use Node.js Alpine image for a smaller footprint
 # 'AS build' names this stage so it can be referenced in the next stage
-FROM node:18-alpine AS build
+FROM node:24-alpine AS build
 
 # Set the working directory inside the container for all subsequent commands
 WORKDIR /app
@@ -19,8 +19,19 @@ RUN npm install
 # This happens after npm install to avoid reinstalling dependencies when only code changes
 COPY . .
 
+# Accept build arguments for environment variables
+# These are passed from docker-compose.yml and need to be available during build
+ARG SCATTERING_TILED_URL
+ARG SCATTERING_TILED_API_KEY
+
+# Set environment variables from build args
+# Vite will pick these up and bake them into the static files at build time
+ENV SCATTERING_TILED_URL=$SCATTERING_TILED_URL
+ENV SCATTERING_TILED_API_KEY=$SCATTERING_TILED_API_KEY
+
 # Build the React application in production mode
 # This creates optimized, minified files in the /app/dist directory
+# The environment variables will be baked into the JavaScript bundle
 RUN npm run build
 
 # ------------------------------------------------------------------------------

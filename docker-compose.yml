@@ -18,10 +18,6 @@
 # This file orchestrates multiple containers and defines how they work together
 # ------------------------------------------------------------------------------
 
-# The version of the docker-compose specification being used
-# 3.8 is a relatively recent version with good feature support
-version: "3.8"
-
 # Define the services (containers) that make up your application
 services:
   # Frontend service definition
@@ -32,6 +28,11 @@ services:
       context: ./frontend
       # The name of the Dockerfile to use (can be omitted if named "Dockerfile")
       dockerfile: Dockerfile
+      # Build arguments - passed to Docker build stage where Vite needs them
+      # These are baked into the static files at build time, not runtime
+      args:
+        - SCATTERING_TILED_URL=${SCATTERING_TILED_URL}
+        - SCATTERING_TILED_API_KEY=${SCATTERING_TILED_API_KEY}
     # Port mapping from host to container
     ports:
       - "127.0.0.1:3000:80" # Maps port 3000 on your host machine to port 80 in the container
@@ -58,11 +59,10 @@ services:
     environment:
       # Configuration for the Tiled API that your backend connects to
       # host.docker.internal is a special Docker DNS name that resolves to the host machine
-      - TILED_URI_IMAGES=${TILED_URI_IMAGES}
-      - TILED_URI_MASK=${TILED_URI_MASK}
-      # This uses the host machine's environment variable of the same name
-      # The ${} syntax allows you to pass through environment variables from your host
-      - TILED_API_KEY=${TILED_API_KEY}
+      - SCATTERING_TILED_URL=${SCATTERING_TILED_URL}
+      - SCATTERING_TILED_API_KEY=${SCATTERING_TILED_API_KEY}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 networks:
   # Create a network named "app-network"

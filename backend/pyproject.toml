@@ -1,0 +1,24 @@
+[project]
+name = "xscattering-backend"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "entrypoints>=0.4",
+    "fastapi[standard]>=0.121.0",
+    "json-merge-patch>=0.3.0",
+    "jsonpatch>=1.33",
+    "msgpack>=1.1.2",
+    "numpy>=2.3.4",
+    "pyfai>=2025.3.0",
+    "tiled[all]==0.1.0b16",
+]
+
+[dependency-groups]
+dev = [
+    "ipykernel>=7.1.0",
+    "kaleido>=1.1.0",
+    "nbformat>=5.10.4",
+    "plotly>=6.3.1",
+]
