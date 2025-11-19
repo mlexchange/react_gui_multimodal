@@ -1,5 +1,5 @@
 import { Accordion, Select, Menu, Button, Popover } from '@mantine/core';
-import { InfoIcon } from 'lucide-react';
+import { InfoIcon } from '@phosphor-icons/react';
 import { notifications } from '@mantine/notifications';
 import { CalibrationParams } from './types';
 

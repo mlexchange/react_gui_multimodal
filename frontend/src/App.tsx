@@ -5,7 +5,7 @@ import { RouteItem } from "@blueskyproject/finch";
 import { Scattering } from "./components/Scattering";
 import { XPS } from "./components/XPS";
 
-import { HouseIcon, WandIcon, SquareActivityIcon } from "lucide-react";
+import { PlaceholderIcon } from "@phosphor-icons/react"
 
 import "@mantine/core/styles.css";
 import "@blueskyproject/finch/style.css";
@@ -21,19 +21,19 @@ function App() {
           <p>Home</p>
         </div>
       ),
-      icon: <HouseIcon size={32} />,
+      icon: <PlaceholderIcon size={32} />,
     },
     {
       label: "Scattering",
       path: "/scattering",
       element: <Scattering />,
-      icon: <WandIcon size={32} />,
+      icon: <PlaceholderIcon size={32} />,
     },
     {
       label: "XPS",
       path: "/xps",
       element: <XPS />,
-      icon: <SquareActivityIcon size={32} />,
+      icon: <PlaceholderIcon size={32} />,
     },
   ];
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { FaEye, FaEyeSlash, FaTrash } from "react-icons/fa"; // Icons for visibility toggle
+import { EyeIcon, EyeSlashIcon, TrashSimpleIcon } from "@phosphor-icons/react"; // Icons for visibility toggle
 import { Linecut } from './types';
 import { InputSlider } from "@blueskyproject/finch";
 import { Accordion } from "@mantine/core";
@@ -182,7 +182,7 @@ const VerticalLinecutWidget: React.FC<VerticalLinecutWidgetProps> = ({
                         onClick={() => toggleVerticalLinecutVisibility(linecut.id)}
                         aria-label={`Toggle Visibility of Linecut ${linecut.id}`}
                       >
-                        {linecut.hidden ? <FaEyeSlash size={20} /> : <FaEye size={20} />}
+                        {linecut.hidden ? <EyeSlashIcon size={20} /> : <EyeIcon size={20} />}
                       </button>
                       {/* Tooltip */}
                       <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-10 whitespace-nowrap pointer-events-none">
@@ -196,7 +196,7 @@ const VerticalLinecutWidget: React.FC<VerticalLinecutWidgetProps> = ({
                         onClick={() => deleteVerticalLinecut(linecut.id)}
                         aria-label={`Delete Linecut ${linecut.id}`}
                       >
-                        <FaTrash size={14} />
+                        <TrashSimpleIcon size={20} />
                       </button>
                       <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-10 whitespace-nowrap pointer-events-none">
                         Delete

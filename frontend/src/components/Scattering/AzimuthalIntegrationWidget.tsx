@@ -1,6 +1,6 @@
 import React, { useRef, useState, useCallback } from 'react';
 import { Accordion } from '@mantine/core';
-import { FaEye, FaEyeSlash, FaTrash } from 'react-icons/fa';
+import { EyeIcon, EyeSlashIcon, TrashSimpleIcon } from '@phosphor-icons/react';
 import InputSliderRange from '../InputSliderRange';
 import { AzimuthalIntegration } from './types';
 import ColorPickerPopup from '../ColorPickerPopup';
@@ -156,7 +156,7 @@ export default function AzimuthalIntegrationWidget({
                             onClick={() => toggleAzimuthalVisibility(integration.id)}
                             aria-label={`Toggle Visibility of Integration ${integration.id}`}
                         >
-                            {integration.hidden ? <FaEyeSlash size={20} /> : <FaEye size={20} />}
+                            {integration.hidden ? <EyeSlashIcon size={20} /> : <EyeIcon size={20} />}
                         </button>
                         <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-10 whitespace-nowrap pointer-events-none">
                             {integration.hidden ? "Show" : "Hide"}
@@ -169,7 +169,7 @@ export default function AzimuthalIntegrationWidget({
                             onClick={() => deleteAzimuthalIntegration(integration.id)}
                             aria-label={`Delete Integration ${integration.id}`}
                         >
-                            <FaTrash size={14} />
+                            <TrashSimpleIcon size={20} />
                         </button>
                         <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-10 whitespace-nowrap pointer-events-none">
                             Delete
