@@ -26,9 +26,11 @@ import AzimuthalLoadingSpinner from "./AzimuthalLoadingSpinner";
 import { calculateDivisionArray } from './utils/calculateDivisionArray';
 
 // Add a type for operation
-type OperationType = 'subtract' | 'divide';
+export type OperationType = 'subtract' | 'divide';
 
 interface ScatterSubplotProps {
+  operationType: OperationType;
+  setOperationType: (value: OperationType) => void;
   setImageHeight: (height: number) => void;
   setImageWidth: (width: number) => void;
   setImageData1: (data: number[][]) => void;
@@ -69,6 +71,8 @@ interface ScatterSubplotProps {
 
 
 const ScatterSubplot: React.FC<ScatterSubplotProps> = React.memo(({
+  operationType,
+  setOperationType,
   setImageHeight,
   setImageWidth,
   setImageData1,
@@ -122,9 +126,6 @@ const ScatterSubplot: React.FC<ScatterSubplotProps> = React.memo(({
     full: { array1: [], array2: [], diff: [], factor: 1 }
   });
 
-
-  // Add state for the operation type
-  const [operationType, setOperationType] = useState<OperationType>('subtract');
 
   // Calculate the result based on the operation type
   const calculateResult = useCallback((array1: number[][], array2: number[][]) => {
@@ -860,13 +861,6 @@ const ScatterSubplot: React.FC<ScatterSubplotProps> = React.memo(({
     }, [currentResolution, resolutionData, setResolutionMessage, lowerPercentile, upperPercentile]);
 
 
-    // Operation select options
-    const operationOptions = [
-      { value: 'subtract', label: 'Subtract (-)' },
-      { value: 'divide', label: 'Divide (÷)' }
-    ];
-
-
   return (
     <div className="relative w-full h-full">
       <div
@@ -906,21 +900,6 @@ const ScatterSubplot: React.FC<ScatterSubplotProps> = React.memo(({
               <p className="text-sm text-gray-500">Please select a folder using the "Select Data" button above</p>
             </div>
           </div>
-        )}
-        {(
-          <>
-          {/* Operation selection dropdown between images */}
-          <div className="absolute top-1/2 left-[27%] -translate-y-1/2 z-10 font-bold">
-            <Select
-              value={operationType}
-              onChange={(value) => setOperationType(value as OperationType)}
-              data={operationOptions}
-              style={{ width: '170px' }}
-              size="md"
-            />
-          </div>
-          <div className="absolute top-1/2 left-[67%] -translate-y-1/2 font-bold">=</div>
-        </>
         )}
 
         {/* Loading spinner for image selection */}

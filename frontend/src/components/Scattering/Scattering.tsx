@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Accordion, Select, Menu, Button, Popover, ActionIcon } from '@mantine/core';
-import { CaretDownIcon, CircleHalfTiltIcon, GearIcon, InfoIcon, ListIcon, TreeStructureIcon, WrenchIcon, XIcon } from '@phosphor-icons/react';
+import { CaretDownIcon, CircleHalfTiltIcon, GearIcon, GitDiffIcon, InfoIcon, ListIcon, TreeStructureIcon, WrenchIcon, XIcon } from '@phosphor-icons/react';
 import { notifications } from '@mantine/notifications';
 import { CalibrationParams } from './types';
 
@@ -17,7 +17,7 @@ import useDataTransformation from './hooks/useDataTransformation';
 import useRawDataOverview from './hooks/useRawDataOverview';
 
 // Import components
-import ScatterSubplot from './ScatterSubplot';
+import ScatterSubplot, { OperationType } from './ScatterSubplot';
 import HorizontalLinecutWidget from './HorizontalLinecutWidget';
 import VerticalLinecutWidget from './VerticalLinecutWidget';
 import InclinedLinecutWidget from './InclinedLinecutWidget';
@@ -46,6 +46,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isRawDataCollapsed, setIsRawDataCollapsed] = useState(false);
+  const [operationType, setOperationType] = useState<OperationType>('subtract');
 
   const {
     experimentType,
@@ -504,12 +505,37 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
           <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex-1 overflow-hidden flex flex-col">
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
               <h2 className="text-lg font-bold">2D Scattering Data</h2>
-              <ActionIcon variant="subtle" size="md" onClick={() => setIsSettingsOpen(true)}>
-                <GearIcon size={24} />
-              </ActionIcon>
+              <div className="flex items-center gap-1">
+                <Menu position="bottom-end" withArrow shadow="md">
+                  <Menu.Target>
+                    <ActionIcon variant="subtle" size="md">
+                      <GitDiffIcon size={24} />
+                    </ActionIcon>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    <Menu.Item
+                      onClick={() => setOperationType('subtract')}
+                      className={operationType === 'subtract' ? 'bg-sky-100' : ''}
+                    >
+                      Subtract (−)
+                    </Menu.Item>
+                    <Menu.Item
+                      onClick={() => setOperationType('divide')}
+                      className={operationType === 'divide' ? 'bg-sky-100' : ''}
+                    >
+                      Divide (÷)
+                    </Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
+                <ActionIcon variant="subtle" size="md" onClick={() => setIsSettingsOpen(true)}>
+                  <GearIcon size={24} />
+                </ActionIcon>
+              </div>
             </div>
             <div className="p-4 flex-1 overflow-hidden">
               <ScatterSubplot
+                operationType={operationType}
+                setOperationType={setOperationType}
                 setImageHeight={setImageHeight}
                 setImageWidth={setImageWidth}
                 setImageData1={setImageData1}
