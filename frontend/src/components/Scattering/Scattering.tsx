@@ -1,5 +1,5 @@
 import { Accordion, Select, Menu, Button, Popover } from '@mantine/core';
-import { InfoIcon } from '@phosphor-icons/react';
+import { CaretDownIcon, CircleHalfTiltIcon, InfoIcon, ListIcon, PlaceholderIcon, TreeStructureIcon, WrenchIcon } from '@phosphor-icons/react';
 import { notifications } from '@mantine/notifications';
 import { CalibrationParams } from './types';
 
@@ -27,7 +27,6 @@ import HorizontalLinecutFig from './HorizontalLinecutFig';
 import VerticalLinecutFig from './VerticalLinecutFig';
 import InclinedLinecutFig from './InclinedLinecutFig';
 import AzimuthalIntegrationFig from './AzimuthalIntegrationFig';
-import RawDataOverviewAccordion from './RawDataOverviewAccordion';
 import RawDataOverviewFig from './RawDataOverviewFig';
 
 // Import utilities
@@ -232,71 +231,121 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
 
   return (
     <div className={`flex ${standalone ? 'h-screen' : 'h-full'} w-full bg-slate-200  overflow-hidden`}>
-      {/* First Column - Scatter Controls */}
-        <div className={`border border-gray-300 shadow-lg relative transition-all duration-300 flex-shrink-0 flex flex-col h-full w-[20%]`}>
+      {/* First Column - Sidebar */}
+        <div className={`border border-gray-300 shadow-lg relative transition-all duration-300 flex-shrink-0 flex flex-col h-full w-[300px]`}>
         {/* Scrollable Content Section */}
-        <div className="flex-shrink-0 sticky top-0 z-10">
-          <div className="w-full mb-4 mt-4 text-center justify-center items-center">
-            <Tiled
-              tiledBaseUrl={tiledUrl}
-              apiKey={tiledApiKey}
-              isButtonMode={true}
-              onSelectCallback={handleTiledSelection}
-            />
+        <div className="grid gap-2 overflow-y-auto overflow-x-hidden p-2">
+          {/* Experimental data section (non-accordion) */}
+          <div className="flex-1 flex-row">
+            {/* Header styled like accordion */}
+            <div className="flex items-center justify-between pb-2 text-sky-900 border-b border-gray-200">
+              <div className="flex items-center gap-3">
+                <TreeStructureIcon size={24} weight="bold" />
+                <span className="text-lg font-bold">Experimental data</span>
+              </div>
+              <ListIcon size={24} weight="bold" />
+            </div>
+
+            {/* Content */}
+            <div className="grid pl-3 gap-2">
+              {/* Experiment Type */}
+              <Select
+                label="Type"
+                value={experimentType}
+                onChange={(value) => handleExperimentTypeChange(value, setExperimentType, setSelectedLinecuts)}
+                data={[
+                  { value: 'SAXS', label: 'SAXS' },
+                  { value: 'GISAXS', label: 'GISAXS' },
+                ]}
+                classNames={{
+                  label: 'text-md text-sky-700 font-bold',
+                  // input: 'py-3 px-4',
+                  option: 'py-2 px-4 hover:bg-gray-100 cursor-pointer rounded',
+                }}
+              />
+
+              {/* Tiled Load Data */}
+              <div className="">
+                <Tiled
+                  tiledBaseUrl={tiledUrl}
+                  apiKey={tiledApiKey}
+                  isButtonMode={true}
+                  buttonModeText="Load data"
+                  onSelectCallback={handleTiledSelection}
+                />
+                {/* Number of images */}
+                {numOfFiles > 0 && (
+                  <div className="text-sm font-medium">
+                    Number of images: {numOfFiles}
+                  </div>
+                )}
+              </div>
+
+
+
+              {/* Left Image Dropdown */}
+              <Select
+                label="Left image"
+                placeholder="Select left image"
+                value={leftImageIndex === "" ? "" : String(leftImageIndex)}
+                onChange={(value) => setLeftImageIndex(value === null ? "" : Number(value))}
+                data={imageNames.map((name, index) => ({
+                  value: String(index),
+                  label: name,
+                }))}
+                searchable
+                disabled={isFetchingData || numOfFiles === 0}
+                classNames={{
+                  label: 'text-md text-sky-700 font-bold',
+                }}
+              />
+
+              {/* Right Image Dropdown */}
+              <Select
+                label="Right image"
+                placeholder="Select right image"
+                value={rightImageIndex === "" ? "" : String(rightImageIndex)}
+                onChange={(value) => setRightImageIndex(value === null ? "" : Number(value))}
+                data={imageNames.map((name, index) => ({
+                  value: String(index),
+                  label: name,
+                }))}
+                searchable
+                disabled={isFetchingData || numOfFiles === 0}
+                classNames={{
+                  label: 'text-md text-sky-700 font-bold',
+                }}
+              />
+            </div>
           </div>
-          <hr className="w-full border border-gray-300" />
-        </div>
-        <div className="flex-1 overflow-y-auto overflow-x-hidden">
-          {/* Dropdown for Experiment Type */}
-          <Select
-            label="Experiment Type"
-            value={experimentType}
-            onChange={(value) => handleExperimentTypeChange(value, setExperimentType, setSelectedLinecuts)}
-            data={[
-              { value: 'SAXS', label: 'SAXS' },
-              { value: 'GISAXS', label: 'GISAXS' },
-            ]}
-            className="mt-6 mx-auto w-[90%]"
-            classNames={{
-              label: 'text-lg font-bold mb-2 pl-1',
-              input: 'py-3 px-4',
-              dropdown: 'p-2',
-              option: 'py-2 px-4 hover:bg-gray-100 cursor-pointer rounded',
-            }}
-          />
-          {/* Horizontal Line Cut Accordion */}
+
+          {/* Accordion Container */}
           <Accordion
             multiple
-            defaultValue={['horizontal-linecut-accordion']}
+            // defaultValue={['calibration-accordion', 'linecuts-accordion']}
+            chevronSize={24}
+            chevron={<CaretDownIcon size={24} className="text-sky-900" />}
             chevronPosition="right"
-            classNames={{ chevron: 'text-lg font-bold', label: 'text-lg font-bold' }}
-            className="mt-6"
+            classNames={{ item: 'pt-4 border-b-0', label: 'text-lg py-2 text-sky-900 font-bold', control: 'px-0 text-sky-900', content: 'pl-3 pr-0' }}
           >
+            {/* Calibration accordion */}
+            <Accordion.Item value="calibration-accordion">
+              <Accordion.Control icon={<WrenchIcon size={24} weight="bold" />}>
+                Calibration
+              </Accordion.Control>
+              <Accordion.Panel>
+                <CalibrationAccordion
+                  onCalibrationUpdate={handleCalibrationUpdate}
+                  calibrationParams={calibrationParams}
+                />
+              </Accordion.Panel>
+            </Accordion.Item>
 
-          {/* Scatter Spectrum Accordion */}
-          <Accordion.Item value="scatter-spectrum-accordion">
-            <Accordion.Control>
-              Raw Data Overview
-            </Accordion.Control>
-            <Accordion.Panel>
-              <RawDataOverviewAccordion
-                leftImageIndex={leftImageIndex}
-                rightImageIndex={rightImageIndex}
-                setLeftImageIndex={setLeftImageIndex}
-                setRightImageIndex={setRightImageIndex}
-                numOfFiles={numOfFiles}
-                displayOption={displayOption}
-                setDisplayOption={setDisplayOption}
-                isFetchingData={isFetchingData}
-                imageNames={imageNames}
-              />
-            </Accordion.Panel>
-          </Accordion.Item>
-
-          <Accordion.Item value="linecuts-accordion">
-            <Accordion.Control>
-              Linecuts
-            </Accordion.Control>
+            {/* Linecuts accordion */}
+            <Accordion.Item value="linecuts-accordion">
+              <Accordion.Control icon={<CircleHalfTiltIcon size={24} weight="bold" />}>
+                Linecuts
+              </Accordion.Control>
               <Accordion.Panel>
                 {/* Add Linecut Menu */}
                 <div className="px-2">
@@ -304,9 +353,10 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                     {/* Menu Button */}
                     <Menu.Target>
                       <Button
-                        color="blue"
                         size="md"
-                        className="w-12/12 px-12 py-3 bg-blue-500 text-white font-semibold rounded-lg shadow hover:bg-blue-600 transition mx-auto block"
+                        radius="md"
+                        className="w-full bg-sky-500 font-semibold shadow hover:bg-sky-600 disabled:bg-gray-300 transition mx-auto block"
+                        disabled={isFetchingData || numOfFiles === 0 || !numOfFiles}
                       >
                         Add linecut
                       </Button>
@@ -315,10 +365,10 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                     {/* Dropdown Items */}
                     <Menu.Dropdown>
                       <Menu.Item
-                      onClick={() => {
-                        addLinecut('Horizontal', selectedLinecuts, setSelectedLinecuts);
-                        addHorizontalLinecut();
-                      }}
+                        onClick={() => {
+                          addLinecut('Horizontal', selectedLinecuts, setSelectedLinecuts);
+                          addHorizontalLinecut();
+                        }}
                       >
                         <span className="font-medium">Horizontal Linecut</span>
                       </Menu.Item>
@@ -333,104 +383,103 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                       </Menu.Item>
 
                       <Menu.Item
-                      onClick={() => {
-                        addLinecut('Inclined', selectedLinecuts, setSelectedLinecuts)
-                        addInclinedLinecut();
-                      }}
+                        onClick={() => {
+                          addLinecut('Inclined', selectedLinecuts, setSelectedLinecuts)
+                          addInclinedLinecut();
+                        }}
                       >
                         <span className="font-medium">Inclined Linecut</span>
                       </Menu.Item>
                       {/* Conditionally render Azimuthal Integration */}
                       {experimentType === 'SAXS' && (
                         <Menu.Item
-                        onClick={() => {
-                          addLinecut('Azimuthal', selectedLinecuts, setSelectedLinecuts)
-                          addAzimuthalIntegration();
-                        }}
+                          onClick={() => {
+                            addLinecut('Azimuthal', selectedLinecuts, setSelectedLinecuts)
+                            addAzimuthalIntegration();
+                          }}
                         >
-                        <span className="font-medium">Azimuthal Integration</span>
+                          <span className="font-medium">Azimuthal Integration</span>
                         </Menu.Item>
                       )}
                     </Menu.Dropdown>
                   </Menu>
                 </div>
-                  {/* Render all selected LinecutSections */}
-                  <div className="w-full">
+                {/* Render all selected LinecutSections */}
+                <div className="w-full">
                   {linecutOrder.filter((linecut) => selectedLinecuts.includes(linecut)).map((linecutType) => {
-                  if (linecutType === 'Horizontal' && horizontalLinecuts.length > 0) {
-                    return (
-                      <HorizontalLinecutWidget
-                        key={`linecut-section-${linecutType}`}
-                        linecutType={linecutType}
-                        linecuts={horizontalLinecuts}
-                        qYMatrix={qYMatrix}
-                        updateHorizontalLinecutPosition={updateHorizontalLinecutPosition}
-                        updateHorizontalLinecutWidth={updateHorizontalLinecutWidth}
-                        updateHorizontalLinecutColor={updateHorizontalLinecutColor}
-                        deleteHorizontalLinecut={deleteHorizontalLinecut}
-                        toggleHorizontalLinecutVisibility={toggleHorizontalLinecutVisibility}
-                      />
-                    );
-                  }
+                    if (linecutType === 'Horizontal' && horizontalLinecuts.length > 0) {
+                      return (
+                        <HorizontalLinecutWidget
+                          key={`linecut-section-${linecutType}`}
+                          linecutType={linecutType}
+                          linecuts={horizontalLinecuts}
+                          qYMatrix={qYMatrix}
+                          updateHorizontalLinecutPosition={updateHorizontalLinecutPosition}
+                          updateHorizontalLinecutWidth={updateHorizontalLinecutWidth}
+                          updateHorizontalLinecutColor={updateHorizontalLinecutColor}
+                          deleteHorizontalLinecut={deleteHorizontalLinecut}
+                          toggleHorizontalLinecutVisibility={toggleHorizontalLinecutVisibility}
+                        />
+                      );
+                    }
 
-                  if (linecutType === 'Vertical' && verticalLinecuts.length > 0) {
-                    return (
-                      <VerticalLinecutWidget
-                        key={`linecut-section-${linecutType}`}
-                        linecutType={linecutType}
-                        linecuts={verticalLinecuts}
-                        qXMatrix={qXMatrix}
-                        updateVerticalLinecutPosition={updateVerticalLinecutPosition}
-                        updateVerticalLinecutWidth={updateVerticalLinecutWidth}
-                        updateVerticalLinecutColor={updateVerticalLinecutColor}
-                        deleteVerticalLinecut={deleteVerticalLinecut}
-                        toggleVerticalLinecutVisibility={toggleVerticalLinecutVisibility}
-                      />
-                    );
-                  }
+                    if (linecutType === 'Vertical' && verticalLinecuts.length > 0) {
+                      return (
+                        <VerticalLinecutWidget
+                          key={`linecut-section-${linecutType}`}
+                          linecutType={linecutType}
+                          linecuts={verticalLinecuts}
+                          qXMatrix={qXMatrix}
+                          updateVerticalLinecutPosition={updateVerticalLinecutPosition}
+                          updateVerticalLinecutWidth={updateVerticalLinecutWidth}
+                          updateVerticalLinecutColor={updateVerticalLinecutColor}
+                          deleteVerticalLinecut={deleteVerticalLinecut}
+                          toggleVerticalLinecutVisibility={toggleVerticalLinecutVisibility}
+                        />
+                      );
+                    }
 
-                  if (linecutType === 'Inclined' && inclinedLinecuts.length > 0) {
-                    return (
-                      <InclinedLinecutWidget
-                        key={`linecut-section-${linecutType}`}
-                        linecutType={linecutType}
-                        linecuts={inclinedLinecuts}
-                        units="nm⁻¹"
-                        updateInclinedLinecutAngle={updateInclinedLinecutAngle}
-                        updateInclinedLinecutWidth={updateInclinedLinecutWidth}
-                        updateInclinedLinecutColor={updateInclinedLinecutColor}
-                        deleteInclinedLinecut={deleteInclinedLinecut}
-                        toggleInclinedLinecutVisibility={toggleInclinedLinecutVisibility}
-                      />
-                    );
-                  }
+                    if (linecutType === 'Inclined' && inclinedLinecuts.length > 0) {
+                      return (
+                        <InclinedLinecutWidget
+                          key={`linecut-section-${linecutType}`}
+                          linecutType={linecutType}
+                          linecuts={inclinedLinecuts}
+                          units="nm⁻¹"
+                          updateInclinedLinecutAngle={updateInclinedLinecutAngle}
+                          updateInclinedLinecutWidth={updateInclinedLinecutWidth}
+                          updateInclinedLinecutColor={updateInclinedLinecutColor}
+                          deleteInclinedLinecut={deleteInclinedLinecut}
+                          toggleInclinedLinecutVisibility={toggleInclinedLinecutVisibility}
+                        />
+                      );
+                    }
 
-                  // Azimuthal integration
-                  if (linecutType === 'Azimuthal' && azimuthalIntegrations.length > 0) {
-                    return (
-                      <AzimuthalIntegrationWidget
-                        key={`linecut-section-${linecutType}`}
-                        integrations={azimuthalIntegrations}
-                        maxQValue={maxQValue}
-                        updateAzimuthalQRange={updateAzimuthalQRange}
-                        updateAzimuthalRange={updateAzimuthalRange}
-                        updateAzimuthalColor={updateAzimuthalColor}
-                        deleteAzimuthalIntegration={deleteAzimuthalIntegration}
-                        toggleAzimuthalVisibility={toggleAzimuthalVisibility}
-                      />
-                    );
-                  }
+                    // Azimuthal integration
+                    if (linecutType === 'Azimuthal' && azimuthalIntegrations.length > 0) {
+                      return (
+                        <AzimuthalIntegrationWidget
+                          key={`linecut-section-${linecutType}`}
+                          integrations={azimuthalIntegrations}
+                          maxQValue={maxQValue}
+                          updateAzimuthalQRange={updateAzimuthalQRange}
+                          updateAzimuthalRange={updateAzimuthalRange}
+                          updateAzimuthalColor={updateAzimuthalColor}
+                          deleteAzimuthalIntegration={deleteAzimuthalIntegration}
+                          toggleAzimuthalVisibility={toggleAzimuthalVisibility}
+                        />
+                      );
+                    }
 
-                  return null;
-                })}
+                    return null;
+                  })}
                 </div>
               </Accordion.Panel>
             </Accordion.Item>
 
-
             {/* Data transformation accordion */}
             <Accordion.Item value="data-transformation-accordion">
-              <Accordion.Control>
+              <Accordion.Control icon={<PlaceholderIcon size={24} weight="bold" />}>
                 Data Transformation
               </Accordion.Control>
               <Accordion.Panel>
@@ -452,23 +501,9 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                 />
               </Accordion.Panel>
             </Accordion.Item>
-
-
-              {/* Calibration accordion */}
-              <Accordion.Item value="calibration accordion">
-              <Accordion.Control>
-                Calibration
-              </Accordion.Control>
-              <Accordion.Panel>
-                <CalibrationAccordion
-                  onCalibrationUpdate={handleCalibrationUpdate}
-                  calibrationParams={calibrationParams}
-                />
-              </Accordion.Panel>
-            </Accordion.Item>
           </Accordion>
-          </div>
         </div>
+      </div>
 
       {/* Second Column - Scatter Visualization */}
       <div

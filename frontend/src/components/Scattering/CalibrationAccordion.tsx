@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { NumberInput, Button, NumberInputProps } from '@mantine/core';
+import { NumberInput, NumberInputProps } from '@mantine/core';
+import { Button } from '@blueskyproject/finch';
 
 interface CalibrationParams {
     sample_detector_distance: number;  // Distance in millimeters
@@ -29,9 +30,10 @@ const LargeNumberInput: React.FC<LargeNumberInputProps> = ({
     ...numberInputProps
 }) => {
     return (
-        <div className="space-y-1">
-            <NumberInput {...numberInputProps} label={label} size="sm" />
-        </div>
+        <>
+            <NumberInput {...numberInputProps} label={label} size="sm" classNames={{ 
+                  label: 'text-md text-sky-700 font-bold', }} />
+        </>
     );
 };
 
@@ -73,7 +75,7 @@ export default function CalibrationAccordion({
     };
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-2">
             {/* Sample-Detector Distance */}
             <LargeNumberInput
                 label="Sample-detector distance (mm)"
@@ -86,42 +88,38 @@ export default function CalibrationAccordion({
             />
 
             {/* Beam Center Coordinates */}
-            <div className="space-y-2">
-                <LargeNumberInput
-                    label="Beam center X (pixels)"
-                    value={localParams.beam_center_x}
-                    onChange={handleParamChange('beam_center_x')}
-                    decimalScale={2}
-                    step={0.1}
-                />
-                <LargeNumberInput
-                    label="Beam center Y (pixels)"
-                    value={localParams.beam_center_y}
-                    onChange={handleParamChange('beam_center_y')}
-                    decimalScale={2}
-                    step={0.1}
-                />
-            </div>
+            <LargeNumberInput
+                label="Beam center X (pixels)"
+                value={localParams.beam_center_x}
+                onChange={handleParamChange('beam_center_x')}
+                decimalScale={2}
+                step={0.1}
+            />
+            <LargeNumberInput
+                label="Beam center Y (pixels)"
+                value={localParams.beam_center_y}
+                onChange={handleParamChange('beam_center_y')}
+                decimalScale={2}
+                step={0.1}
+            />
 
             {/* Pixel Size */}
-            <div className="space-y-2">
-                <LargeNumberInput
-                    label="Pixel size X (μm)"
-                    value={localParams.pixel_size_x}
-                    onChange={handleParamChange('pixel_size_x')}
-                    decimalScale={2}
-                    step={1}
-                    min={0}
-                />
-                <LargeNumberInput
-                    label="Pixel size Y (μm)"
-                    value={localParams.pixel_size_y}
-                    onChange={handleParamChange('pixel_size_y')}
-                    decimalScale={2}
-                    step={1}
-                    min={0}
-                />
-            </div>
+            <LargeNumberInput
+                label="Pixel size X (μm)"
+                value={localParams.pixel_size_x}
+                onChange={handleParamChange('pixel_size_x')}
+                decimalScale={2}
+                step={1}
+                min={0}
+            />
+            <LargeNumberInput
+                label="Pixel size Y (μm)"
+                value={localParams.pixel_size_y}
+                onChange={handleParamChange('pixel_size_y')}
+                decimalScale={2}
+                step={1}
+                min={0}
+            />
 
             {/* Wavelength */}
             <LargeNumberInput
@@ -134,33 +132,30 @@ export default function CalibrationAccordion({
             />
 
             {/* Detector Tilt */}
-            <div className="space-y-2">
-                <LargeNumberInput
-                    label="Detector tilt (degrees)"
-                    value={localParams.tilt}
-                    onChange={handleParamChange('tilt')}
-                    decimalScale={2}
-                    step={0.1}
-                />
-                <LargeNumberInput
-                    label="Tilt plane rotation (degrees)"
-                    value={localParams.tilt_plan_rotation}
-                    onChange={handleParamChange('tilt_plan_rotation')}
-                    decimalScale={2}
-                    step={0.1}
-                />
-            </div>
+            <LargeNumberInput
+                label="Detector tilt (degrees)"
+                value={localParams.tilt}
+                onChange={handleParamChange('tilt')}
+                decimalScale={2}
+                step={0.1}
+            />
+            <LargeNumberInput
+                label="Tilt plane rotation (degrees)"
+                value={localParams.tilt_plan_rotation}
+                onChange={handleParamChange('tilt_plan_rotation')}
+                decimalScale={2}
+                step={0.1}
+            />
 
             {/* Update Button */}
             <Button
-                size="md"
-                className="w-full mt-4"
-                color={isModified ? "blue" : "gray"}
-                onClick={handleSubmit}
+                size="medium"
+                styles="w-full"
+                bgColor={isModified ? "bg-sky-500" : "bg-gray-400"}
+                cb={handleSubmit}
                 disabled={!isModified}
-            >
-                Update Calibration
-            </Button>
+                text="Update Calibration"
+            />
         </div>
     );
 }
