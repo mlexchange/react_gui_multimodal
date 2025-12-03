@@ -1,5 +1,6 @@
-import { Accordion, Select, Menu, Button, Popover } from '@mantine/core';
-import { CaretDownIcon, CircleHalfTiltIcon, InfoIcon, ListIcon, PlaceholderIcon, TreeStructureIcon, WrenchIcon } from '@phosphor-icons/react';
+import { useState } from 'react';
+import { Accordion, Select, Menu, Button, Popover, ActionIcon } from '@mantine/core';
+import { CaretDownIcon, CircleHalfTiltIcon, GearIcon, InfoIcon, ListIcon, TreeStructureIcon, WrenchIcon, XIcon } from '@phosphor-icons/react';
 import { notifications } from '@mantine/notifications';
 import { CalibrationParams } from './types';
 
@@ -42,6 +43,7 @@ interface ScatteringProps {
 
 export default function Scattering({ standalone = false }: ScatteringProps) {
   const linecutOrder = ['Horizontal', 'Vertical', 'Inclined', 'Azimuthal'];
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const {
     experimentType,
@@ -230,9 +232,9 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
   };
 
   return (
-    <div className={`flex ${standalone ? 'h-screen' : 'h-full'} w-full bg-slate-200  overflow-hidden`}>
+    <div className={`flex ${standalone ? 'h-screen' : 'h-full'} w-full overflow-hidden`}>
       {/* First Column - Sidebar */}
-        <div className={`border border-gray-300 shadow-lg relative transition-all duration-300 flex-shrink-0 flex flex-col h-full w-[300px]`}>
+        <div className={`border border-gray-300 bg-slate-200 shadow-lg relative transition-all duration-300 flex-shrink-0 flex flex-col h-full w-[300px]`}>
         {/* Scrollable Content Section */}
         <div className="grid gap-2 overflow-y-auto overflow-x-hidden p-2">
           {/* Experimental data section (non-accordion) */}
@@ -477,51 +479,23 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
               </Accordion.Panel>
             </Accordion.Item>
 
-            {/* Data transformation accordion */}
-            <Accordion.Item value="data-transformation-accordion">
-              <Accordion.Control icon={<PlaceholderIcon size={24} weight="bold" />}>
-                Data Transformation
-              </Accordion.Control>
-              <Accordion.Panel>
-                <DataTransformationAccordion
-                  isLogScale={isLogScale}
-                  setIsLogScale={setIsLogScale}
-                  lowerPercentile={lowerPercentile}
-                  setLowerPercentile={setLowerPercentile}
-                  upperPercentile={upperPercentile}
-                  setUpperPercentile={setUpperPercentile}
-                  normalization={normalization}
-                  setNormalization={setNormalization}
-                  imageColormap={imageColormap}
-                  setImageColormap={setImageColormap}
-                  differenceColormap={differenceColormap}
-                  setDifferenceColormap={setDifferenceColormap}
-                  normalizationMode={normalizationMode}
-                  setNormalizationMode={setNormalizationMode}
-                />
-              </Accordion.Panel>
-            </Accordion.Item>
           </Accordion>
         </div>
       </div>
 
-      {/* Second Column - Scatter Visualization */}
-      <div
-        className={`h-full border-r-2 border-gray-300 transition-all duration-300 overflow-y-auto flex-grow w-[80%]`}
-      >
-        <div className="h-full">
-          <Accordion
-            multiple
-            defaultValue={['scatter-images-accordion', 'intensity-spectrum-accordion', 'linecuts-accordion-second-col']}
-            chevronPosition="right"
-            classNames={{ chevron: 'text-lg font-bold', label: 'text-lg font-bold' }}
-          >
-            <Accordion.Item value="scatter-images-accordion">
-              <Accordion.Control>
-                Scatter Images
-              </Accordion.Control>
-              <Accordion.Panel>
-              <div className="h-full">
+      {/* Second Column - Main Content Area */}
+      <div className="h-full flex-grow flex overflow-hidden p-2 gap-2 bg-slate-500">
+        {/* Left side - Scatter Images (top) + Linecuts (bottom) */}
+        <div className="flex-grow flex flex-col h-full overflow-hidden gap-2">
+          {/* Scatter Images Card */}
+          <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex-shrink-0">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+              <h2 className="text-lg font-bold">2D Scattering Data</h2>
+              <ActionIcon variant="subtle" size="md" onClick={() => setIsSettingsOpen(true)}>
+                <GearIcon size={24} />
+              </ActionIcon>
+            </div>
+            <div className="p-4">
               <ScatterSubplot
                 setImageHeight={setImageHeight}
                 setImageWidth={setImageWidth}
@@ -559,163 +533,204 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                 isAzimuthalProcessing={isProcessing}
               />
 
-                {resolutionMessage && (
-                  <div className="flex items-center text-gray-500 text-left mt-4 mb-1 whitespace-nowrap overflow-x-auto">
-                    <span>{resolutionMessage}</span>
-                    <Popover width={900} position="top">
-                      <Popover.Target>
-                        <div className="cursor-pointer">
-                          <InfoIcon className="ml-2 w-5 h-5" />
-                        </div>
-                      </Popover.Target>
-                      <Popover.Dropdown>
-                        <div className="space-y-4 whitespace-normal">
-                          <p className="font-medium mb-2">
-                            The resolution of the displayed image changes based on the zoom level:
-                          </p>
-                          <ul className="space-y-3">
-                            <li className="flex">
-                              <span className="font-medium">• Low Resolution</span>
-                              <span className="ml-1">(Downsampling factor = 4): When viewing &gt;50% of the scattering image.</span>
-                            </li>
-                            <li className="flex">
-                              <span className="font-medium">• Medium Resolution</span>
-                              <span className="ml-1">(Downsampling factor = 2): When viewing 20-50% of the scattering image.</span>
-                            </li>
-                            <li className="flex">
-                              <span className="font-medium">• Full Resolution</span>
-                              <span className="ml-1">(Downsampling factor = 1): When viewing &lt;20% of the scattering image.</span>
-                            </li>
-                          </ul>
-                          <p className="mt-3 text-black-600">
-                            <span className="text-red-600">Note:</span> When the image width or height is &gt;2000 pixels, the downsampling factor is doubled.
-                          </p>
-                        </div>
-                      </Popover.Dropdown>
-                    </Popover>
-                  </div>
+              {resolutionMessage && (
+                <div className="flex items-center text-gray-500 text-left mt-4 mb-1 whitespace-nowrap overflow-x-auto">
+                  <span>{resolutionMessage}</span>
+                  <Popover width={900} position="top">
+                    <Popover.Target>
+                      <div className="cursor-pointer">
+                        <InfoIcon className="ml-2 w-5 h-5" />
+                      </div>
+                    </Popover.Target>
+                    <Popover.Dropdown>
+                      <div className="space-y-4 whitespace-normal">
+                        <p className="font-medium mb-2">
+                          The resolution of the displayed image changes based on the zoom level:
+                        </p>
+                        <ul className="space-y-3">
+                          <li className="flex">
+                            <span className="font-medium">• Low Resolution</span>
+                            <span className="ml-1">(Downsampling factor = 4): When viewing &gt;50% of the scattering image.</span>
+                          </li>
+                          <li className="flex">
+                            <span className="font-medium">• Medium Resolution</span>
+                            <span className="ml-1">(Downsampling factor = 2): When viewing 20-50% of the scattering image.</span>
+                          </li>
+                          <li className="flex">
+                            <span className="font-medium">• Full Resolution</span>
+                            <span className="ml-1">(Downsampling factor = 1): When viewing &lt;20% of the scattering image.</span>
+                          </li>
+                        </ul>
+                        <p className="mt-3 text-black-600">
+                          <span className="text-red-600">Note:</span> When the image width or height is &gt;2000 pixels, the downsampling factor is doubled.
+                        </p>
+                      </div>
+                    </Popover.Dropdown>
+                  </Popover>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Linecuts Card */}
+          <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex-1 overflow-hidden flex flex-col">
+            <div className="px-4 py-3 border-b border-gray-200 flex-shrink-0">
+              <h2 className="text-lg font-bold">Linecuts</h2>
+            </div>
+            <div className="p-4 overflow-y-auto flex-1">
+              <Accordion
+                multiple
+                defaultValue={
+                  experimentType === 'SAXS'
+                    ? [
+                        'horizontal-linecut-accordion',
+                        'vertical-linecut-accordion',
+                        'inclined-linecut-accordion',
+                        'azimuthal-integration-accordion',
+                      ]
+                    : [
+                        'horizontal-linecut-accordion',
+                        'vertical-linecut-accordion',
+                        'inclined-linecut-accordion',
+                      ]
+                }
+                chevronPosition="right"
+                classNames={{ chevron: 'text-lg font-bold', label: 'text-lg font-bold' }}
+              >
+                {selectedLinecuts.includes('Horizontal') && horizontalLinecuts.length > 0 && (
+                <Accordion.Item value="horizontal-linecut-accordion">
+                  <Accordion.Control>Horizontal Linecut</Accordion.Control>
+                  <Accordion.Panel>
+                    <HorizontalLinecutFig
+                      linecuts={horizontalLinecuts}
+                      imageData1={imageData1}
+                      imageData2={imageData2}
+                      zoomedXPixelRange={zoomedXPixelRange}
+                      zoomedYPixelRange={zoomedYPixelRange}
+                      qXMatrix={qXMatrix}
+                      qYMatrix={qYMatrix}
+                      units="nm⁻¹"
+                    />
+                  </Accordion.Panel>
+                </Accordion.Item>
                 )}
-              </div>
-              </Accordion.Panel>
-            </Accordion.Item>
-            <Accordion.Item value="intensity-spectrum-accordion">
-              <Accordion.Control>Raw Data Overview</Accordion.Control>
-              <Accordion.Panel>
-              <div>
-                <RawDataOverviewFig
-                  maxIntensities={maxIntensities}
-                  avgIntensities={avgIntensities}
-                  leftImageIndex={leftImageIndex}
-                  rightImageIndex={rightImageIndex}
-                  onSelectImages={handleImageIndicesChange}
-                  isFetchingData={isFetchingData}
-                  displayOption={displayOption}
-                  imageNames={imageNames}
-                  progress={progress}
-                  progressMessage={progressMessage}
-                ></RawDataOverviewFig>
-              </div>
-              </Accordion.Panel>
-            </Accordion.Item>
-            <Accordion.Item value="linecuts-accordion-second-col">
-              <Accordion.Control>Linecuts</Accordion.Control>
-              <Accordion.Panel>
-              <div className="max-h-[45vh] overflow-y-auto">
-                <Accordion
-                  multiple
-                  defaultValue={
-                    experimentType === 'SAXS'
-                      ? [
-                          'horizontal-linecut-accordion',
-                          'vertical-linecut-accordion',
-                          'inclined-linecut-accordion',
-                          'azimuthal-integration-accordion',
-                        ]
-                      : [
-                          'horizontal-linecut-accordion',
-                          'vertical-linecut-accordion',
-                          'inclined-linecut-accordion',
-                        ]
-                  }
-                  chevronPosition="right"
-                  classNames={{ chevron: 'text-lg font-bold', label: 'text-lg font-bold' }}
-                >
-                  {selectedLinecuts.includes('Horizontal') && horizontalLinecuts.length > 0 && (
-                  <Accordion.Item value="horizontal-linecut-accordion">
-                    <Accordion.Control>Horizontal Linecut</Accordion.Control>
+                {selectedLinecuts.includes('Vertical') && verticalLinecuts.length > 0 && (
+                  <Accordion.Item value="vertical-linecut-accordion">
+                    <Accordion.Control>Vertical Linecut</Accordion.Control>
                     <Accordion.Panel>
-                      <HorizontalLinecutFig
-                        linecuts={horizontalLinecuts}
-                        imageData1={imageData1}
-                        imageData2={imageData2}
-                        zoomedXPixelRange={zoomedXPixelRange}
-                        zoomedYPixelRange={zoomedYPixelRange}
-                        qXMatrix={qXMatrix}
-                        qYMatrix={qYMatrix}
-                        units="nm⁻¹"
+                        <VerticalLinecutFig
+                          linecuts={verticalLinecuts}
+                          imageData1={imageData1}
+                          imageData2={imageData2}
+                          zoomedXPixelRange={zoomedXPixelRange}
+                          zoomedYPixelRange={zoomedYPixelRange}
+                          qXMatrix={qXMatrix}
+                          qYMatrix={qYMatrix}
+                          units="nm⁻¹"
+                        />
+                    </Accordion.Panel>
+                  </Accordion.Item>
+                )}
+              {selectedLinecuts.includes('Inclined') && inclinedLinecuts.length > 0 && (
+                <Accordion.Item value="inclined-linecut-accordion">
+                  <Accordion.Control>Inclined Linecut</Accordion.Control>
+                  <Accordion.Panel>
+                  <InclinedLinecutFig
+                    linecuts={inclinedLinecuts}
+                    inclinedLinecutData1={inclinedLinecutData1 || []}
+                    inclinedLinecutData2={inclinedLinecutData2 || []}
+                    beamCenterX={calibrationParams.beam_center_x}
+                    beamCenterY={calibrationParams.beam_center_y}
+                    zoomedXQRange={zoomedXQRange}
+                    qXVector={qXVector}
+                    qYVector={qYVector}
+                    units="nm⁻¹"
+                  />
+                  </Accordion.Panel>
+                </Accordion.Item>
+                )}
+                {experimentType === 'SAXS' &&
+                selectedLinecuts.includes('Azimuthal') &&
+                azimuthalIntegrations.length > 0
+                && (
+                  <Accordion.Item value="azimuthal-integration-accordion">
+                    <Accordion.Control>Azimuthal Integration</Accordion.Control>
+                    <Accordion.Panel>
+                      <AzimuthalIntegrationFig
+                        integrations={azimuthalIntegrations}
+                        azimuthalData1={azimuthalData1}
+                        azimuthalData2={azimuthalData2}
+                        zoomedQRange={globalQRange}
                       />
                     </Accordion.Panel>
                   </Accordion.Item>
-                  )}
-                  {selectedLinecuts.includes('Vertical') && verticalLinecuts.length > 0 && (
-                    <Accordion.Item value="vertical-linecut-accordion">
-                      <Accordion.Control>Vertical Linecut</Accordion.Control>
-                      <Accordion.Panel>
-                          <VerticalLinecutFig
-                            linecuts={verticalLinecuts}
-                            imageData1={imageData1}
-                            imageData2={imageData2}
-                            zoomedXPixelRange={zoomedXPixelRange}
-                            zoomedYPixelRange={zoomedYPixelRange}
-                            qXMatrix={qXMatrix}
-                            qYMatrix={qYMatrix}
-                            units="nm⁻¹"
-                          />
-                      </Accordion.Panel>
-                    </Accordion.Item>
-                  )}
-                {selectedLinecuts.includes('Inclined') && inclinedLinecuts.length > 0 && (
-                  <Accordion.Item value="inclined-linecut-accordion">
-                    <Accordion.Control>Inclined Linecut</Accordion.Control>
-                    <Accordion.Panel>
-                    <InclinedLinecutFig
-                      linecuts={inclinedLinecuts}
-                      inclinedLinecutData1={inclinedLinecutData1 || []}
-                      inclinedLinecutData2={inclinedLinecutData2 || []}
-                      beamCenterX={calibrationParams.beam_center_x}
-                      beamCenterY={calibrationParams.beam_center_y}
-                      zoomedXQRange={zoomedXQRange}
-                      qXVector={qXVector}
-                      qYVector={qYVector}
-                      units="nm⁻¹"
-                    />
-                    </Accordion.Panel>
-                  </Accordion.Item>
-                  )}
-                  {experimentType === 'SAXS' &&
-                  selectedLinecuts.includes('Azimuthal') &&
-                  azimuthalIntegrations.length > 0
-                  && (
-                    <Accordion.Item value="azimuthal-integration-accordion">
-                      <Accordion.Control>Azimuthal Integration</Accordion.Control>
-                      <Accordion.Panel>
-                        <AzimuthalIntegrationFig
-                          integrations={azimuthalIntegrations}
-                          azimuthalData1={azimuthalData1}
-                          azimuthalData2={azimuthalData2}
-                          zoomedQRange={globalQRange}
-                        />
-                      </Accordion.Panel>
-                    </Accordion.Item>
-                  )}
+                )}
+              </Accordion>
+            </div>
+          </div>
+        </div>
 
-                </Accordion>
-              </div>
-              </Accordion.Panel>
-            </Accordion.Item>
-          </Accordion>
-         </div>
+        {/* Right side - Raw Data Overview (vertical) */}
+        <div className="w-[350px] h-full flex-shrink-0">
+          <div className="bg-white border border-gray-200 rounded-lg shadow-sm h-full flex flex-col">
+            <div className="px-4 py-3 border-b border-gray-200 flex-shrink-0">
+              <h2 className="text-lg font-bold">Raw Data Overview</h2>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <RawDataOverviewFig
+                maxIntensities={maxIntensities}
+                avgIntensities={avgIntensities}
+                leftImageIndex={leftImageIndex}
+                rightImageIndex={rightImageIndex}
+                onSelectImages={handleImageIndicesChange}
+                isFetchingData={isFetchingData}
+                displayOption={displayOption}
+                imageNames={imageNames}
+                progress={progress}
+                progressMessage={progressMessage}
+              />
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* Settings Overlay */}
+      {isSettingsOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center"
+          onClick={() => setIsSettingsOpen(false)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[80vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+              <h3 className="text-lg font-bold text-sky-900">Data Transformation</h3>
+              <ActionIcon variant="subtle" size="md" onClick={() => setIsSettingsOpen(false)}>
+                <XIcon size={20} />
+              </ActionIcon>
+            </div>
+            <div className="p-4">
+              <DataTransformationAccordion
+                isLogScale={isLogScale}
+                setIsLogScale={setIsLogScale}
+                lowerPercentile={lowerPercentile}
+                setLowerPercentile={setLowerPercentile}
+                upperPercentile={upperPercentile}
+                setUpperPercentile={setUpperPercentile}
+                normalization={normalization}
+                setNormalization={setNormalization}
+                imageColormap={imageColormap}
+                setImageColormap={setImageColormap}
+                differenceColormap={differenceColormap}
+                setDifferenceColormap={setDifferenceColormap}
+                normalizationMode={normalizationMode}
+                setNormalizationMode={setNormalizationMode}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

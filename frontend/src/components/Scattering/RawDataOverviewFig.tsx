@@ -131,55 +131,53 @@ const RawDataOverviewFig: React.FC<RawDataOverviewFigProps> = ({
     // Use bright green for better visibility
     const RIGHT_IMAGE_COLOR = 'rgb(0, 200, 0)'; // Bright green
 
-    // Add annotations array to the layout
+    // Add annotations array for L/R labels
     const annotations = [];
 
     // Check if we have valid indices to annotate
     if (typeof leftImageIndex === 'number') {
       annotations.push({
-        x: leftImageIndex,
-        y: displayOption === 'max' ? maxIntensities[leftImageIndex] :
+        x: displayOption === 'max' ? maxIntensities[leftImageIndex] :
           displayOption === 'avg' ? avgIntensities[leftImageIndex] :
           maxIntensities[leftImageIndex],
+        y: leftImageIndex,
         text: 'L',
         showarrow: false,
         font: {
           color: 'black',
-          size: 16,
+          size: 14,
           weight: 'bold'
         },
-        yshift: 15 // Move text upward from the point
+        xshift: 15
       });
     }
 
     if (typeof rightImageIndex === 'number') {
       annotations.push({
-        x: rightImageIndex,
-        y: displayOption === 'max' ? maxIntensities[rightImageIndex] :
+        x: displayOption === 'max' ? maxIntensities[rightImageIndex] :
           displayOption === 'avg' ? avgIntensities[rightImageIndex] :
           maxIntensities[rightImageIndex],
+        y: rightImageIndex,
         text: 'R',
         showarrow: false,
         font: {
           color: 'black',
-          size: 16,
+          size: 14,
           weight: 'bold'
         },
-        yshift: 15 // Move text upward from the point
+        xshift: 15
       });
     }
 
-
-
     if (displayOption === 'both' || displayOption === 'max') {
       data.push({
-        x: indices,
-        y: maxIntensities,
+        x: maxIntensities,
+        y: indices,
         mode: 'lines+markers' as const,
         type: 'scatter' as const,
-        name: 'Max Intensity',
+        name: 'Max',
         marker: {
-          size: 10,
+          size: 6,
           color: 'rgb(31, 119, 180)',
           line: {
             width: indices.map(i => {
@@ -196,20 +194,20 @@ const RawDataOverviewFig: React.FC<RawDataOverviewFigProps> = ({
         },
         text: imageNames.length > 0 ? imageNames : undefined,
         hovertemplate: imageNames.length > 0
-          ? 'Image %{x}<br>Name: %{text}<br>Max: %{y:.2f}<extra></extra>'
-          : 'Image %{x}<br>Max: %{y:.2f}<extra></extra>',
+          ? 'Image %{y}<br>Name: %{text}<br>Max: %{x:.2f}<extra></extra>'
+          : 'Image %{y}<br>Max: %{x:.2f}<extra></extra>',
       });
     }
 
     if (displayOption === 'both' || displayOption === 'avg') {
       data.push({
-        x: indices,
-        y: avgIntensities,
+        x: avgIntensities,
+        y: indices,
         mode: 'lines+markers' as const,
         type: 'scatter' as const,
-        name: 'Avg Intensity',
+        name: 'Avg',
         marker: {
-          size: 10,
+          size: 6,
           color: 'rgb(255, 127, 14)',
           line: {
             width: indices.map(i => (i === leftImageIndex || i === rightImageIndex) ? 4 : 0),
@@ -222,8 +220,8 @@ const RawDataOverviewFig: React.FC<RawDataOverviewFigProps> = ({
         },
         text: imageNames.length > 0 ? imageNames : undefined,
         hovertemplate: imageNames.length > 0
-          ? 'Image %{x}<br>Name: %{text}<br>Avg: %{y:.2f}<extra></extra>'
-          : 'Image %{x}<br>Avg: %{y:.2f}<extra></extra>',
+          ? 'Image %{y}<br>Name: %{text}<br>Avg: %{x:.2f}<extra></extra>'
+          : 'Image %{y}<br>Avg: %{x:.2f}<extra></extra>',
       });
     }
 
@@ -272,16 +270,10 @@ const RawDataOverviewFig: React.FC<RawDataOverviewFigProps> = ({
 
 
 
-    return {
-      plotData: data,
-      annotations: annotations, // Return annotations with the plot data
-
-    };
+    return { plotData: data, annotations };
   };
 
-  const plotResult = createPlotData();
-  const plotData = plotResult.plotData;
-  const annotations = plotResult.annotations;
+  const { plotData, annotations } = createPlotData();
 
   // Generate a consistent UI revision ID based only on the data dimensions
   const uiRevisionId = `${maxIntensities.length}-${avgIntensities.length}-${displayOption}`;
@@ -292,36 +284,34 @@ const RawDataOverviewFig: React.FC<RawDataOverviewFigProps> = ({
   const layout = {
     width: dimensions.width,
     height: dimensions.height ? dimensions.height - 40 : undefined,
-    title: {
-      text: 'Intensity per Image Index',
-      font: { size: 18 }
-    },
     xaxis: {
       title: {
-        text: 'Image Index',
-        font: { size: 14 }
+        text: 'Intensity',
+        font: { size: 12 }
       },
-      tickfont: { size: 14 },
-      tickmode: 'linear' as const,
-      dtick: Math.ceil(indices.length / 20),
-      range: [-2, Math.max(indices.length, 10)], // Move these properties inside xaxis
-      autorange: false // Move this inside xaxis
+      tickfont: { size: 10 },
+      range: [-2, null],
+      autorange: 'max' as AutorangeType,
     },
     yaxis: {
       title: {
-        text: 'Intensity',
-        font: { size: 14 }
+        text: 'Image Index',
+        font: { size: 12 }
       },
-      tickfont: { size: 14 },
-      range: [-2, null], // This starts at 0 and auto-calculates the upper limit
-      autorange: 'max' as AutorangeType, // This includes 0 and extends to maximum value
+      tickfont: { size: 10 },
+      tickmode: 'linear' as const,
+      dtick: Math.ceil(indices.length / 20),
+      range: [Math.max(indices.length, 10), -2],
+      autorange: false
     },
     legend: {
-      x: 10,
-      y: 1,
-      orientation: 'v' as const,
-      font: { size: 12 },
+      x: 0.5,
+      y: -0.15,
+      orientation: 'h' as const,
+      font: { size: 10 },
+      xanchor: 'center' as const,
     },
+    margin: { l: 50, r: 20, t: 20, b: 60 },
     hovermode: 'closest' as const,
     clickmode: 'event' as const,
     uirevision: uiRevisionId,
@@ -333,7 +323,7 @@ const RawDataOverviewFig: React.FC<RawDataOverviewFigProps> = ({
   const showProgressBar = isFetchingData && progress < 100;
 
   return (
-    <div ref={containerRef} className="w-full h-[400px] relative flex flex-col">
+    <div ref={containerRef} className="w-full h-full relative flex flex-col">
       {/* Progress Bar */}
       <div className="w-full">
         <ProgressBar
