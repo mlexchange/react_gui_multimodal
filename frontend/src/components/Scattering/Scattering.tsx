@@ -44,6 +44,8 @@ interface ScatteringProps {
 export default function Scattering({ standalone = false }: ScatteringProps) {
   const linecutOrder = ['Horizontal', 'Vertical', 'Inclined', 'Azimuthal'];
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isRawDataCollapsed, setIsRawDataCollapsed] = useState(false);
 
   const {
     experimentType,
@@ -234,21 +236,29 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
   return (
     <div className={`flex ${standalone ? 'h-screen' : 'h-full'} w-full overflow-hidden`}>
       {/* First Column - Sidebar */}
-        <div className={`border border-gray-300 bg-slate-200 shadow-lg relative transition-all duration-300 flex-shrink-0 flex flex-col h-full w-[300px]`}>
+        <div className={`border border-gray-300 bg-slate-200 shadow-lg relative transition-all duration-300 flex-shrink-0 flex flex-col h-full ${isSidebarCollapsed ? 'w-[48px]' : 'w-[300px]'}`}>
         {/* Scrollable Content Section */}
         <div className="grid gap-2 overflow-y-auto overflow-x-hidden p-2">
           {/* Experimental data section (non-accordion) */}
           <div className="flex-1 flex-row">
             {/* Header styled like accordion */}
-            <div className="flex items-center justify-between pb-2 text-sky-900 border-b border-gray-200">
+            <div className={`flex items-center pb-2 text-sky-900 border-b border-gray-200 ${isSidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
+              {!isSidebarCollapsed && (
               <div className="flex items-center gap-3">
                 <TreeStructureIcon size={24} weight="bold" />
                 <span className="text-lg font-bold">Experimental data</span>
               </div>
-              <ListIcon size={24} weight="bold" />
+              )}
+              <ListIcon
+                size={24}
+                weight="bold"
+                className="cursor-pointer hover:text-sky-600"
+                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              />
             </div>
 
             {/* Content */}
+            {!isSidebarCollapsed && (
             <div className="grid pl-3 gap-2">
               {/* Experiment Type */}
               <Select
@@ -319,9 +329,11 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                 }}
               />
             </div>
+            )}
           </div>
 
           {/* Accordion Container */}
+          {!isSidebarCollapsed && (
           <Accordion
             multiple
             // defaultValue={['calibration-accordion', 'linecuts-accordion']}
@@ -480,6 +492,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
             </Accordion.Item>
 
           </Accordion>
+          )}
         </div>
       </div>
 
@@ -488,14 +501,14 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
         {/* Left side - Scatter Images (top) + Linecuts (bottom) */}
         <div className="flex-grow flex flex-col h-full overflow-hidden gap-2">
           {/* Scatter Images Card */}
-          <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex-shrink-0">
+          <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex-1 overflow-hidden flex flex-col">
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
               <h2 className="text-lg font-bold">2D Scattering Data</h2>
               <ActionIcon variant="subtle" size="md" onClick={() => setIsSettingsOpen(true)}>
                 <GearIcon size={24} />
               </ActionIcon>
             </div>
-            <div className="p-4">
+            <div className="p-4 flex-1 overflow-hidden">
               <ScatterSubplot
                 setImageHeight={setImageHeight}
                 setImageWidth={setImageWidth}
@@ -573,7 +586,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
           </div>
 
           {/* Linecuts Card */}
-          <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex-1 overflow-hidden flex flex-col">
+          <div className="bg-white border border-gray-200 rounded-lg shadow-sm h-[300px] flex-shrink-0 overflow-hidden flex flex-col">
             <div className="px-4 py-3 border-b border-gray-200 flex-shrink-0">
               <h2 className="text-lg font-bold">Linecuts</h2>
             </div>
@@ -671,11 +684,18 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
         </div>
 
         {/* Right side - Raw Data Overview (vertical) */}
-        <div className="w-[350px] h-full flex-shrink-0">
+        <div className={`h-full flex-shrink-0 transition-all duration-300 ${isRawDataCollapsed ? 'w-[48px]' : 'w-[280px]'}`}>
           <div className="bg-white border border-gray-200 rounded-lg shadow-sm h-full flex flex-col">
-            <div className="px-4 py-3 border-b border-gray-200 flex-shrink-0">
-              <h2 className="text-lg font-bold">Raw Data Overview</h2>
+            <div className="flex items-center justify-between px-3 py-3 border-b border-gray-200 flex-shrink-0">
+              {!isRawDataCollapsed && <h2 className="text-lg font-bold">Raw Data Overview</h2>}
+              <ListIcon
+                size={24}
+                weight="bold"
+                className="cursor-pointer hover:text-sky-600 text-sky-900"
+                onClick={() => setIsRawDataCollapsed(!isRawDataCollapsed)}
+              />
             </div>
+            {!isRawDataCollapsed && (
             <div className="flex-1 overflow-hidden">
               <RawDataOverviewFig
                 maxIntensities={maxIntensities}
@@ -690,6 +710,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                 progressMessage={progressMessage}
               />
             </div>
+            )}
           </div>
         </div>
       </div>
