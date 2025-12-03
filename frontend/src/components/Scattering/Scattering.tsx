@@ -503,13 +503,13 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
         <div className="flex-grow flex flex-col h-full overflow-hidden gap-2">
           {/* Scatter Images Card */}
           <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex-1 overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 text-sky-700">
               <h2 className="text-lg font-bold">2D Scattering Data</h2>
               <div className="flex items-center gap-1">
                 <Menu position="bottom-end" withArrow shadow="md">
                   <Menu.Target>
                     <ActionIcon variant="subtle" size="md">
-                      <GitDiffIcon size={24} />
+                      <GitDiffIcon size={24} className='text-sky-700'/>
                     </ActionIcon>
                   </Menu.Target>
                   <Menu.Dropdown>
@@ -528,7 +528,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                   </Menu.Dropdown>
                 </Menu>
                 <ActionIcon variant="subtle" size="md" onClick={() => setIsSettingsOpen(true)}>
-                  <GearIcon size={24} />
+                  <GearIcon size={24} className='text-sky-700'/>
                 </ActionIcon>
               </div>
             </div>
@@ -613,7 +613,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
 
           {/* Linecuts Card */}
           <div className="bg-white border border-gray-200 rounded-lg shadow-sm h-[300px] flex-shrink-0 overflow-hidden flex flex-col">
-            <div className="px-4 py-3 border-b border-gray-200 flex-shrink-0">
+            <div className="px-4 py-3 border-b border-gray-200 flex-shrink-0 text-sky-700">
               <h2 className="text-lg font-bold">Linecuts</h2>
             </div>
             <div className="p-4 overflow-y-auto flex-1">
@@ -712,12 +712,12 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
         {/* Right side - Raw Data Overview (vertical) */}
         <div className={`h-full flex-shrink-0 transition-all duration-300 ${isRawDataCollapsed ? 'w-[48px]' : 'w-[280px]'}`}>
           <div className="bg-white border border-gray-200 rounded-lg shadow-sm h-full flex flex-col">
-            <div className="flex items-center justify-between px-3 py-3 border-b border-gray-200 flex-shrink-0">
+            <div className="flex items-center justify-between px-3 py-3 border-b border-gray-200 flex-shrink-0 text-sky-700">
               {!isRawDataCollapsed && <h2 className="text-lg font-bold">Raw Data Overview</h2>}
               <ListIcon
                 size={24}
                 weight="bold"
-                className="cursor-pointer hover:text-sky-600 text-sky-900"
+                className="cursor-pointer hover:text-sky-600"
                 onClick={() => setIsRawDataCollapsed(!isRawDataCollapsed)}
               />
             </div>
