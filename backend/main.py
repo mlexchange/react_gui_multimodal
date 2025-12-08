@@ -33,3 +33,14 @@ app.include_router(websocket.router, prefix="/ws", tags=["WebSocket"])
 @app.get("/")
 def root():
     return {"message": "Welcome to the FastAPI Backend"}
+
+
+def main():
+    """CLI entry point to run the server."""
+    import uvicorn
+
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+
+
+if __name__ == "__main__":
+    main()
