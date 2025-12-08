@@ -187,9 +187,9 @@ const HorizontalLinecutFig: React.FC<HorizontalLinecutFigProps> = ({
       xaxis: {
         title: {
           text: `q<sub>x</sub> (${units})`,
-          font: { size: 14 }
+          font: { size: 12 }
         },
-        tickfont: { size: 14 },
+        tickfont: { size: 11 },
         autorange: true,
       },
     };
@@ -221,19 +221,19 @@ const HorizontalLinecutFig: React.FC<HorizontalLinecutFigProps> = ({
       height: dimensions.height,
       xaxis: xAxisConfig,
       yaxis: {
-        title: { text: "Intensity", font: { size: 14 }, standoff: 50 },
-        tickfont: { size: 14 },
+        title: { text: "Intensity", font: { size: 12 }, standoff: 40 },
+        tickfont: { size: 11 },
         autorange: true,
       },
-      margin: { l: 110 },
-      legend: { font: { size: 14 } },
-      font: { size: 14 },
+      margin: { l: 60, r: 10, t: 10, b: 40 },
+      legend: { font: { size: 10 }, orientation: 'h' as const, y: -0.25 },
+      font: { size: 11 },
       showlegend: true,
     };
   }, [dimensions, zoomedXPixelRange, zoomedYPixelRange, linecuts, xVectorForPlotting, units, isLinecutInRange]);
 
   return (
-    <div ref={containerRef} className="mt-4 p-4 bg-gray-100 rounded shadow">
+    <div ref={containerRef} className="w-full h-full">
       <Plot
         data={plotData}
         layout={layout}

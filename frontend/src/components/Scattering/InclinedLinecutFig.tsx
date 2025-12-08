@@ -29,7 +29,7 @@ const InclinedLinecutFig: React.FC<InclinedLinecutFigProps> = ({
     zoomedXQRange,
     qXVector,
     qYVector,
-    units
+    units,
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [dimensions, setDimensions] = useState<Dimensions>({
@@ -268,21 +268,21 @@ const InclinedLinecutFig: React.FC<InclinedLinecutFigProps> = ({
             xaxis: {
                 title: {
                     text: `Signed q<sub>r</sub> (${units})`,
-                    font: { size: 25 }
+                    font: { size: 12 }
                 },
-                tickfont: { size: 25 },
+                tickfont: { size: 11 },
                 autorange: zoomedXQRange ? false : true,
                 range: zoomedXQRange || undefined,
             },
             yaxis: {
-                title: { text: "Intensity", font: { size: 25 }, standoff: 50 },
-                tickfont: { size: 25 },
+                title: { text: "Intensity", font: { size: 12 }, standoff: 40 },
+                tickfont: { size: 11 },
                 autorange: true,
                 range: yRange,
             },
-            margin: { l: 110, r: 50, t: 50, b: 110 },
-            legend: { font: { size: 25 } },
-            font: { size: 25 },
+            margin: { l: 60, r: 10, t: 10, b: 40 },
+            legend: { font: { size: 10 }, orientation: 'h' as const, y: -0.25 },
+            font: { size: 11 },
             showlegend: true,
             hovermode: 'closest' as const,
         };
@@ -291,14 +291,14 @@ const InclinedLinecutFig: React.FC<InclinedLinecutFigProps> = ({
     // Show a message if no data is available
     if (linecuts.filter(l => !l.hidden).length === 0) {
         return (
-            <div ref={containerRef} className="mt-4 p-4 bg-gray-100 rounded shadow min-h-[500px] flex items-center justify-center">
-                <p className="text-2xl text-gray-500">No visible linecuts available</p>
+            <div ref={containerRef} className="w-full h-full flex items-center justify-center">
+                <p className="text-lg text-gray-500">No visible linecuts available</p>
             </div>
         );
     }
 
     return (
-        <div ref={containerRef} className="mt-4 p-4 bg-gray-100 rounded shadow min-h-[500px]">
+        <div ref={containerRef} className="w-full h-full">
             <Plot
                 data={plotData}
                 layout={layout}

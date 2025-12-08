@@ -70,7 +70,7 @@ export function generateHorizontalLinecutOverlay({
       y: [scaledPosition],
       mode: "text",
       text: [positionLabel],
-      textfont: { size: 25 },  // Larger text
+      textfont: { size: 12 },
       textposition: "middle left",
       xaxis: "x1",
       yaxis: "y1",
@@ -104,7 +104,7 @@ export function generateHorizontalLinecutOverlay({
       y: [scaledPosition],
       mode: "text",
       text: [positionLabel],
-      textfont: { size: 25 },
+      textfont: { size: 12 },
       textposition: "middle left",
       xaxis: "x2",
       yaxis: "y2",

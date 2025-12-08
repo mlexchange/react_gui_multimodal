@@ -575,37 +575,43 @@ const ScatterSubplot: React.FC<ScatterSubplotProps> = React.memo(({
               ygap: 0
             },
             xaxis: {
-              title: 'X (pixels)',
+              title: { text: 'X (pixels)', font: { size: 12 } },
+              tickfont: { size: 11 },
               scaleanchor: 'y',
               scaleratio: 1,
               constrain: 'domain',
             },
             yaxis: {
-              title: 'Y (pixels)',
+              title: { text: 'Y (pixels)', font: { size: 12 } },
+              tickfont: { size: 11 },
               scaleanchor: 'x',
               scaleratio: 1,
               constrain: 'domain',
             },
             xaxis2: {
-              title: 'X (pixels)',
+              title: { text: 'X (pixels)', font: { size: 12 } },
+              tickfont: { size: 11 },
               scaleanchor: 'y2',
               scaleratio: 1,
               constrain: 'domain',
             },
             yaxis2: {
-              title: 'Y (pixels)',
+              title: { text: 'Y (pixels)', font: { size: 12 } },
+              tickfont: { size: 11 },
               scaleanchor: 'x2',
               scaleratio: 1,
               constrain: 'domain',
             },
             xaxis3: {
-              title: 'X (pixels)',
+              title: { text: 'X (pixels)', font: { size: 12 } },
+              tickfont: { size: 11 },
               scaleanchor: 'y3',
               scaleratio: 1,
               constrain: 'domain',
             },
             yaxis3: {
-              title: 'Y (pixels)',
+              title: { text: 'Y (pixels)', font: { size: 12 } },
+              tickfont: { size: 11 },
               scaleanchor: 'x3',
               scaleratio: 1,
               constrain: 'domain',
@@ -619,9 +625,11 @@ const ScatterSubplot: React.FC<ScatterSubplotProps> = React.memo(({
                 y: 0.5,
                 len: 0.8,
                 thickness: 15,
+                tickfont: { size: 11 },
                 title: {
                   text: 'Intensity',
-                  side: 'right'
+                  side: 'right',
+                  font: { size: 12 }
                 }
               }
             },
@@ -635,9 +643,11 @@ const ScatterSubplot: React.FC<ScatterSubplotProps> = React.memo(({
                 y: 0.5,
                 len: 0.8,
                 thickness: 15,
+                tickfont: { size: 11 },
                 title: {
                   text: 'Difference',
-                  side: 'right'
+                  side: 'right',
+                  font: { size: 12 }
                 }
               }
             },

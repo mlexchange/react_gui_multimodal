@@ -71,7 +71,7 @@ export function generateVerticalLinecutOverlay({
         y: [imageHeight * 1.01],  // Position text slightly above the image
         mode: "text",
         text: [positionLabel],
-        textfont: { size: 25 },  // Larger text
+        textfont: { size: 12 },
         textposition: "bottom center",
         xaxis: "x1",
         yaxis: "y1",
@@ -105,7 +105,7 @@ export function generateVerticalLinecutOverlay({
         y: [imageHeight * 1.01],  // Position text slightly above the image
         mode: "text",
         text: [positionLabel],
-        textfont: { size: 25 },  // Larger text
+        textfont: { size: 12 },
         textposition: "bottom center",
         xaxis: "x2",
         yaxis: "y2",

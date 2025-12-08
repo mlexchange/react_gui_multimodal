@@ -498,9 +498,9 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
       </div>
 
       {/* Second Column - Main Content Area */}
-      <div className="h-full flex-grow flex overflow-hidden p-2 gap-2 bg-slate-500">
-        {/* Left side - Scatter Images (top) + Linecuts (bottom) */}
-        <div className="flex-grow flex flex-col h-full overflow-hidden gap-2">
+      <div className="h-full flex-grow flex flex-col overflow-hidden p-2 gap-2 bg-slate-500">
+        {/* Top Row - Scatter Images + Raw Data Overview */}
+        <div className="flex-1 flex overflow-hidden gap-2">
           {/* Scatter Images Card */}
           <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex-1 overflow-hidden flex flex-col">
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 text-sky-700">
@@ -611,69 +611,95 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
             </div>
           </div>
 
-          {/* Linecuts Card */}
-          <div className="bg-white border border-gray-200 rounded-lg shadow-sm h-[300px] flex-shrink-0 overflow-hidden flex flex-col">
-            <div className="px-4 py-3 border-b border-gray-200 flex-shrink-0 text-sky-700">
-              <h2 className="text-lg font-bold">Linecuts</h2>
+          {/* Raw Data Overview Card */}
+          <div className={`h-full flex-shrink-0 transition-all duration-300 ${isRawDataCollapsed ? 'w-[48px]' : 'w-[280px]'}`}>
+            <div className="bg-white border border-gray-200 rounded-lg shadow-sm h-full flex flex-col">
+              <div className="flex items-center justify-between px-3 py-3 border-b border-gray-200 flex-shrink-0 text-sky-700">
+                {!isRawDataCollapsed && <h2 className="text-lg font-bold">Raw Data Overview</h2>}
+                <ListIcon
+                  size={24}
+                  weight="bold"
+                  className="cursor-pointer hover:text-sky-600"
+                  onClick={() => setIsRawDataCollapsed(!isRawDataCollapsed)}
+                />
+              </div>
+              {!isRawDataCollapsed && (
+              <div className="flex-1 overflow-hidden">
+                <RawDataOverviewFig
+                  maxIntensities={maxIntensities}
+                  avgIntensities={avgIntensities}
+                  leftImageIndex={leftImageIndex}
+                  rightImageIndex={rightImageIndex}
+                  onSelectImages={handleImageIndicesChange}
+                  isFetchingData={isFetchingData}
+                  displayOption={displayOption}
+                  imageNames={imageNames}
+                  progress={progress}
+                  progressMessage={progressMessage}
+                />
+              </div>
+              )}
             </div>
-            <div className="p-4 overflow-y-auto flex-1">
-              <Accordion
-                multiple
-                defaultValue={
-                  experimentType === 'SAXS'
-                    ? [
-                        'horizontal-linecut-accordion',
-                        'vertical-linecut-accordion',
-                        'inclined-linecut-accordion',
-                        'azimuthal-integration-accordion',
-                      ]
-                    : [
-                        'horizontal-linecut-accordion',
-                        'vertical-linecut-accordion',
-                        'inclined-linecut-accordion',
-                      ]
-                }
-                chevronPosition="right"
-                classNames={{ chevron: 'text-lg font-bold', label: 'text-lg font-bold' }}
-              >
-                {selectedLinecuts.includes('Horizontal') && horizontalLinecuts.length > 0 && (
-                <Accordion.Item value="horizontal-linecut-accordion">
-                  <Accordion.Control>Horizontal Linecut</Accordion.Control>
-                  <Accordion.Panel>
-                    <HorizontalLinecutFig
-                      linecuts={horizontalLinecuts}
-                      imageData1={imageData1}
-                      imageData2={imageData2}
-                      zoomedXPixelRange={zoomedXPixelRange}
-                      zoomedYPixelRange={zoomedYPixelRange}
-                      qXMatrix={qXMatrix}
-                      qYMatrix={qYMatrix}
-                      units="nm⁻¹"
-                    />
-                  </Accordion.Panel>
-                </Accordion.Item>
-                )}
-                {selectedLinecuts.includes('Vertical') && verticalLinecuts.length > 0 && (
-                  <Accordion.Item value="vertical-linecut-accordion">
-                    <Accordion.Control>Vertical Linecut</Accordion.Control>
-                    <Accordion.Panel>
-                        <VerticalLinecutFig
-                          linecuts={verticalLinecuts}
-                          imageData1={imageData1}
-                          imageData2={imageData2}
-                          zoomedXPixelRange={zoomedXPixelRange}
-                          zoomedYPixelRange={zoomedYPixelRange}
-                          qXMatrix={qXMatrix}
-                          qYMatrix={qYMatrix}
-                          units="nm⁻¹"
-                        />
-                    </Accordion.Panel>
-                  </Accordion.Item>
-                )}
-              {selectedLinecuts.includes('Inclined') && inclinedLinecuts.length > 0 && (
-                <Accordion.Item value="inclined-linecut-accordion">
-                  <Accordion.Control>Inclined Linecut</Accordion.Control>
-                  <Accordion.Panel>
+          </div>
+        </div>
+
+        {/* Bottom Row - Linecuts (each in separate cards) */}
+        {(
+          (selectedLinecuts.includes('Horizontal') && horizontalLinecuts.length > 0) ||
+          (selectedLinecuts.includes('Vertical') && verticalLinecuts.length > 0) ||
+          (selectedLinecuts.includes('Inclined') && inclinedLinecuts.length > 0) ||
+          (experimentType === 'SAXS' && selectedLinecuts.includes('Azimuthal') && azimuthalIntegrations.length > 0)
+        ) && (
+          <div className="flex gap-2 h-[320px] flex-shrink-0 overflow-x-auto">
+            {/* Horizontal Linecut Card */}
+            {selectedLinecuts.includes('Horizontal') && horizontalLinecuts.length > 0 && (
+              <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex-1 min-w-[300px] overflow-hidden flex flex-col">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 text-sky-700">
+                  <h2 className="text-lg font-bold">Horizontal Linecut</h2>
+                </div>
+                <div className="p-2 flex-1 overflow-hidden">
+                  <HorizontalLinecutFig
+                    linecuts={horizontalLinecuts}
+                    imageData1={imageData1}
+                    imageData2={imageData2}
+                    zoomedXPixelRange={zoomedXPixelRange}
+                    zoomedYPixelRange={zoomedYPixelRange}
+                    qXMatrix={qXMatrix}
+                    qYMatrix={qYMatrix}
+                    units="nm⁻¹"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Vertical Linecut Card */}
+            {selectedLinecuts.includes('Vertical') && verticalLinecuts.length > 0 && (
+              <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex-1 min-w-[300px] overflow-hidden flex flex-col">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 text-sky-700">
+                  <h2 className="text-lg font-bold">Vertical Linecut</h2>
+                </div>
+                <div className="p-2 flex-1 overflow-hidden">
+                  <VerticalLinecutFig
+                    linecuts={verticalLinecuts}
+                    imageData1={imageData1}
+                    imageData2={imageData2}
+                    zoomedXPixelRange={zoomedXPixelRange}
+                    zoomedYPixelRange={zoomedYPixelRange}
+                    qXMatrix={qXMatrix}
+                    qYMatrix={qYMatrix}
+                    units="nm⁻¹"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Inclined Linecut Card */}
+            {selectedLinecuts.includes('Inclined') && inclinedLinecuts.length > 0 && (
+              <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex-1 min-w-[300px] overflow-hidden flex flex-col">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 text-sky-700">
+                  <h2 className="text-lg font-bold">Inclined Linecut</h2>
+                </div>
+                <div className="p-2 flex-1 overflow-hidden">
                   <InclinedLinecutFig
                     linecuts={inclinedLinecuts}
                     inclinedLinecutData1={inclinedLinecutData1 || []}
@@ -685,60 +711,30 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                     qYVector={qYVector}
                     units="nm⁻¹"
                   />
-                  </Accordion.Panel>
-                </Accordion.Item>
-                )}
-                {experimentType === 'SAXS' &&
-                selectedLinecuts.includes('Azimuthal') &&
-                azimuthalIntegrations.length > 0
-                && (
-                  <Accordion.Item value="azimuthal-integration-accordion">
-                    <Accordion.Control>Azimuthal Integration</Accordion.Control>
-                    <Accordion.Panel>
-                      <AzimuthalIntegrationFig
-                        integrations={azimuthalIntegrations}
-                        azimuthalData1={azimuthalData1}
-                        azimuthalData2={azimuthalData2}
-                        zoomedQRange={globalQRange}
-                      />
-                    </Accordion.Panel>
-                  </Accordion.Item>
-                )}
-              </Accordion>
-            </div>
-          </div>
-        </div>
+                </div>
+              </div>
+            )}
 
-        {/* Right side - Raw Data Overview (vertical) */}
-        <div className={`h-full flex-shrink-0 transition-all duration-300 ${isRawDataCollapsed ? 'w-[48px]' : 'w-[280px]'}`}>
-          <div className="bg-white border border-gray-200 rounded-lg shadow-sm h-full flex flex-col">
-            <div className="flex items-center justify-between px-3 py-3 border-b border-gray-200 flex-shrink-0 text-sky-700">
-              {!isRawDataCollapsed && <h2 className="text-lg font-bold">Raw Data Overview</h2>}
-              <ListIcon
-                size={24}
-                weight="bold"
-                className="cursor-pointer hover:text-sky-600"
-                onClick={() => setIsRawDataCollapsed(!isRawDataCollapsed)}
-              />
-            </div>
-            {!isRawDataCollapsed && (
-            <div className="flex-1 overflow-hidden">
-              <RawDataOverviewFig
-                maxIntensities={maxIntensities}
-                avgIntensities={avgIntensities}
-                leftImageIndex={leftImageIndex}
-                rightImageIndex={rightImageIndex}
-                onSelectImages={handleImageIndicesChange}
-                isFetchingData={isFetchingData}
-                displayOption={displayOption}
-                imageNames={imageNames}
-                progress={progress}
-                progressMessage={progressMessage}
-              />
-            </div>
+            {/* Azimuthal Integration Card */}
+            {experimentType === 'SAXS' &&
+              selectedLinecuts.includes('Azimuthal') &&
+              azimuthalIntegrations.length > 0 && (
+              <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex-1 min-w-[300px] overflow-hidden flex flex-col">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 text-sky-700">
+                  <h2 className="text-lg font-bold">Azimuthal Integration</h2>
+                </div>
+                <div className="p-2 flex-1 overflow-hidden">
+                  <AzimuthalIntegrationFig
+                    integrations={azimuthalIntegrations}
+                    azimuthalData1={azimuthalData1}
+                    azimuthalData2={azimuthalData2}
+                    zoomedQRange={globalQRange}
+                  />
+                </div>
+              </div>
             )}
           </div>
-        </div>
+        )}
       </div>
 
       {/* Settings Overlay */}

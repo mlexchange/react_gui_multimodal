@@ -289,7 +289,7 @@ const RawDataOverviewFig: React.FC<RawDataOverviewFigProps> = ({
         text: 'Intensity',
         font: { size: 12 }
       },
-      tickfont: { size: 10 },
+      tickfont: { size: 11 },
       range: [-2, null],
       autorange: 'max' as AutorangeType,
     },
@@ -298,7 +298,7 @@ const RawDataOverviewFig: React.FC<RawDataOverviewFigProps> = ({
         text: 'Image Index',
         font: { size: 12 }
       },
-      tickfont: { size: 10 },
+      tickfont: { size: 11 },
       tickmode: 'linear' as const,
       dtick: Math.ceil(indices.length / 20),
       range: [Math.max(indices.length, 10), -2],

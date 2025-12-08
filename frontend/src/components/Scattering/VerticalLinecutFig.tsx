@@ -198,9 +198,9 @@ const VerticalLinecutFig: React.FC<VerticalLinecutFigProps> = ({
     const defaultXAxis: AxisConfig = {
       title: {
         text: `q<sub>y</sub> (${units})`,
-        font: { size: 25 }
+        font: { size: 12 }
       },
-      tickfont: { size: 25 },
+      tickfont: { size: 11 },
       autorange: true,
     };
 
@@ -223,8 +223,8 @@ const VerticalLinecutFig: React.FC<VerticalLinecutFigProps> = ({
 
     // Default y-axis configuration for intensity values
     const yAxisConfig: AxisConfig = {
-      title: { text: "Intensity", font: { size: 25 }, standoff: 50 },
-      tickfont: { size: 25 },
+      title: { text: "Intensity", font: { size: 12 }, standoff: 40 },
+      tickfont: { size: 11 },
       autorange: true,
     };
 
@@ -233,15 +233,15 @@ const VerticalLinecutFig: React.FC<VerticalLinecutFigProps> = ({
       height: dimensions.height,
       xaxis: xAxisConfig,
       yaxis: yAxisConfig,
-      margin: { l: 110 },
-      legend: { font: { size: 25 } },
-      font: { size: 25 },
+      margin: { l: 60, r: 10, t: 10, b: 40 },
+      legend: { font: { size: 10 }, orientation: 'h' as const, y: -0.25 },
+      font: { size: 11 },
       showlegend: true,
     };
   }, [dimensions, zoomedYPixelRange, zoomedXPixelRange, linecuts, qYVector, units, isLinecutInRange]);
 
   return (
-    <div ref={containerRef} className="mt-4 p-4 bg-gray-100 rounded shadow">
+    <div ref={containerRef} className="w-full h-full">
       <Plot
         data={plotData}
         layout={layout}

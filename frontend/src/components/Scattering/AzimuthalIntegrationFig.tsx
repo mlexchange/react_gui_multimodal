@@ -89,8 +89,8 @@ const AzimuthalIntegrationFig: React.FC<AzimuthalIntegrationFigProps> = ({
   const layout = useMemo(() => {
     const defaultRange = {
       xaxis: {
-        title: { text: "q (nm⁻¹)", font: { size: 25 } },
-        tickfont: { size: 25 },
+        title: { text: "q (nm⁻¹)", font: { size: 12 } },
+        tickfont: { size: 11 },
         autorange: true,
       },
     };
@@ -109,19 +109,19 @@ const AzimuthalIntegrationFig: React.FC<AzimuthalIntegrationFigProps> = ({
       height: dimensions.height,
       xaxis: xAxisConfig,
       yaxis: {
-        title: { text: "Intensity", font: { size: 25 }, standoff: 50 },
-        tickfont: { size: 25 },
+        title: { text: "Intensity", font: { size: 12 }, standoff: 40 },
+        tickfont: { size: 11 },
         autorange: true,
       },
-      margin: { l: 110 },
-      legend: { font: { size: 25 } },
-      font: { size: 25 },
+      margin: { l: 60, r: 10, t: 10, b: 40 },
+      legend: { font: { size: 10 }, orientation: 'h' as const, y: -0.25 },
+      font: { size: 11 },
       showlegend: true,
     };
   }, [dimensions, zoomedQRange]);
 
   return (
-    <div ref={containerRef} className="mt-4 p-4 bg-gray-100 rounded shadow">
+    <div ref={containerRef} className="w-full h-full">
       <Plot
         data={plotData}
         layout={layout}
