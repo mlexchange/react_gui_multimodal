@@ -1,33 +1,13 @@
-import os
 from typing import Tuple
 
 import msgpack
 import numpy as np
-from dotenv import load_dotenv
-
-# import pyFAI
 from fastapi import APIRouter, Query
 from fastapi.responses import Response
-from pydantic import BaseModel
 from pyFAI.integrator.azimuthal import AzimuthalIntegrator
-from tiled.client import from_uri
+
 from src.get_single_image_array_and_name import get_single_image_array_and_name
-
-# OpenCL support is currently commented out but could be enabled for GPU acceleration
-# import pyopencl as cl
-# import pyopencl.array as cla
-
-
-class CalibrationParameters(BaseModel):
-    sample_detector_distance: float
-    beam_center_x: float
-    beam_center_y: float
-    pixel_size_x: float
-    pixel_size_y: float
-    wavelength: float
-    tilt: float = 0.0
-    tilt_plan_rotation: float = 0.0
-
+from src.tiled_client import get_tiled_base_uri
 
 router = APIRouter()
 
@@ -101,14 +81,8 @@ async def azimuthal_integration(
     Now uses direct scan URIs instead of folder_url + indices for more efficient access.
     """
 
-    # Load environment variables
-    load_dotenv("../.env")
-    TILED_URL = os.getenv("SCATTERING_TILED_URL")
-    TILED_API_KEY = os.getenv("SCATTERING_TILED_API_KEY")
-
-    # Connect to Tiled to get base URI
-    tiled_client = from_uri(TILED_URL, api_key=TILED_API_KEY)
-    TILED_BASE_URI = tiled_client.uri
+    # Get base URI from centralized tiled client
+    TILED_BASE_URI = get_tiled_base_uri()
 
     # Fetch the two images directly by their URIs
     scatter_image_array_1, _ = get_single_image_array_and_name(
@@ -156,10 +130,6 @@ async def azimuthal_integration(
         pixelY=azimuthal_integration_calibration_params["pixel_size_y"],
         wavelength=azimuthal_integration_calibration_params["wavelength"],
     )
-
-    # # Get the current calibrated integrator instead of creating a new one
-    # state = IntegratorState()
-    # ai = state.integrator
 
     # Set integration parameters
     number_of_integration_points = 500  # Number of points in output 1D pattern

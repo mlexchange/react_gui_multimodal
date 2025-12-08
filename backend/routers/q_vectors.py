@@ -2,23 +2,7 @@ import msgpack
 import numpy as np
 from fastapi import APIRouter, Query
 from fastapi.responses import Response
-from pydantic import BaseModel
 from pyFAI.integrator.azimuthal import AzimuthalIntegrator
-
-# import pyFAI
-# from pyFAI.units import get_unit_fiber
-
-
-class CalibrationParameters(BaseModel):
-    sample_detector_distance: float
-    beam_center_x: float
-    beam_center_y: float
-    pixel_size_x: float
-    pixel_size_y: float
-    wavelength: float
-    tilt: float = 0.0
-    tilt_plan_rotation: float = 0.0
-
 
 router = APIRouter()
 
@@ -65,7 +49,6 @@ def q_vectors(
         "tilt_plan_rotation": tilt_plan_rotation,
     }
 
-    # # Initialize the azimuthal integrator with our experimental geometry
     ai = AzimuthalIntegrator()
     ai.setFit2D(
         directDist=azimuthal_integration_calibration_params["sample_detector_distance"],
@@ -78,8 +61,6 @@ def q_vectors(
         wavelength=azimuthal_integration_calibration_params["wavelength"],
     )
 
-    # unit_qx = "qxgi_nm^-1"
-    # unit_qy = "qygi_nm^-1"
     unit_qx = "qx_nm^-1"
     unit_qy = "qy_nm^-1"
 

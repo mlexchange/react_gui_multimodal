@@ -5,6 +5,7 @@ from routers import (
     q_vectors,
     raw_data_overview,
     fetch_scan_image,
+    websocket,
 )
 
 app = FastAPI()
@@ -19,13 +20,14 @@ app.add_middleware(
 )
 
 
-# Include Routers
-app.include_router(raw_data_overview.router, tags=["Raw Data Overview"])
-app.include_router(fetch_scan_image.router, tags=["Scan Image"])
-app.include_router(
-    azimuthal_integrator.router, prefix="/api", tags=["Azimuthal Integrator"]
-)
+# Main API routers (/api)
+app.include_router(raw_data_overview.router, prefix="/api", tags=["Raw Data Overview"])
+app.include_router(fetch_scan_image.router, prefix="/api", tags=["Scan Image"])
+app.include_router(azimuthal_integrator.router, prefix="/api", tags=["Azimuthal Integrator"])
 app.include_router(q_vectors.router, prefix="/api", tags=["Q Vectors"])
+
+# WebSocket router (/ws)
+app.include_router(websocket.router, prefix="/ws", tags=["WebSocket"])
 
 
 @app.get("/")

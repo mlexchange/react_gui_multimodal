@@ -1,17 +1,15 @@
-import os
-
 import msgpack
 import numpy as np
-from dotenv import load_dotenv
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
-from tiled.client import from_uri
-from src.preprocess_image import get_processed_image
+
+from src.get_preprocess_image import get_processed_image
+from src.tiled_client import get_tiled_base_uri, get_tiled_client_for_uri
 
 router = APIRouter()
 
 
-@router.get("/api/fetch-scan-image")
+@router.get("/fetch-scan-image")
 async def fetch_scan_image(scan_uri: str):
     """
     Get the image array for a single scan.
@@ -22,28 +20,13 @@ async def fetch_scan_image(scan_uri: str):
     Returns:
         msgpack binary containing the image array and metadata
     """
-
-    # Load environment variables
-    load_dotenv("../.env")
-    TILED_URL = os.getenv("SCATTERING_TILED_URL")
-    TILED_API_KEY = os.getenv("SCATTERING_TILED_API_KEY")
-
-    if not TILED_URL or not TILED_API_KEY:
-        raise HTTPException(
-            status_code=500, detail="Environment variables not set correctly"
-        )
-
-    # Connect to Tiled and get image client
-    tiled_client = from_uri(TILED_URL, api_key=TILED_API_KEY)
-    TILED_BASE_URI = tiled_client.uri
-
     # Construct full URI for the scan
     scan_uri = scan_uri.lstrip('/')
-    full_uri = f"{TILED_BASE_URI}{scan_uri}"
+    full_uri = f"{get_tiled_base_uri()}{scan_uri}"
 
     try:
         # Load image from Tiled
-        image_client = from_uri(full_uri, api_key=TILED_API_KEY)
+        image_client = get_tiled_client_for_uri(full_uri)
         image_array = image_client.read()
 
         # Apply preprocessing (masking, etc.)
