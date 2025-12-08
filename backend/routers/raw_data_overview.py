@@ -6,8 +6,8 @@ import numpy as np
 from fastapi import APIRouter
 from fastapi.responses import Response
 
-from src.get_scans import get_scans_from_folder
-from src.tiled_client import get_tiled_client, get_tiled_base_uri, get_tiled_client_for_uri
+from utils.scans import get_scans_from_folder
+from utils.tiled_client import get_tiled_client, get_tiled_base_uri, get_tiled_client_for_uri
 from routers.websocket import send_progress_update
 
 router = APIRouter()

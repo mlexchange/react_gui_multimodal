@@ -6,8 +6,8 @@ from fastapi import APIRouter, Query
 from fastapi.responses import Response
 from pyFAI.integrator.azimuthal import AzimuthalIntegrator
 
-from src.get_single_image_array_and_name import get_single_image_array_and_name
-from src.tiled_client import get_tiled_base_uri
+from utils.scans import get_single_image_array_and_name
+from utils.tiled_client import get_tiled_base_uri
 
 router = APIRouter()
 

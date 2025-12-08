@@ -1,5 +1,4 @@
 import msgpack
-import numpy as np
 from fastapi import APIRouter, Query
 from fastapi.responses import Response
 from pyFAI.integrator.azimuthal import AzimuthalIntegrator

@@ -3,8 +3,8 @@ import numpy as np
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 
-from src.get_preprocess_image import get_processed_image
-from src.tiled_client import get_tiled_base_uri, get_tiled_client_for_uri
+from utils.scans import get_processed_image
+from utils.tiled_client import get_tiled_base_uri, get_tiled_client_for_uri
 
 router = APIRouter()
 
