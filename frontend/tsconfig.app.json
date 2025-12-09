@@ -15,6 +15,15 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
+    /* Path aliases */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+
+    /* JSON imports for vite.config.ts */
+    "resolveJsonModule": true,
+
     /* Linting - MODIFIED SECTION */
     "strict": false,           /* Changed from true to false */
     "noUnusedLocals": false,   /* Changed from true to false */

@@ -13,6 +13,9 @@
     "moduleDetection": "force",
     "noEmit": true,
 
+    /* JSON imports for package.json */
+    "resolveJsonModule": true,
+
     /* Linting */
     "strict": true,
     "noUnusedLocals": true,

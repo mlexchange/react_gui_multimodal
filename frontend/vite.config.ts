@@ -1,7 +1,10 @@
+import path, { resolve } from 'node:path';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+import dts from 'vite-plugin-dts';
 import { NodeGlobalsPolyfillPlugin } from '@esbuild-plugins/node-globals-polyfill';
 import { NodeModulesPolyfillPlugin } from '@esbuild-plugins/node-modules-polyfill';
+import * as packageJson from './package.json';
 
 /** @type {import('vite').UserConfig} */
 export default defineConfig(({ mode }) => {
@@ -11,11 +14,22 @@ export default defineConfig(({ mode }) => {
   const tiledApiKey = env.SCATTERING_TILED_API_KEY || '';
 
   return {
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "./src"),
+      },
+    },
     define: {
       'import.meta.env.SCATTERING_TILED_URL': JSON.stringify(tiledUrl),
       'import.meta.env.SCATTERING_TILED_API_KEY': JSON.stringify(tiledApiKey),
     },
-    plugins: [react()],
+    plugins: [
+      react(),
+      dts({
+        include: ['src/'],
+        exclude: ['src/app/', 'src/main.tsx'],
+      }),
+    ],
     optimizeDeps: {
       esbuildOptions: {
         // Node.js global to browser globalThis
@@ -32,13 +46,26 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: {
+      lib: {
+        entry: resolve(__dirname, 'src/index.ts'),
+        name: 'MultimodalAnalysis',
+        formats: ['es', 'umd'],
+        fileName: (format) => `multimodal.${format}.js`,
+      },
       rollupOptions: {
+        external: [...Object.keys(packageJson.peerDependencies)],
         plugins: [
           NodeGlobalsPolyfillPlugin({
             buffer: true,
           }),
           NodeModulesPolyfillPlugin(),
         ],
+        output: {
+          globals: {
+            react: 'React',
+            'react-dom': 'ReactDOM',
+          },
+        },
       },
     },
     server: {
