@@ -152,6 +152,14 @@ export default function useVerticalLinecut(
   }, []);
 
   /**
+   * Restore linecuts from a saved session
+   * Pixel positions will be recalculated when qXMatrix is available
+   */
+  const restoreLinecuts = useCallback((linecuts: Linecut[]) => {
+    setVerticalLinecuts(linecuts);
+  }, []);
+
+  /**
    * Synchronizes pixel positions when qXMatrix changes
    */
   useEffect(() => {
@@ -179,5 +187,6 @@ export default function useVerticalLinecut(
     updateVerticalLinecutColor,
     deleteVerticalLinecut,
     toggleVerticalLinecutVisibility,
+    restoreLinecuts,
   };
 }

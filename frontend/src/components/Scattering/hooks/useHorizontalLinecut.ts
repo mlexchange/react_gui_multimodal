@@ -153,6 +153,14 @@ export default function useHorizontalLinecut(
   }, []);
 
   /**
+   * Restore linecuts from a saved session
+   * Pixel positions will be recalculated when qYMatrix is available
+   */
+  const restoreLinecuts = useCallback((linecuts: Linecut[]) => {
+    setHorizontalLinecuts(linecuts);
+  }, []);
+
+  /**
    * Synchronizes pixel positions when qYMatrix changes
    */
   useEffect(() => {
@@ -180,5 +188,6 @@ export default function useHorizontalLinecut(
     updateHorizontalLinecutColor,
     deleteHorizontalLinecut,
     toggleHorizontalLinecutVisibility,
+    restoreLinecuts,
   };
 }

@@ -2,6 +2,15 @@ import { useState, useCallback, useEffect } from 'react';
 import { decode } from "@msgpack/msgpack";
 import { CalibrationParams } from '../types';
 
+/**
+ * State that can be restored from a saved session
+ */
+interface RestorableScatteringState {
+  experimentType?: string;
+  selectedLinecuts?: string[];
+  calibrationParams?: CalibrationParams;
+}
+
 // Define the response interface for q-matrices
 interface QMatricesResponse {
   q_x: number[][];
@@ -102,6 +111,21 @@ export default function useMultimodal() {
     // The effect will automatically trigger q-matrix refresh
   }, []);
 
+  /**
+   * Restore state from a saved session
+   */
+  const restoreState = useCallback((state: RestorableScatteringState) => {
+    if (state.experimentType !== undefined) {
+      setExperimentType(state.experimentType);
+    }
+    if (state.selectedLinecuts !== undefined) {
+      setSelectedLinecuts(state.selectedLinecuts);
+    }
+    if (state.calibrationParams !== undefined) {
+      setCalibrationParams(state.calibrationParams);
+    }
+  }, []);
+
   // Fetch q-matrices when calibration parameters change
   // Only fetch if we have actual image data loaded (not initial empty state)
   useEffect(() => {
@@ -139,5 +163,8 @@ export default function useMultimodal() {
     // Q-matrices instead of Q-vectors
     qXMatrix,
     qYMatrix,
+
+    // Session restoration
+    restoreState,
   };
 }

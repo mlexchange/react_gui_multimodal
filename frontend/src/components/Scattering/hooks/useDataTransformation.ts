@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { calculateGlobalPercentiles, clipArray, calculateMinMax, calculateMeanStd }
 from '../utils/transformationUtils';
+import type { DisplaySettings } from '../services/sessionPersistence';
 
 
 export default function useDataTransformation() {
@@ -13,6 +13,19 @@ export default function useDataTransformation() {
     const [imageColormap, setImageColormap] = useState('Viridis');
     const [differenceColormap, setDifferenceColormap] = useState('RdBu');
     const [normalizationMode, setNormalizationMode] = useState('together');
+
+    /**
+     * Restore all display settings from a saved session
+     */
+    const restoreSettings = useCallback((settings: DisplaySettings) => {
+        setIsLogScale(settings.isLogScale);
+        setLowerPercentile(settings.lowerPercentile);
+        setUpperPercentile(settings.upperPercentile);
+        setNormalization(settings.normalization);
+        setImageColormap(settings.imageColormap);
+        setDifferenceColormap(settings.differenceColormap);
+        setNormalizationMode(settings.normalizationMode);
+    }, []);
 
 
     const mainTransformDataFunction = useCallback((
@@ -297,6 +310,7 @@ export default function useDataTransformation() {
         setDifferenceColormap,
         normalizationMode,
         setNormalizationMode,
-        mainTransformDataFunction
+        mainTransformDataFunction,
+        restoreSettings
     }
 }

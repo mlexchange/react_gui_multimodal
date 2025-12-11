@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Accordion, Select, Menu, Button, Popover, ActionIcon } from '@mantine/core';
 import { CaretDownIcon, CircleHalfTiltIcon, GearIcon, GitDiffIcon, InfoIcon, ListIcon, TreeStructureIcon, WrenchIcon, XIcon } from '@phosphor-icons/react';
 import { notifications } from '@mantine/notifications';
@@ -15,6 +15,7 @@ import useVerticalLinecut from './hooks/useVerticalLinecut';
 import useInclinedLinecut from './hooks/useInclinedLinecut';
 import useDataTransformation from './hooks/useDataTransformation';
 import useRawDataOverview from './hooks/useRawDataOverview';
+import useSessionPersistence, { PersistableState } from './hooks/useSessionPersistence';
 
 // Import components
 import ScatterSubplot, { OperationType } from './ScatterSubplot';
@@ -48,6 +49,17 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
   const [isRawDataCollapsed, setIsRawDataCollapsed] = useState(false);
   const [operationType, setOperationType] = useState<OperationType>('subtract');
 
+  // Session persistence hook
+  const {
+    isRestoring,
+    hasRestoredSession,
+    restoredSession,
+    triggerAutoSave,
+  } = useSessionPersistence();
+
+  // Track if session has been applied
+  const hasAppliedSession = useRef(false);
+
   const {
     experimentType,
     setExperimentType,
@@ -71,6 +83,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     updateCalibration,
     qXMatrix,
     qYMatrix,
+    restoreState: restoreScatteringState,
   } = useMultimodal();
 
   // get the first row of qXMatrix as qXVector
@@ -87,6 +100,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     updateHorizontalLinecutColor,
     deleteHorizontalLinecut,
     toggleHorizontalLinecutVisibility,
+    restoreLinecuts: restoreHorizontalLinecuts,
   } = useHorizontalLinecut(imageHeight, imageData1, imageData2, qYMatrix);
 
 
@@ -98,6 +112,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     updateVerticalLinecutColor,
     deleteVerticalLinecut,
     toggleVerticalLinecutVisibility,
+    restoreLinecuts: restoreVerticalLinecuts,
   } = useVerticalLinecut(imageWidth, imageData1, imageData2, qXMatrix);
 
 
@@ -112,6 +127,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     updateInclinedLinecutColor,
     deleteInclinedLinecut,
     toggleInclinedLinecutVisibility,
+    restoreLinecuts: restoreInclinedLinecuts,
     zoomedXQRange,
   } = useInclinedLinecut(
     imageData1,
@@ -139,6 +155,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     normalizationMode,
     setNormalizationMode,
     mainTransformDataFunction,
+    restoreSettings: restoreDisplaySettings,
   } = useDataTransformation();
 
 
@@ -148,6 +165,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     rightImageIndex,
     setRightImageIndex,
     selectedContainerPath,
+    setSelectedContainerPath,
     isFetchingData,
     isLoadingImages,
     setIsLoadingImages,
@@ -188,7 +206,136 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
       updateAzimuthalColor,
       deleteAzimuthalIntegration,
       toggleAzimuthalVisibility,
+      restoreIntegrations: restoreAzimuthalIntegrations,
   } = useAzimuthalIntegration(calibrationParams, leftScanUri, rightScanUri);
+
+  // ========== SESSION RESTORATION ==========
+  // Restore session state when the component mounts and session data is available
+  useEffect(() => {
+    // Skip if still restoring or already applied
+    if (isRestoring || hasAppliedSession.current) return;
+
+    // Skip if no session to restore
+    if (!hasRestoredSession || !restoredSession) {
+      hasAppliedSession.current = true;
+      return;
+    }
+
+    // Apply restored session state
+    console.log('Restoring session state...');
+
+    // 1. Restore display settings first (doesn't depend on data)
+    restoreDisplaySettings(restoredSession.displaySettings);
+
+    // 2. Restore multimodal state (experiment type, calibration, selectedLinecuts)
+    restoreScatteringState({
+      experimentType: restoredSession.experimentType,
+      selectedLinecuts: restoredSession.selectedLinecuts,
+      calibrationParams: restoredSession.calibrationParams,
+    });
+
+    // 3. Restore linecut definitions
+    restoreHorizontalLinecuts(restoredSession.horizontalLinecuts);
+    restoreVerticalLinecuts(restoredSession.verticalLinecuts);
+    restoreInclinedLinecuts(restoredSession.inclinedLinecuts);
+
+    // 4. Restore azimuthal integration definitions
+    restoreAzimuthalIntegrations(restoredSession.azimuthalIntegrations);
+
+    // 5. Restore UI state
+    setIsSidebarCollapsed(restoredSession.isSidebarCollapsed);
+    setIsRawDataCollapsed(restoredSession.isRawDataCollapsed);
+    setOperationType(restoredSession.operationType);
+
+    // 6. If we have a container path, fetch the spectrum data
+    //    Then set the image indices after spectrum data is loaded
+    if (restoredSession.containerPath) {
+      setSelectedContainerPath(restoredSession.containerPath);
+      fetchSpectrumData(restoredSession.containerPath).then(() => {
+        // Restore image indices after spectrum data is available
+        if (restoredSession.leftImageIndex !== "") {
+          setLeftImageIndex(restoredSession.leftImageIndex);
+        }
+        if (restoredSession.rightImageIndex !== "") {
+          setRightImageIndex(restoredSession.rightImageIndex);
+        }
+      });
+    }
+
+    hasAppliedSession.current = true;
+    console.log('Session restored successfully');
+  }, [
+    isRestoring,
+    hasRestoredSession,
+    restoredSession,
+    restoreDisplaySettings,
+    restoreScatteringState,
+    restoreHorizontalLinecuts,
+    restoreVerticalLinecuts,
+    restoreInclinedLinecuts,
+    restoreAzimuthalIntegrations,
+    setSelectedContainerPath,
+    fetchSpectrumData,
+    setLeftImageIndex,
+    setRightImageIndex,
+  ]);
+
+  // ========== AUTO-SAVE SESSION ==========
+  // Trigger auto-save whenever persistable state changes
+  useEffect(() => {
+    // Don't save while restoring or before session has been applied
+    if (isRestoring || !hasAppliedSession.current) return;
+
+    const persistableState: PersistableState = {
+      containerPath: selectedContainerPath,
+      leftImageIndex,
+      rightImageIndex,
+      experimentType: experimentType as 'SAXS' | 'GISAXS',
+      calibrationParams,
+      displaySettings: {
+        isLogScale,
+        lowerPercentile,
+        upperPercentile,
+        normalization,
+        imageColormap,
+        differenceColormap,
+        normalizationMode,
+      },
+      horizontalLinecuts,
+      verticalLinecuts,
+      inclinedLinecuts,
+      selectedLinecuts,
+      azimuthalIntegrations,
+      isSidebarCollapsed,
+      isRawDataCollapsed,
+      operationType,
+    };
+
+    triggerAutoSave(persistableState);
+  }, [
+    isRestoring,
+    selectedContainerPath,
+    leftImageIndex,
+    rightImageIndex,
+    experimentType,
+    calibrationParams,
+    isLogScale,
+    lowerPercentile,
+    upperPercentile,
+    normalization,
+    imageColormap,
+    differenceColormap,
+    normalizationMode,
+    horizontalLinecuts,
+    verticalLinecuts,
+    inclinedLinecuts,
+    selectedLinecuts,
+    azimuthalIntegrations,
+    isSidebarCollapsed,
+    isRawDataCollapsed,
+    operationType,
+    triggerAutoSave,
+  ]);
 
 
     const handleCalibrationUpdate = async (params: CalibrationParams) => {
@@ -644,7 +791,8 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
         </div>
 
         {/* Bottom Row - Linecuts (each in separate cards) */}
-        {(
+        {/* Only show linecuts when image data is loaded */}
+        {imageData1.length > 0 && imageData2.length > 0 && (
           (selectedLinecuts.includes('Horizontal') && horizontalLinecuts.length > 0) ||
           (selectedLinecuts.includes('Vertical') && verticalLinecuts.length > 0) ||
           (selectedLinecuts.includes('Inclined') && inclinedLinecuts.length > 0) ||

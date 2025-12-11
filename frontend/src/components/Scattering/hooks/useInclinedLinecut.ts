@@ -482,6 +482,17 @@ const computeInclinedLinecutData = useCallback((
   }, []);
 
   /**
+   * Restore linecuts from a saved session
+   * The intensity data will be recomputed when image data is available
+   */
+  const restoreLinecuts = useCallback((linecuts: InclinedLinecut[]) => {
+    setInclinedLinecuts(linecuts);
+    // Clear old intensity data - it will be recomputed by the effect below
+    setInclinedLinecutData1([]);
+    setInclinedLinecutData2([]);
+  }, []);
+
+  /**
    * Effect to update all linecut data when qXVector or qYVector changes
    *
    * This ensures that if the q-space mapping changes, all linecuts maintain
@@ -538,6 +549,7 @@ const computeInclinedLinecutData = useCallback((
     updateInclinedLinecutColor,
     deleteInclinedLinecut,
     toggleInclinedLinecutVisibility,
+    restoreLinecuts,
     // calculateQPathDistance,
     zoomedXQRange,
     // zoomedYQRange,

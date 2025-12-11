@@ -446,6 +446,18 @@ export default function useAzimuthalIntegration(
         );
     }, []);
 
+    /**
+     * Restore integrations from a saved session
+     * The actual data will be recomputed when images are loaded
+     */
+    const restoreIntegrations = useCallback((integrations: AzimuthalIntegration[]) => {
+        setAzimuthalIntegrations(integrations);
+        // Clear cached data and computed results - they will be refetched
+        setCachedMatrixData(null);
+        setAzimuthalData1([]);
+        setAzimuthalData2([]);
+    }, []);
+
 
     return {
         // State
@@ -463,5 +475,6 @@ export default function useAzimuthalIntegration(
         updateAzimuthalColor,
         deleteAzimuthalIntegration,
         toggleAzimuthalVisibility,
+        restoreIntegrations,
     };
 }

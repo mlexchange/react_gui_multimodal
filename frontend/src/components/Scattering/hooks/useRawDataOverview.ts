@@ -301,6 +301,7 @@ export default function useRawDataOverview() {
         rightImageIndex,
         setRightImageIndex,
         selectedContainerPath,
+        setSelectedContainerPath,  // Exposed for session restoration
         isFetchingData,
         isLoadingImages,
         setIsLoadingImages,
