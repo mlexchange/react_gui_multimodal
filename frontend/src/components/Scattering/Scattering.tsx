@@ -35,6 +35,9 @@ import RawDataOverviewFig from './RawDataOverviewFig';
 import { handleExperimentTypeChange, addLinecut } from './utils/linecutHandlers';
 import { leftImageColorPalette, rightImageColorPalette } from './utils/constants';
 
+// Import assets
+import alsLogo from '@/assets/als-logo.png';
+
 const tiledUrl = import.meta.env.SCATTERING_TILED_URL;
 const tiledApiKey = import.meta.env.SCATTERING_TILED_API_KEY;
 
@@ -382,7 +385,14 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
   };
 
   return (
-    <div className={`flex ${standalone ? 'h-screen' : 'h-full'} w-full overflow-hidden`}>
+    <div className={`flex flex-col ${standalone ? 'h-screen' : 'h-full'} w-full`}>
+      {standalone && (
+        <header className="flex items-center justify-center gap-3 p-1 bg-white border-b border-gray-200 shrink-0">
+          <img src={alsLogo} alt="ALS Logo" className="h-10" />
+          <h1 className="text-2xl font-bold text-sky-700">X-ray Scattering Analysis</h1>
+        </header>
+      )}
+      <div className="flex flex-1 w-full overflow-hidden">
       {/* First Column - Sidebar */}
         <div className={`border border-gray-300 bg-slate-200 shadow-lg relative transition-all duration-300 flex-shrink-0 flex flex-col h-full ${isSidebarCollapsed ? 'w-[48px]' : 'w-[300px]'}`}>
         {/* Scrollable Content Section */}
@@ -883,6 +893,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
             )}
           </div>
         )}
+      </div>
       </div>
 
       {/* Settings Overlay */}
