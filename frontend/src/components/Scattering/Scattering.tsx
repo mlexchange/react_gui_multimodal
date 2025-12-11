@@ -104,7 +104,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     deleteHorizontalLinecut,
     toggleHorizontalLinecutVisibility,
     restoreLinecuts: restoreHorizontalLinecuts,
-  } = useHorizontalLinecut(imageHeight, imageData1, imageData2, qYMatrix);
+  } = useHorizontalLinecut(qYMatrix);
 
 
   const {
@@ -116,7 +116,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     deleteVerticalLinecut,
     toggleVerticalLinecutVisibility,
     restoreLinecuts: restoreVerticalLinecuts,
-  } = useVerticalLinecut(imageWidth, imageData1, imageData2, qXMatrix);
+  } = useVerticalLinecut(qXMatrix);
 
 
 
@@ -187,7 +187,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     handleTiledSelection,
 
     displayOption,
-    setDisplayOption,
+    _setDisplayOption,
 
   } = useRawDataOverview();
 

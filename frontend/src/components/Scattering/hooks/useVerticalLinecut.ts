@@ -7,17 +7,11 @@ import { findPixelPositionForQValue } from '../utils/findPixelPositionForQValue'
 /**
  * Custom hook for managing vertical linecuts based on q-values
  *
- * @param imageWidth - Width of the detector image in pixels
- * @param imageData1 - 2D array of intensity values for first image
- * @param imageData2 - 2D array of intensity values for second image
  * @param qXMatrix - 2D matrix of q-values along X axis
  * @returns Object with linecut data and management functions
  */
 export default function useVerticalLinecut(
-    imageWidth: number,
-    imageData1: number[][],
-    imageData2: number[][],
-    qXMatrix: number[][] // Changed from qXVector to qXMatrix
+    qXMatrix: number[][]
 ) {
   // State for storing the linecut definitions
   const [verticalLinecuts, setVerticalLinecuts] = useState<Linecut[]>([]);

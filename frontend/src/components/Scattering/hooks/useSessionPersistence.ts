@@ -15,7 +15,6 @@ import {
   clearSession,
   isSessionValid,
   isSessionExpired,
-  createDefaultSessionState
 } from '../services/sessionPersistence';
 import type {
   CalibrationParams,

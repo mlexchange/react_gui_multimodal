@@ -82,6 +82,7 @@ const RawDataOverviewAccordion: React.FC<RawDataOverviewAccordionProps> = ({
               placeholder="Select left image"
               data={imageOptions}
               searchable
+              disabled={isFetchingData}
               classNames={{
                 input: 'w-full',
                 label: 'text-lg',
@@ -97,6 +98,7 @@ const RawDataOverviewAccordion: React.FC<RawDataOverviewAccordionProps> = ({
               placeholder="Select right image"
               data={imageOptions}
               searchable
+              disabled={isFetchingData}
               classNames={{
                 input: 'w-full',
                 label: 'text-lg',

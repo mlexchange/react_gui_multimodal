@@ -20,7 +20,6 @@ import { generateAzimuthalOverlay } from './utils/generateAzimuthalOverlay';
 import { getArrayMinMax } from './utils/getArrayMinAndMax';
 // import { calculateMinMax } from './utils/transformationUtils';
 import { calculateDifferenceArray } from './utils/calculateDifferenceArray';
-import { Select } from '@mantine/core';
 
 import AzimuthalLoadingSpinner from "./AzimuthalLoadingSpinner";
 import { calculateDivisionArray } from './utils/calculateDivisionArray';
@@ -72,7 +71,6 @@ interface ScatterSubplotProps {
 
 const ScatterSubplot: React.FC<ScatterSubplotProps> = React.memo(({
   operationType,
-  setOperationType,
   setImageHeight,
   setImageWidth,
   setImageData1,
