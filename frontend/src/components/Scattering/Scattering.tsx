@@ -182,7 +182,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     imageNames,
     scanUris,
 
-    fetchSpectrumData,
+    fetchSummaryData,
     handleImageIndicesChange,
     handleTiledSelection,
 
@@ -250,12 +250,12 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     setIsRawDataCollapsed(restoredSession.isRawDataCollapsed);
     setOperationType(restoredSession.operationType);
 
-    // 6. If we have a container path, fetch the spectrum data
-    //    Then set the image indices after spectrum data is loaded
+    // 6. If we have a container path, fetch the summary data
+    //    Then set the image indices after summary data is loaded
     if (restoredSession.containerPath) {
       setSelectedContainerPath(restoredSession.containerPath);
-      fetchSpectrumData(restoredSession.containerPath).then(() => {
-        // Restore image indices after spectrum data is available
+      fetchSummaryData(restoredSession.containerPath).then(() => {
+        // Restore image indices after summary data is available
         if (restoredSession.leftImageIndex !== "") {
           setLeftImageIndex(restoredSession.leftImageIndex);
         }
@@ -278,7 +278,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     restoreInclinedLinecuts,
     restoreAzimuthalIntegrations,
     setSelectedContainerPath,
-    fetchSpectrumData,
+    fetchSummaryData,
     setLeftImageIndex,
     setRightImageIndex,
   ]);

@@ -75,8 +75,8 @@ export default function useRawDataOverview() {
 
     const [displayOption, setDisplayOption] = useState<DisplayOption>('both');
 
-    // New state for spectrum data
-    const [spectrumData, setSpectrumData] = useState<RawDataOverview>({
+    // New state for summary data
+    const [summaryData, setSummaryData] = useState<RawDataOverview>({
         max_intensities: [],
         avg_intensities: [],
         image_names: [],
@@ -155,8 +155,8 @@ export default function useRawDataOverview() {
         };
     }, []);
 
-    // Function to fetch spectrum data from the backend
-    const fetchSpectrumData = useCallback(async (containerPath?: string) => {
+    // Function to fetch summary data from the backend
+    const fetchSummaryData = useCallback(async (containerPath?: string) => {
         try {
             setIsFetchingData(true);
             // setIsLoading(true);
@@ -168,10 +168,10 @@ export default function useRawDataOverview() {
             });
 
             notifications.show({
-                id: 'loading-spectrum',
+                id: 'loading-summary',
                 loading: true,
-                title: 'Loading Spectrum Data',
-                message: 'Please wait while we fetch the spectrum data...',
+                title: 'Loading summary data',
+                message: 'Please wait while we fetch the summary data...',
                 autoClose: false,
             });
 
@@ -186,7 +186,7 @@ export default function useRawDataOverview() {
             const response = await fetch(url.toString());
 
             if (!response.ok) {
-                throw new Error(`Failed to fetch spectrum data: ${response.statusText}`);
+                throw new Error(`Failed to fetch summary data: ${response.statusText}`);
             }
 
             // Assuming the response is in MessagePack format
@@ -197,8 +197,8 @@ export default function useRawDataOverview() {
             const numScans = decoded.num_scans || 0;
             setNumOfFiles(numScans);
 
-            // Update spectrum data
-            setSpectrumData({
+            // Update summary data
+            setSummaryData({
                 max_intensities: decoded.max_intensities || [],
                 avg_intensities: decoded.avg_intensities || [],
                 image_names: decoded.scan_names || [],
@@ -222,19 +222,19 @@ export default function useRawDataOverview() {
             });
 
             notifications.update({
-                id: 'loading-spectrum',
+                id: 'loading-summary',
                 color: 'green',
-                title: 'Spectrum Data Loaded',
-                message: 'Successfully loaded scatter spectrum data',
+                title: 'Summary data loaded',
+                message: 'Successfully loaded summary data',
                 autoClose: 3000,
             });
         } catch (error) {
-            let errorMessage = 'Failed to fetch spectrum data';
+            let errorMessage = 'Failed to fetch summary data';
             if (error instanceof Error) {
                 errorMessage = error.message;
             }
 
-            console.error('Error fetching scatter spectrum:', error);
+            console.error('Error fetching summary:', error);
 
             // Reset progress on error
             setProgress({
@@ -243,9 +243,9 @@ export default function useRawDataOverview() {
             });
 
             notifications.update({
-                id: 'loading-spectrum',
+                id: 'loading-summary',
                 color: 'red',
-                title: 'Error Loading Spectrum Data',
+                title: 'Error loading summary data',
                 message: errorMessage,
                 autoClose: 5000,
             });
@@ -272,7 +272,7 @@ export default function useRawDataOverview() {
             notifications.show({
                 id: 'loading-images',
                 loading: true,
-                title: 'Loading Images',
+                title: 'Loading images',
                 message: `Loading images ${left} and ${right}...`,
                 autoClose: false,
             });
@@ -290,8 +290,8 @@ export default function useRawDataOverview() {
         setSelectedContainerPath(containerPath);
 
         // Trigger data fetch with the container path
-        fetchSpectrumData(containerPath);
-    }, [fetchSpectrumData]);
+        fetchSummaryData(containerPath);
+    }, [fetchSummaryData]);
 
 
     return {
@@ -311,14 +311,14 @@ export default function useRawDataOverview() {
         progress: progress.progress,
         progressMessage: progress.message,
 
-        // Spectrum data
-        maxIntensities: spectrumData.max_intensities,
-        avgIntensities: spectrumData.avg_intensities,
-        imageNames: spectrumData.image_names,
-        scanUris: spectrumData.scan_uris,
+        // Scan data
+        maxIntensities: summaryData.max_intensities,
+        avgIntensities: summaryData.avg_intensities,
+        imageNames: summaryData.image_names,
+        scanUris: summaryData.scan_uris,
 
         // Handlers
-        fetchSpectrumData,
+        fetchSummaryData,
         handleImageIndicesChange,
         handleTiledSelection,
 

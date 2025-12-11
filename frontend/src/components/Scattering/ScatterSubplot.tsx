@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import Plot from "react-plotly.js";
 import { decode } from "@msgpack/msgpack";
+import { notifications } from '@mantine/notifications';
 import {
   ResolutionDataType,
   InclinedLinecut,
@@ -655,12 +656,20 @@ const ScatterSubplot: React.FC<ScatterSubplotProps> = React.memo(({
         };
 
         setPlotData(plotlyData);
-        setIsLoadingImages?.(false); // Hide loading spinner
+        setIsLoadingImages?.(false);
+        notifications.hide('loading-images');
 
       })
       .catch(error => {
         console.error("Error fetching scatter subplot:", error);
-        setIsLoadingImages?.(false); // Hide loading spinner on error
+        setIsLoadingImages?.(false);
+        notifications.update({
+          id: 'loading-images',
+          color: 'red',
+          title: 'Error loading images',
+          message: error instanceof Error ? error.message : 'Failed to load images',
+          autoClose: 5000,
+        });
       });
 
   }, [
