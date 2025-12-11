@@ -1,8 +1,10 @@
 /**
  * Session Persistence Service
  *
- * Handles saving and restoring application state to/from localStorage.
- * This enables the app to restore its state when the tab is closed and reopened.
+ * Handles saving and restoring application state to/from sessionStorage.
+ * This enables the app to restore its state when the page is refreshed,
+ * but the session is cleared when the tab is closed.
+ * Each tab has its own independent session.
  */
 
 import type {
@@ -12,11 +14,8 @@ import type {
   AzimuthalIntegration
 } from '../types';
 
-// Storage key for localStorage
+// Storage key for sessionStorage
 const STORAGE_KEY = 'scattering_session_v1';
-
-// Session validity duration (24 hours in milliseconds)
-const SESSION_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Display settings stored in session
@@ -126,7 +125,7 @@ export function createDefaultSessionState(): SessionState {
 }
 
 /**
- * Save session state to localStorage
+ * Save session state to sessionStorage
  *
  * @param state - The session state to save
  * @returns true if save was successful, false otherwise
@@ -139,24 +138,24 @@ export function saveSession(state: SessionState): boolean {
     };
 
     const serialized = JSON.stringify(stateToSave);
-    localStorage.setItem(STORAGE_KEY, serialized);
+    sessionStorage.setItem(STORAGE_KEY, serialized);
 
     return true;
   } catch (error) {
     // Handle quota exceeded or other storage errors
-    console.error('Failed to save session to localStorage:', error);
+    console.error('Failed to save session to sessionStorage:', error);
     return false;
   }
 }
 
 /**
- * Load session state from localStorage
+ * Load session state from sessionStorage
  *
  * @returns The loaded session state, or null if no valid session exists
  */
 export function loadSession(): SessionState | null {
   try {
-    const serialized = localStorage.getItem(STORAGE_KEY);
+    const serialized = sessionStorage.getItem(STORAGE_KEY);
 
     if (!serialized) {
       return null;
@@ -166,58 +165,27 @@ export function loadSession(): SessionState | null {
 
     // Validate the loaded state
     if (!isValidSessionState(state)) {
-      console.warn('Invalid session state found in localStorage, clearing...');
+      console.warn('Invalid session state found in sessionStorage, clearing...');
       clearSession();
       return null;
     }
 
     return state;
   } catch (error) {
-    console.error('Failed to load session from localStorage:', error);
+    console.error('Failed to load session from sessionStorage:', error);
     return null;
   }
 }
 
 /**
- * Clear the saved session from localStorage
+ * Clear the saved session from sessionStorage
  */
 export function clearSession(): void {
   try {
-    localStorage.removeItem(STORAGE_KEY);
+    sessionStorage.removeItem(STORAGE_KEY);
   } catch (error) {
-    console.error('Failed to clear session from localStorage:', error);
+    console.error('Failed to clear session from sessionStorage:', error);
   }
-}
-
-/**
- * Check if a session state is valid and not expired
- *
- * @param state - The session state to validate
- * @returns true if the session is valid
- */
-export function isSessionValid(state: SessionState | null): boolean {
-  if (!state) {
-    return false;
-  }
-
-  // Check if session has expired
-  const age = Date.now() - state.savedAt;
-  if (age > SESSION_MAX_AGE_MS) {
-    return false;
-  }
-
-  return true;
-}
-
-/**
- * Check if a session is expired (but still structurally valid)
- *
- * @param state - The session state to check
- * @returns true if the session is expired
- */
-export function isSessionExpired(state: SessionState): boolean {
-  const age = Date.now() - state.savedAt;
-  return age > SESSION_MAX_AGE_MS;
 }
 
 /**

@@ -2,7 +2,8 @@
  * useSessionPersistence Hook
  *
  * React hook for managing session persistence with debounced auto-save.
- * Handles saving/restoring application state to/from localStorage.
+ * Handles saving/restoring application state to/from sessionStorage.
+ * Session persists within a tab (survives refresh) but is cleared when tab closes.
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
@@ -13,8 +14,6 @@ import {
   saveSession,
   loadSession,
   clearSession,
-  isSessionValid,
-  isSessionExpired,
 } from '../services/sessionPersistence';
 import type {
   CalibrationParams,
@@ -59,9 +58,6 @@ export interface UseSessionPersistenceReturn {
   /** The restored session state (null if no session or restoration failed) */
   restoredSession: SessionState | null;
 
-  /** Whether the restored session was expired */
-  wasSessionExpired: boolean;
-
   /** Manually save the current state */
   saveCurrentState: (state: PersistableState) => void;
 
@@ -84,7 +80,6 @@ export default function useSessionPersistence(): UseSessionPersistenceReturn {
   const [isRestoring, setIsRestoring] = useState(true);
   const [hasRestoredSession, setHasRestoredSession] = useState(false);
   const [restoredSession, setRestoredSession] = useState<SessionState | null>(null);
-  const [wasSessionExpired, setWasSessionExpired] = useState(false);
   const [lastSaveTime, setLastSaveTime] = useState<number | null>(null);
 
   // Ref to track if component is mounted (for async operations)
@@ -113,16 +108,8 @@ export default function useSessionPersistence(): UseSessionPersistenceReturn {
     const session = loadSession();
 
     if (session) {
-      // Check if session is expired
-      if (isSessionExpired(session)) {
-        setWasSessionExpired(true);
-        // Still restore but mark as expired - UI can prompt user
-      }
-
-      if (isSessionValid(session) || isSessionExpired(session)) {
-        setRestoredSession(session);
-        setHasRestoredSession(true);
-      }
+      setRestoredSession(session);
+      setHasRestoredSession(true);
     }
 
     setIsRestoring(false);
@@ -171,7 +158,6 @@ export default function useSessionPersistence(): UseSessionPersistenceReturn {
     isRestoring,
     hasRestoredSession,
     restoredSession,
-    wasSessionExpired,
     saveCurrentState,
     triggerAutoSave,
     clearSavedSession,
