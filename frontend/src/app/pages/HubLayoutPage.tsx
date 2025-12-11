@@ -1,9 +1,7 @@
-import { MantineProvider } from "@mantine/core";
 import { HubAppLayout, RouteItem } from "@blueskyproject/finch";
 import { Scattering } from "@/components/Scattering";
 import { HouseIcon, ChartScatterIcon } from "@phosphor-icons/react";
 
-import "@mantine/core/styles.css";
 import "@blueskyproject/finch/style.css";
 
 /**
@@ -12,18 +10,6 @@ import "@blueskyproject/finch/style.css";
  * This demonstrates how to use the Scattering component within the
  * Finch HubAppLayout, which provides navigation and a consistent layout
  * for multiple modules.
- *
- * Usage:
- * ```tsx
- * const routes: RouteItem[] = [
- *   { label: "Home", path: "/", element: <HomePage />, icon: <HomeIcon /> },
- *   { label: "Scattering", path: "/scattering", element: <Scattering />, icon: <ScatterIcon /> },
- * ];
- *
- * <MantineProvider>
- *   <HubAppLayout headerTitle="Multimodal Analysis" routes={routes} />
- * </MantineProvider>
- * ```
  */
 export default function HubLayoutPage() {
   const routes: RouteItem[] = [
@@ -41,9 +27,5 @@ export default function HubLayoutPage() {
     },
   ];
 
-  return (
-    <MantineProvider>
-      <HubAppLayout headerTitle="Multimodal Analysis" routes={routes} />
-    </MantineProvider>
-  );
+  return <HubAppLayout headerTitle="Multimodal Analysis" routes={routes} />;
 }
