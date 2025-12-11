@@ -187,7 +187,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     handleTiledSelection,
 
     displayOption,
-    _setDisplayOption,
+    setDisplayOption,
 
   } = useRawDataOverview();
 
