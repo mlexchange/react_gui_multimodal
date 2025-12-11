@@ -1,6 +1,6 @@
 // Scattering hooks exports
 
-export { default as useMultimodal } from './useMultimodal';
+export { default as useScattering } from './useScattering';
 export { default as useRawDataOverview } from './useRawDataOverview';
 export { default as useAzimuthalIntegration } from './useAzimuthalIntegration';
 export { default as useHorizontalLinecut } from './useHorizontalLinecut';

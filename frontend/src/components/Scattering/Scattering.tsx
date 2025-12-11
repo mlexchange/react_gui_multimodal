@@ -8,7 +8,7 @@ import { Tiled } from '@blueskyproject/tiled';
 import '@blueskyproject/tiled/style.css';
 
 // Import hooks
-import useMultimodal from './hooks/useMultimodal';
+import useScattering from './hooks/useScattering';
 import useAzimuthalIntegration from './hooks/useAzimuthalIntegration';
 import useHorizontalLinecut from './hooks/useHorizontalLinecut';
 import useVerticalLinecut from './hooks/useVerticalLinecut';
@@ -84,7 +84,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     qXMatrix,
     qYMatrix,
     restoreState: restoreScatteringState,
-  } = useMultimodal();
+  } = useScattering();
 
   // get the first row of qXMatrix as qXVector
   const qXVector = qXMatrix[0];

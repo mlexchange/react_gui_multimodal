@@ -30,7 +30,7 @@ function isQMatricesResponse(value: unknown): value is QMatricesResponse {
   );
 }
 
-export default function useMultimodal() {
+export default function useScattering() {
   // Existing state variables
   const [experimentType, setExperimentType] = useState('SAXS');
   const [selectedLinecuts, setSelectedLinecuts] = useState<string[]>([]);
