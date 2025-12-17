@@ -389,22 +389,22 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
       {standalone && (
         <header className="flex items-center justify-center gap-3 p-1 bg-white border-b border-gray-200 shrink-0">
           <img src={alsLogo} alt="ALS Logo" className="h-10" />
-          <h1 className="text-2xl font-bold text-sky-700">X-ray Scattering Analysis</h1>
+          <h1 className="text-2xl font-bold text-sky-950">X-ray Scattering Analysis</h1>
         </header>
       )}
       <div className="flex flex-1 w-full overflow-hidden">
       {/* First Column - Sidebar */}
-        <div className={`border border-gray-300 bg-slate-200 shadow-lg relative transition-all duration-300 flex-shrink-0 flex flex-col h-full ${isSidebarCollapsed ? 'w-[48px]' : 'w-[300px]'}`}>
+        <div className={`border border-gray-300 bg-slate-200 shadow-lg relative transition-all duration-300 flex-shrink-0 flex flex-col h-full ${isSidebarCollapsed ? 'w-[48px]' : 'w-[250px]'}`}>
         {/* Scrollable Content Section */}
         <div className="grid gap-2 overflow-y-auto overflow-x-hidden p-2">
           {/* Experimental data section (non-accordion) */}
           <div className="flex-1 flex-row">
             {/* Header styled like accordion */}
-            <div className={`flex items-center pb-2 text-sky-900 border-b border-gray-200 ${isSidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
+            <div className={`flex items-center pb-2 text-sky-950 border-b border-gray-200 ${isSidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
               {!isSidebarCollapsed && (
               <div className="flex items-center gap-3">
                 <TreeStructureIcon size={24} weight="bold" />
-                <span className="text-lg font-bold">Experimental data</span>
+                <span className="text-lg font-semibold">Experimental data</span>
               </div>
               )}
               <ListIcon
@@ -420,7 +420,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
             <div className="grid pl-3 gap-2">
               {/* Experiment Type */}
               <Select
-                label="Type"
+                label="Experiment type"
                 value={experimentType}
                 onChange={(value) => handleExperimentTypeChange(value, setExperimentType, setSelectedLinecuts)}
                 data={[
@@ -428,14 +428,13 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                   { value: 'GISAXS', label: 'GISAXS' },
                 ]}
                 classNames={{
-                  label: 'text-md text-sky-700 font-bold',
-                  // input: 'py-3 px-4',
+                  label: 'text-sm text-slate-900',
                   option: 'py-2 px-4 hover:bg-gray-100 cursor-pointer rounded',
                 }}
               />
 
               {/* Tiled Load Data */}
-              <div className="">
+              <div className="w-full [&_button]:w-full [&_button]:bg-sky-500 [&_button]:hover:bg-sky-600 [&_button]:ml-0">
                 <Tiled
                   tiledBaseUrl={tiledUrl}
                   apiKey={tiledApiKey}
@@ -466,7 +465,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                 searchable
                 disabled={isFetchingData || numOfFiles === 0}
                 classNames={{
-                  label: 'text-md text-sky-700 font-bold',
+                  label: 'text-sm text-slate-900',
                 }}
               />
 
@@ -483,7 +482,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                 searchable
                 disabled={isFetchingData || numOfFiles === 0}
                 classNames={{
-                  label: 'text-md text-sky-700 font-bold',
+                  label: 'text-sm text-slate-900',
                 }}
               />
             </div>
@@ -496,9 +495,9 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
             multiple
             // defaultValue={['calibration-accordion', 'linecuts-accordion']}
             chevronSize={24}
-            chevron={<CaretDownIcon size={24} className="text-sky-900" />}
+            chevron={<CaretDownIcon size={24} className="text-sky-950" />}
             chevronPosition="right"
-            classNames={{ item: 'pt-4 border-b-0', label: 'text-lg py-2 text-sky-900 font-bold', control: 'px-0 text-sky-900', content: 'pl-3 pr-0' }}
+            classNames={{ item: 'pt-4 border-b-0', label: 'text-lg py-2 text-sky-950 font-semibold', control: 'px-0 text-sky-950', content: 'pl-3 pr-0' }}
           >
             {/* Calibration accordion */}
             <Accordion.Item value="calibration-accordion">
@@ -660,13 +659,13 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
         <div className="flex-1 flex overflow-hidden gap-2">
           {/* Scatter Images Card */}
           <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex-1 overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 text-sky-700">
-              <h2 className="text-lg font-bold">2D Scattering Data</h2>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 text-sky-950">
+              <h2 className="text-lg font-semibold">2D Scattering Data</h2>
               <div className="flex items-center gap-1">
                 <Menu position="bottom-end" withArrow shadow="md">
                   <Menu.Target>
                     <ActionIcon variant="subtle" size="md">
-                      <GitDiffIcon size={24} className='text-sky-700'/>
+                      <GitDiffIcon size={24} className='text-sky-950'/>
                     </ActionIcon>
                   </Menu.Target>
                   <Menu.Dropdown>
@@ -685,7 +684,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                   </Menu.Dropdown>
                 </Menu>
                 <ActionIcon variant="subtle" size="md" onClick={() => setIsSettingsOpen(true)}>
-                  <GearIcon size={24} className='text-sky-700'/>
+                  <GearIcon size={24} className='text-sky-950'/>
                 </ActionIcon>
               </div>
             </div>
@@ -771,7 +770,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
           {/* Raw Data Overview Card */}
           <div className={`h-full flex-shrink-0 transition-all duration-300 ${isRawDataCollapsed ? 'w-[48px]' : 'w-[280px]'}`}>
             <div className="bg-white border border-gray-200 rounded-lg shadow-sm h-full flex flex-col">
-              <div className="flex items-center justify-between px-3 py-3 border-b border-gray-200 flex-shrink-0 text-sky-700">
+              <div className="flex items-center justify-between px-3 py-3 border-b border-gray-200 flex-shrink-0 text-sky-950">
                 {!isRawDataCollapsed && <h2 className="text-lg font-bold">Raw Data Overview</h2>}
                 <ListIcon
                   size={24}
@@ -812,7 +811,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
             {/* Horizontal Linecut Card */}
             {selectedLinecuts.includes('Horizontal') && horizontalLinecuts.length > 0 && (
               <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex-1 min-w-[300px] overflow-hidden flex flex-col">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 text-sky-700">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 text-sky-950">
                   <h2 className="text-lg font-bold">Horizontal Linecut</h2>
                 </div>
                 <div className="p-2 flex-1 overflow-hidden">
@@ -833,7 +832,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
             {/* Vertical Linecut Card */}
             {selectedLinecuts.includes('Vertical') && verticalLinecuts.length > 0 && (
               <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex-1 min-w-[300px] overflow-hidden flex flex-col">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 text-sky-700">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 text-sky-950">
                   <h2 className="text-lg font-bold">Vertical Linecut</h2>
                 </div>
                 <div className="p-2 flex-1 overflow-hidden">
@@ -854,7 +853,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
             {/* Inclined Linecut Card */}
             {selectedLinecuts.includes('Inclined') && inclinedLinecuts.length > 0 && (
               <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex-1 min-w-[300px] overflow-hidden flex flex-col">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 text-sky-700">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 text-sky-950">
                   <h2 className="text-lg font-bold">Inclined Linecut</h2>
                 </div>
                 <div className="p-2 flex-1 overflow-hidden">
@@ -878,7 +877,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
               selectedLinecuts.includes('Azimuthal') &&
               azimuthalIntegrations.length > 0 && (
               <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex-1 min-w-[300px] overflow-hidden flex flex-col">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 text-sky-700">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 text-sky-950">
                   <h2 className="text-lg font-bold">Azimuthal Integration</h2>
                 </div>
                 <div className="p-2 flex-1 overflow-hidden">
