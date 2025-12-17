@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { Accordion, Select, Menu, Button, Popover, ActionIcon } from '@mantine/core';
+import { Accordion, Select, Menu, Popover, ActionIcon } from '@mantine/core';
 import { CaretDownIcon, CircleHalfTiltIcon, GearIcon, GitDiffIcon, InfoIcon, ListIcon, TreeStructureIcon, WrenchIcon, XIcon } from '@phosphor-icons/react';
 import { notifications } from '@mantine/notifications';
 import { CalibrationParams } from './types';
 
+import { Button } from '@blueskyproject/finch';
 import { Tiled } from '@blueskyproject/tiled';
 import '@blueskyproject/tiled/style.css';
 
@@ -48,6 +49,7 @@ interface ScatteringProps {
 export default function Scattering({ standalone = false }: ScatteringProps) {
   const linecutOrder = ['Horizontal', 'Vertical', 'Inclined', 'Azimuthal'];
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isCalibrationOpen, setIsCalibrationOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isRawDataCollapsed, setIsRawDataCollapsed] = useState(false);
   const [operationType, setOperationType] = useState<OperationType>('subtract');
@@ -450,6 +452,14 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                 )}
               </div>
 
+              {/* Calibration Button */}
+              <Button
+                size="medium"
+                styles="w-full"
+                cb={() => setIsCalibrationOpen(true)}
+                text="Calibration"
+              />
+
 
 
               {/* Left Image Dropdown */}
@@ -493,25 +503,11 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
           {!isSidebarCollapsed && (
           <Accordion
             multiple
-            // defaultValue={['calibration-accordion', 'linecuts-accordion']}
             chevronSize={24}
             chevron={<CaretDownIcon size={24} className="text-sky-950" />}
             chevronPosition="right"
             classNames={{ item: 'pt-4 border-b-0', label: 'text-lg py-2 text-sky-950 font-semibold', control: 'px-0 text-sky-950', content: 'pl-3 pr-0' }}
           >
-            {/* Calibration accordion */}
-            <Accordion.Item value="calibration-accordion">
-              <Accordion.Control icon={<WrenchIcon size={24} weight="bold" />}>
-                Calibration
-              </Accordion.Control>
-              <Accordion.Panel>
-                <CalibrationAccordion
-                  onCalibrationUpdate={handleCalibrationUpdate}
-                  calibrationParams={calibrationParams}
-                />
-              </Accordion.Panel>
-            </Accordion.Item>
-
             {/* Linecuts accordion */}
             <Accordion.Item value="linecuts-accordion">
               <Accordion.Control icon={<CircleHalfTiltIcon size={24} weight="bold" />}>
@@ -524,13 +520,11 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                     {/* Menu Button */}
                     <Menu.Target>
                       <Button
-                        size="md"
-                        radius="md"
-                        className="w-full bg-sky-500 font-semibold shadow hover:bg-sky-600 disabled:bg-gray-300 transition mx-auto block"
+                        size="medium"
+                        styles="w-full"
                         disabled={isFetchingData || numOfFiles === 0 || !numOfFiles}
-                      >
-                        Add linecut
-                      </Button>
+                        text="Add linecut"
+                      />
                     </Menu.Target>
 
                     {/* Dropdown Items */}
@@ -927,6 +921,32 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                 setDifferenceColormap={setDifferenceColormap}
                 normalizationMode={normalizationMode}
                 setNormalizationMode={setNormalizationMode}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Calibration Overlay */}
+      {isCalibrationOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center"
+          onClick={() => setIsCalibrationOpen(false)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[80vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 text-sky-950">
+              <div className="flex items-center gap-2">
+                <WrenchIcon size={24} weight="bold" />
+                <h3 className="text-lg font-semibold">Calibration parameters</h3>
+              </div>
+            </div>
+            <div className="p-4">
+              <CalibrationAccordion
+                onCalibrationUpdate={handleCalibrationUpdate}
+                calibrationParams={calibrationParams}
               />
             </div>
           </div>
