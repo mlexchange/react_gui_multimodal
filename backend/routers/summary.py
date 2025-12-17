@@ -1,5 +1,6 @@
 import asyncio
 import concurrent.futures
+import re
 
 import msgpack
 import numpy as np
@@ -11,6 +12,13 @@ from utils.tiled_client import get_tiled_client, get_tiled_base_uri, get_tiled_c
 from routers.websocket import send_progress_update
 
 router = APIRouter()
+
+
+def natural_sort_key(uri: str):
+    """Sort key for natural/human sorting"""
+    name = uri.split('/')[-1].lower()
+    # Split into text and number parts, convert numbers to int for proper sorting
+    return [int(part) if part.isdigit() else part for part in re.split(r'(\d+)', name)]
 
 
 def process_single_image(args):
@@ -49,6 +57,7 @@ async def create_summary(container_path: str):
 
     scan_uris = get_scans_from_folder(tiled_client, container_path, tiled_base_uri)
     scan_uris = [uri.lstrip('/') for uri in scan_uris]
+    scan_uris.sort(key=natural_sort_key)
     num_of_files = len(scan_uris)
 
     asyncio.create_task(send_progress_update(0, f"Initializing processing for {num_of_files} scans"))
