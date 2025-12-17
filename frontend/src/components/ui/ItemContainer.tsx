@@ -9,7 +9,7 @@ interface ItemContainerProps {
 export function ItemContainer({ children, id, className = "" }: ItemContainerProps) {
   return (
     <div
-      className={`mb-3 pt-2 pb-4 px-3 relative border rounded-lg ${className}`}
+      className={`mb-3 pt-2 pb-4 relative border rounded-lg ${className}`}
       role="region"
       aria-labelledby={id ? `item-${id}` : undefined}
     >
