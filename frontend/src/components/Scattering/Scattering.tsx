@@ -19,14 +19,12 @@ import useSessionPersistence, { PersistableState } from './hooks/useSessionPersi
 
 // Import components
 import ScatterSubplot, { OperationType } from './ScatterSubplot';
-import HorizontalLinecutWidget from './HorizontalLinecutWidget';
-import VerticalLinecutWidget from './VerticalLinecutWidget';
+import LinecutWidget from './LinecutWidget';
 import InclinedLinecutWidget from './InclinedLinecutWidget';
 import AzimuthalIntegrationWidget from './AzimuthalIntegrationWidget';
 import DataTransformationAccordion from './DataTransformationAccordion';
 import CalibrationAccordion from './CalibrationAccordion';
-import HorizontalLinecutFig from './HorizontalLinecutFig';
-import VerticalLinecutFig from './VerticalLinecutFig';
+import LinecutFig from './LinecutFig';
 import InclinedLinecutFig from './InclinedLinecutFig';
 import AzimuthalIntegrationFig from './AzimuthalIntegrationFig';
 import RawDataOverviewFig from './RawDataOverviewFig';
@@ -553,32 +551,34 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
               {linecutOrder.filter((linecut) => selectedLinecuts.includes(linecut)).map((linecutType) => {
                 if (linecutType === 'Horizontal' && horizontalLinecuts.length > 0) {
                   return (
-                    <HorizontalLinecutWidget
+                    <LinecutWidget
                       key={`linecut-section-${linecutType}`}
+                      direction="horizontal"
                       linecutType={linecutType}
                       linecuts={horizontalLinecuts}
-                      qYMatrix={qYMatrix}
-                      updateHorizontalLinecutPosition={updateHorizontalLinecutPosition}
-                      updateHorizontalLinecutWidth={updateHorizontalLinecutWidth}
-                      updateHorizontalLinecutColor={updateHorizontalLinecutColor}
-                      deleteHorizontalLinecut={deleteHorizontalLinecut}
-                      toggleHorizontalLinecutVisibility={toggleHorizontalLinecutVisibility}
+                      qMatrix={qYMatrix}
+                      updatePosition={updateHorizontalLinecutPosition}
+                      updateWidth={updateHorizontalLinecutWidth}
+                      updateColor={updateHorizontalLinecutColor}
+                      deleteLinecut={deleteHorizontalLinecut}
+                      toggleVisibility={toggleHorizontalLinecutVisibility}
                     />
                   );
                 }
 
                 if (linecutType === 'Vertical' && verticalLinecuts.length > 0) {
                   return (
-                    <VerticalLinecutWidget
+                    <LinecutWidget
                       key={`linecut-section-${linecutType}`}
+                      direction="vertical"
                       linecutType={linecutType}
                       linecuts={verticalLinecuts}
-                      qXMatrix={qXMatrix}
-                      updateVerticalLinecutPosition={updateVerticalLinecutPosition}
-                      updateVerticalLinecutWidth={updateVerticalLinecutWidth}
-                      updateVerticalLinecutColor={updateVerticalLinecutColor}
-                      deleteVerticalLinecut={deleteVerticalLinecut}
-                      toggleVerticalLinecutVisibility={toggleVerticalLinecutVisibility}
+                      qMatrix={qXMatrix}
+                      updatePosition={updateVerticalLinecutPosition}
+                      updateWidth={updateVerticalLinecutWidth}
+                      updateColor={updateVerticalLinecutColor}
+                      deleteLinecut={deleteVerticalLinecut}
+                      toggleVisibility={toggleVerticalLinecutVisibility}
                     />
                   );
                 }
@@ -785,7 +785,8 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                   <h2 className="text-lg font-bold">Horizontal Linecut</h2>
                 </div>
                 <div className="p-2 flex-1 overflow-hidden">
-                  <HorizontalLinecutFig
+                  <LinecutFig
+                    direction="horizontal"
                     linecuts={horizontalLinecuts}
                     imageData1={imageData1}
                     imageData2={imageData2}
@@ -806,7 +807,8 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                   <h2 className="text-lg font-bold">Vertical Linecut</h2>
                 </div>
                 <div className="p-2 flex-1 overflow-hidden">
-                  <VerticalLinecutFig
+                  <LinecutFig
+                    direction="vertical"
                     linecuts={verticalLinecuts}
                     imageData1={imageData1}
                     imageData2={imageData2}
