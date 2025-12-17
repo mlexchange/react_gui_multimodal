@@ -24,6 +24,7 @@ import { calculateDifferenceArray } from './utils/calculateDifferenceArray';
 
 import AzimuthalLoadingSpinner from "./AzimuthalLoadingSpinner";
 import { calculateDivisionArray } from './utils/calculateDivisionArray';
+import { fetchWithCache } from './services/scatteringImageCache';
 
 // Add a type for operation
 export type OperationType = 'subtract' | 'divide';
@@ -458,17 +459,10 @@ const ScatterSubplot: React.FC<ScatterSubplotProps> = React.memo(({
     // Show loading spinner
     setIsLoadingImages(true);
 
-    // Construct URLs for both scans
-    const leftUrl = new URL("/api/fetch-scan-image", window.location.origin);
-    leftUrl.searchParams.append("scan_uri", leftScanUri);
-
-    const rightUrl = new URL("/api/fetch-scan-image", window.location.origin);
-    rightUrl.searchParams.append("scan_uri", rightScanUri);
-
-    // Fetch both images in parallel
+    // Fetch both images in parallel (using IndexedDB cache)
     Promise.all([
-      fetch(leftUrl.toString()).then(res => res.arrayBuffer()),
-      fetch(rightUrl.toString()).then(res => res.arrayBuffer())
+      fetchWithCache(leftScanUri),
+      fetchWithCache(rightScanUri)
     ])
       .then(([leftBuffer, rightBuffer]) => {
         // Decode both responses
