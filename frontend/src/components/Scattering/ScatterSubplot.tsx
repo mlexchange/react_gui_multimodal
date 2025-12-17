@@ -577,8 +577,6 @@ const ScatterSubplot: React.FC<ScatterSubplotProps> = React.memo(({
             yaxis: {
               title: { text: 'Y (pixels)', font: { size: 12 } },
               tickfont: { size: 11 },
-              scaleanchor: 'x',
-              scaleratio: 1,
               constrain: 'domain',
             },
             xaxis2: {
@@ -591,8 +589,6 @@ const ScatterSubplot: React.FC<ScatterSubplotProps> = React.memo(({
             yaxis2: {
               title: { text: 'Y (pixels)', font: { size: 12 } },
               tickfont: { size: 11 },
-              scaleanchor: 'x2',
-              scaleratio: 1,
               constrain: 'domain',
             },
             xaxis3: {
@@ -605,8 +601,6 @@ const ScatterSubplot: React.FC<ScatterSubplotProps> = React.memo(({
             yaxis3: {
               title: { text: 'Y (pixels)', font: { size: 12 } },
               tickfont: { size: 11 },
-              scaleanchor: 'x3',
-              scaleratio: 1,
               constrain: 'domain',
             },
             coloraxis: {
