@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import Plot from "react-plotly.js";
 import { decode } from "@msgpack/msgpack";
-import { notifications } from '@mantine/notifications';
+import { notifications } from '@/components/ui';
 import {
   ResolutionDataType,
   InclinedLinecut,

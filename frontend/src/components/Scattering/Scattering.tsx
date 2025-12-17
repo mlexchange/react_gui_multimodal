@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Select, Menu, Popover, ActionIcon } from '@mantine/core';
+import { Select, Menu, Popover, IconButton, notifications } from '@/components/ui';
 import { CircleHalfTiltIcon, GearIcon, GitDiffIcon, InfoIcon, ListIcon, TreeStructureIcon, WrenchIcon, XIcon } from '@phosphor-icons/react';
-import { notifications } from '@mantine/notifications';
 import { CalibrationParams } from './types';
 
 import { Button } from '@blueskyproject/finch';
@@ -433,10 +432,6 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                   { value: 'SAXS', label: 'SAXS' },
                   { value: 'GISAXS', label: 'GISAXS' },
                 ]}
-                classNames={{
-                  label: 'text-sm text-slate-900',
-                  option: 'py-2 px-4 hover:bg-gray-100 cursor-pointer rounded',
-                }}
               />
 
               {/* Tiled Load Data */}
@@ -472,9 +467,6 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                 }))}
                 searchable
                 disabled={isFetchingData || numOfFiles === 0}
-                classNames={{
-                  label: 'text-sm text-slate-900',
-                }}
               />
 
               {/* Right Image Dropdown */}
@@ -489,9 +481,6 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                 }))}
                 searchable
                 disabled={isFetchingData || numOfFiles === 0}
-                classNames={{
-                  label: 'text-sm text-slate-900',
-                }}
               />
             </div>
             )}
@@ -643,11 +632,11 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 text-sky-950">
               <h2 className="text-lg font-semibold">2D Scattering Data</h2>
               <div className="flex items-center gap-1">
-                <Menu position="bottom-end" withArrow shadow="md">
+                <Menu position="bottom-end">
                   <Menu.Target>
-                    <ActionIcon variant="subtle" size="md">
+                    <IconButton variant="subtle" size="md">
                       <GitDiffIcon size={24} className='text-sky-950'/>
-                    </ActionIcon>
+                    </IconButton>
                   </Menu.Target>
                   <Menu.Dropdown>
                     <Menu.Item
@@ -664,9 +653,9 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                     </Menu.Item>
                   </Menu.Dropdown>
                 </Menu>
-                <ActionIcon variant="subtle" size="md" onClick={() => setIsSettingsOpen(true)}>
+                <IconButton variant="subtle" size="md" onClick={() => setIsSettingsOpen(true)}>
                   <GearIcon size={24} className='text-sky-950'/>
-                </ActionIcon>
+                </IconButton>
               </div>
             </div>
             <div className="p-4 flex-1 overflow-hidden">
@@ -888,9 +877,9 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
           >
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
               <h3 className="text-lg font-bold text-sky-900">Data Transformation</h3>
-              <ActionIcon variant="subtle" size="md" onClick={() => setIsSettingsOpen(false)}>
+              <IconButton variant="subtle" size="md" onClick={() => setIsSettingsOpen(false)}>
                 <XIcon size={20} />
-              </ActionIcon>
+              </IconButton>
             </div>
             <div className="p-4">
               <DataTransformationAccordion

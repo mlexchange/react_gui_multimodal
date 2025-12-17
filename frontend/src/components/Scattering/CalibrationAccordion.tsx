@@ -1,5 +1,5 @@
 import { useState, useEffect, ReactNode } from 'react';
-import { NumberInput } from '@mantine/core';
+import { NumberInput } from '@/components/ui';
 import { Button } from '@blueskyproject/finch';
 import { CrosshairSimpleIcon, GridFourIcon, AngleIcon } from '@phosphor-icons/react';
 
@@ -142,7 +142,6 @@ export default function CalibrationAccordion({
                         step={0.1}
                         min={0}
                         size="sm"
-                        classNames={{ label: 'text-md text-slate-900' }}
                     />
                 </div>
             </div>
@@ -163,7 +162,6 @@ export default function CalibrationAccordion({
                         min={0}
                         size="sm"
                         className="flex-1"
-                        classNames={{ label: 'text-md text-slate-900' }}
                     />
                     <NumberInput
                         label="Energy (eV)"
@@ -174,7 +172,6 @@ export default function CalibrationAccordion({
                         min={0}
                         size="sm"
                         className="flex-1"
-                        classNames={{ label: 'text-md text-slate-900' }}
                     />
                 </div>
             </div>
@@ -194,7 +191,6 @@ export default function CalibrationAccordion({
                         step={0.1}
                         size="sm"
                         className="flex-1"
-                        classNames={{ label: 'text-md text-slate-900' }}
                     />
                     <NumberInput
                         label="Y (px)"
@@ -204,7 +200,6 @@ export default function CalibrationAccordion({
                         step={0.1}
                         size="sm"
                         className="flex-1"
-                        classNames={{ label: 'text-md text-slate-900' }}
                     />
                 </div>
             </div>
@@ -225,7 +220,6 @@ export default function CalibrationAccordion({
                         min={0}
                         size="sm"
                         className="flex-1"
-                        classNames={{ label: 'text-md text-slate-900' }}
                     />
                     <NumberInput
                         label="Y (μm)"
@@ -236,7 +230,6 @@ export default function CalibrationAccordion({
                         min={0}
                         size="sm"
                         className="flex-1"
-                        classNames={{ label: 'text-md text-slate-900' }}
                     />
                 </div>
             </div>
@@ -256,7 +249,6 @@ export default function CalibrationAccordion({
                         step={0.1}
                         size="sm"
                         className="flex-1"
-                        classNames={{ label: 'text-md text-slate-900' }}
                     />
                     <NumberInput
                         label="Plane rotation (°)"
@@ -266,7 +258,6 @@ export default function CalibrationAccordion({
                         step={0.1}
                         size="sm"
                         className="flex-1"
-                        classNames={{ label: 'text-md text-slate-900' }}
                     />
                 </div>
             </div>

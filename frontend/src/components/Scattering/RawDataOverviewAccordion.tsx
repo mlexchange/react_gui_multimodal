@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, Select } from '@mantine/core';
+import { Select } from '@/components/ui';
 
 // Define display options type
 export type DisplayOption = 'both' | 'max' | 'avg';
@@ -59,52 +59,38 @@ const RawDataOverviewAccordion: React.FC<RawDataOverviewAccordionProps> = ({
       <div>
         {/* Total files text */}
         {numOfFiles !== null && (
-        <div className="flex justify-start">
-            <Text className="text-lg">
-            Number of images: {numOfFiles}
-            </Text>
-        </div>
+          <div className="flex justify-start">
+            <span className="text-lg">Number of images: {numOfFiles}</span>
+          </div>
         )}
         <div className="flex justify-between items-center mb-3">
-          <Text className="text-lg">Image Selection</Text>
+          <span className="text-lg">Image Selection</span>
         </div>
 
-        <Text className="text-sm text-gray-600 mb-6">
+        <p className="text-sm text-gray-600 mb-6">
           Select the images to compare from the dropdown menus or click on the data point directly in the figure.
-        </Text>
+        </p>
 
         <div className="flex flex-col space-y-4">
-          <div>
-            <Select
-              value={leftSelectValue}
-              onChange={handleLeftImageChange}
-              label="Left Image"
-              placeholder="Select left image"
-              data={imageOptions}
-              searchable
-              disabled={isFetchingData}
-              classNames={{
-                input: 'w-full',
-                label: 'text-lg',
-              }}
-            />
-          </div>
+          <Select
+            value={leftSelectValue}
+            onChange={handleLeftImageChange}
+            label="Left Image"
+            placeholder="Select left image"
+            data={imageOptions}
+            searchable
+            disabled={isFetchingData}
+          />
 
-          <div>
-            <Select
-              value={rightSelectValue}
-              onChange={handleRightImageChange}
-              label="Right Image"
-              placeholder="Select right image"
-              data={imageOptions}
-              searchable
-              disabled={isFetchingData}
-              classNames={{
-                input: 'w-full',
-                label: 'text-lg',
-              }}
-            />
-          </div>
+          <Select
+            value={rightSelectValue}
+            onChange={handleRightImageChange}
+            label="Right Image"
+            placeholder="Select right image"
+            data={imageOptions}
+            searchable
+            disabled={isFetchingData}
+          />
 
           {/* Display Options Dropdown */}
           <Select
@@ -117,10 +103,6 @@ const RawDataOverviewAccordion: React.FC<RawDataOverviewAccordionProps> = ({
               { value: 'max', label: 'Max Intensity Only' },
               { value: 'avg', label: 'Avg Intensity Only' },
             ]}
-            classNames={{
-              input: 'w-full',
-              label: 'text-lg',
-            }}
           />
         </div>
       </div>

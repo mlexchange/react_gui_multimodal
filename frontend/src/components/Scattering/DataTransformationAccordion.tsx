@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Switch, Select } from '@mantine/core';
+import { Switch, Select } from '@/components/ui';
 
 interface DataTransformationAccordionProps {
   isLogScale: boolean;
@@ -88,22 +88,10 @@ const DataTransformationAccordion: React.FC<DataTransformationAccordionProps> = 
           checked={isLogScale}
           label="Log Scale"
           labelPosition="left"
-          onChange={(event) => handleLogScaleToggle(event.currentTarget.checked)}
+          onChange={(checked) => handleLogScaleToggle(checked)}
           size="md"
           className="w-full"
           disabled={isLoading}
-          styles={{
-            track: {
-              borderWidth: '2px',
-              borderColor: isLogScale ? '#3B82F6' : 'grey',
-              backgroundColor: isLogScale ? '#EFF6FF' : '#F3F4F6'
-            },
-            thumb: {
-              borderWidth: '2px',
-              borderColor: isLogScale ? '#3B82F6' : 'grey',
-              backgroundColor: 'white'
-            }
-          }}
         />
       </div>
 

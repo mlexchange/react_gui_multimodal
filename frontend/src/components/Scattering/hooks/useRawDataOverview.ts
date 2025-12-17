@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { notifications } from '@mantine/notifications';
+import { notifications } from '@/components/ui';
 import { decode } from "@msgpack/msgpack";
 import { DisplayOption } from '../RawDataOverviewAccordion';
 
