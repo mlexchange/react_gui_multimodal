@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Accordion, Select, Menu, Popover, ActionIcon } from '@mantine/core';
-import { CaretDownIcon, CircleHalfTiltIcon, GearIcon, GitDiffIcon, InfoIcon, ListIcon, TreeStructureIcon, WrenchIcon, XIcon } from '@phosphor-icons/react';
+import { Select, Menu, Popover, ActionIcon } from '@mantine/core';
+import { CircleHalfTiltIcon, GearIcon, GitDiffIcon, InfoIcon, ListIcon, TreeStructureIcon, WrenchIcon, XIcon } from '@phosphor-icons/react';
 import { notifications } from '@mantine/notifications';
 import { CalibrationParams } from './types';
 
@@ -38,6 +38,10 @@ import { leftImageColorPalette, rightImageColorPalette } from './utils/constants
 
 // Import assets
 import alsLogo from '@/assets/als-logo.png';
+import iconHorizontalLinecut from '@/assets/icon-horizontal-linecut.svg';
+import iconVerticalLinecut from '@/assets/icon-vertical-linecut.svg';
+import iconInclinedLinecut from '@/assets/icon-inclined-linecut.svg';
+import iconAzimuthalIntegration from '@/assets/icon-azimuthal-integration.svg';
 
 const tiledUrl = import.meta.env.SCATTERING_TILED_URL;
 const tiledApiKey = import.meta.env.SCATTERING_TILED_API_KEY;
@@ -396,7 +400,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
       )}
       <div className="flex flex-1 w-full overflow-hidden">
       {/* First Column - Sidebar */}
-        <div className={`border border-gray-300 bg-slate-200 shadow-lg relative transition-all duration-300 flex-shrink-0 flex flex-col h-full ${isSidebarCollapsed ? 'w-[48px]' : 'w-[250px]'}`}>
+        <div className={`border border-gray-300 bg-slate-200 shadow-lg relative transition-all duration-300 flex-shrink-0 flex flex-col h-full ${isSidebarCollapsed ? 'w-[48px]' : 'w-[280px]'}`}>
         {/* Scrollable Content Section */}
         <div className="grid gap-2 overflow-y-auto overflow-x-hidden p-2">
           {/* Experimental data section (non-accordion) */}
@@ -436,7 +440,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
               />
 
               {/* Tiled Load Data */}
-              <div className="w-full [&_button]:w-full [&_button]:bg-sky-500 [&_button]:hover:bg-sky-600 [&_button]:ml-0">
+              <div className="w-full [&_button]:w-full [&_button]:bg-sky-500 [&_button]:hover:bg-sky-600 [&_button]:ml-0 [&_button]:rounded-xl [&_button]:py-2">
                 <Tiled
                   tiledBaseUrl={tiledUrl}
                   apiKey={tiledApiKey}
@@ -444,12 +448,6 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                   buttonModeText="Load data"
                   onSelectCallback={handleTiledSelection}
                 />
-                {/* Number of images */}
-                {numOfFiles > 0 && (
-                  <div className="text-sm font-medium">
-                    Number of images: {numOfFiles}
-                  </div>
-                )}
               </div>
 
               {/* Calibration Button */}
@@ -499,150 +497,139 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
             )}
           </div>
 
-          {/* Accordion Container */}
+          {/* Linecuts Section */}
           {!isSidebarCollapsed && (
-          <Accordion
-            multiple
-            chevronSize={24}
-            chevron={<CaretDownIcon size={24} className="text-sky-950" />}
-            chevronPosition="right"
-            classNames={{ item: 'pt-4 border-b-0', label: 'text-lg py-2 text-sky-950 font-semibold', control: 'px-0 text-sky-950', content: 'pl-3 pr-0' }}
-          >
-            {/* Linecuts accordion */}
-            <Accordion.Item value="linecuts-accordion">
-              <Accordion.Control icon={<CircleHalfTiltIcon size={24} weight="bold" />}>
-                Linecuts
-              </Accordion.Control>
-              <Accordion.Panel>
-                {/* Add Linecut Menu */}
-                <div className="px-2">
-                  <Menu>
-                    {/* Menu Button */}
-                    <Menu.Target>
-                      <Button
-                        size="medium"
-                        styles="w-full"
-                        disabled={isFetchingData || numOfFiles === 0 || !numOfFiles}
-                        text="Add linecut"
-                      />
-                    </Menu.Target>
+          <div className="pt-4">
+            {/* Section Header */}
+            <div className="flex items-center gap-3 pb-2 text-sky-950">
+              <CircleHalfTiltIcon size={24} weight="bold" />
+              <span className="text-lg font-semibold">Linecuts</span>
+            </div>
 
-                    {/* Dropdown Items */}
-                    <Menu.Dropdown>
-                      <Menu.Item
-                        onClick={() => {
-                          addLinecut('Horizontal', selectedLinecuts, setSelectedLinecuts);
-                          addHorizontalLinecut();
-                        }}
-                      >
-                        <span className="font-medium">Horizontal Linecut</span>
-                      </Menu.Item>
+            {/* Linecut Type Icons */}
+            <div className="flex justify-around">
+              <button
+                className="flex flex-col items-center gap-1 p-1 rounded hover:bg-slate-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                onClick={() => {
+                  addLinecut('Horizontal', selectedLinecuts, setSelectedLinecuts);
+                  addHorizontalLinecut();
+                }}
+                disabled={isFetchingData || numOfFiles === 0}
+              >
+                <img src={iconHorizontalLinecut} alt="Horizontal" className="w-8 h-8" />
+                <span className="text-xs text-slate-700">Horizontal</span>
+              </button>
 
-                      <Menu.Item
-                        onClick={() => {
-                          addLinecut('Vertical', selectedLinecuts, setSelectedLinecuts);
-                          addVerticalLinecut();
-                        }}
-                      >
-                        <span className="font-medium">Vertical Linecut</span>
-                      </Menu.Item>
+              <button
+                className="flex flex-col items-center gap-1 p-1 rounded hover:bg-slate-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                onClick={() => {
+                  addLinecut('Vertical', selectedLinecuts, setSelectedLinecuts);
+                  addVerticalLinecut();
+                }}
+                disabled={isFetchingData || numOfFiles === 0}
+              >
+                <img src={iconVerticalLinecut} alt="Vertical" className="w-8 h-8" />
+                <span className="text-xs text-slate-700">Vertical</span>
+              </button>
 
-                      <Menu.Item
-                        onClick={() => {
-                          addLinecut('Inclined', selectedLinecuts, setSelectedLinecuts)
-                          addInclinedLinecut();
-                        }}
-                      >
-                        <span className="font-medium">Inclined Linecut</span>
-                      </Menu.Item>
-                      {/* Conditionally render Azimuthal Integration */}
-                      {experimentType === 'SAXS' && (
-                        <Menu.Item
-                          onClick={() => {
-                            addLinecut('Azimuthal', selectedLinecuts, setSelectedLinecuts)
-                            addAzimuthalIntegration();
-                          }}
-                        >
-                          <span className="font-medium">Azimuthal Integration</span>
-                        </Menu.Item>
-                      )}
-                    </Menu.Dropdown>
-                  </Menu>
-                </div>
-                {/* Render all selected LinecutSections */}
-                <div className="w-full">
-                  {linecutOrder.filter((linecut) => selectedLinecuts.includes(linecut)).map((linecutType) => {
-                    if (linecutType === 'Horizontal' && horizontalLinecuts.length > 0) {
-                      return (
-                        <HorizontalLinecutWidget
-                          key={`linecut-section-${linecutType}`}
-                          linecutType={linecutType}
-                          linecuts={horizontalLinecuts}
-                          qYMatrix={qYMatrix}
-                          updateHorizontalLinecutPosition={updateHorizontalLinecutPosition}
-                          updateHorizontalLinecutWidth={updateHorizontalLinecutWidth}
-                          updateHorizontalLinecutColor={updateHorizontalLinecutColor}
-                          deleteHorizontalLinecut={deleteHorizontalLinecut}
-                          toggleHorizontalLinecutVisibility={toggleHorizontalLinecutVisibility}
-                        />
-                      );
-                    }
+              <button
+                className="flex flex-col items-center gap-1 p-1 rounded hover:bg-slate-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                onClick={() => {
+                  addLinecut('Inclined', selectedLinecuts, setSelectedLinecuts);
+                  addInclinedLinecut();
+                }}
+                disabled={isFetchingData || numOfFiles === 0}
+              >
+                <img src={iconInclinedLinecut} alt="Inclined" className="w-8 h-8" />
+                <span className="text-xs text-slate-700">Inclined</span>
+              </button>
 
-                    if (linecutType === 'Vertical' && verticalLinecuts.length > 0) {
-                      return (
-                        <VerticalLinecutWidget
-                          key={`linecut-section-${linecutType}`}
-                          linecutType={linecutType}
-                          linecuts={verticalLinecuts}
-                          qXMatrix={qXMatrix}
-                          updateVerticalLinecutPosition={updateVerticalLinecutPosition}
-                          updateVerticalLinecutWidth={updateVerticalLinecutWidth}
-                          updateVerticalLinecutColor={updateVerticalLinecutColor}
-                          deleteVerticalLinecut={deleteVerticalLinecut}
-                          toggleVerticalLinecutVisibility={toggleVerticalLinecutVisibility}
-                        />
-                      );
-                    }
+              {experimentType === 'SAXS' && (
+                <button
+                  className="flex flex-col items-center gap-1 p-1 rounded hover:bg-slate-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  onClick={() => {
+                    addLinecut('Azimuthal', selectedLinecuts, setSelectedLinecuts);
+                    addAzimuthalIntegration();
+                  }}
+                  disabled={isFetchingData || numOfFiles === 0}
+                >
+                  <img src={iconAzimuthalIntegration} alt="Azimuthal" className="w-8 h-8" />
+                  <span className="text-xs text-slate-700">Azimuthal</span>
+                </button>
+              )}
+            </div>
 
-                    if (linecutType === 'Inclined' && inclinedLinecuts.length > 0) {
-                      return (
-                        <InclinedLinecutWidget
-                          key={`linecut-section-${linecutType}`}
-                          linecutType={linecutType}
-                          linecuts={inclinedLinecuts}
-                          units="nm⁻¹"
-                          updateInclinedLinecutAngle={updateInclinedLinecutAngle}
-                          updateInclinedLinecutWidth={updateInclinedLinecutWidth}
-                          updateInclinedLinecutColor={updateInclinedLinecutColor}
-                          deleteInclinedLinecut={deleteInclinedLinecut}
-                          toggleInclinedLinecutVisibility={toggleInclinedLinecutVisibility}
-                        />
-                      );
-                    }
+            {/* Render all selected LinecutSections */}
+            <div className="w-full pl-3 mt-3">
+              {linecutOrder.filter((linecut) => selectedLinecuts.includes(linecut)).map((linecutType) => {
+                if (linecutType === 'Horizontal' && horizontalLinecuts.length > 0) {
+                  return (
+                    <HorizontalLinecutWidget
+                      key={`linecut-section-${linecutType}`}
+                      linecutType={linecutType}
+                      linecuts={horizontalLinecuts}
+                      qYMatrix={qYMatrix}
+                      updateHorizontalLinecutPosition={updateHorizontalLinecutPosition}
+                      updateHorizontalLinecutWidth={updateHorizontalLinecutWidth}
+                      updateHorizontalLinecutColor={updateHorizontalLinecutColor}
+                      deleteHorizontalLinecut={deleteHorizontalLinecut}
+                      toggleHorizontalLinecutVisibility={toggleHorizontalLinecutVisibility}
+                    />
+                  );
+                }
 
-                    // Azimuthal integration
-                    if (linecutType === 'Azimuthal' && azimuthalIntegrations.length > 0) {
-                      return (
-                        <AzimuthalIntegrationWidget
-                          key={`linecut-section-${linecutType}`}
-                          integrations={azimuthalIntegrations}
-                          maxQValue={maxQValue}
-                          updateAzimuthalQRange={updateAzimuthalQRange}
-                          updateAzimuthalRange={updateAzimuthalRange}
-                          updateAzimuthalColor={updateAzimuthalColor}
-                          deleteAzimuthalIntegration={deleteAzimuthalIntegration}
-                          toggleAzimuthalVisibility={toggleAzimuthalVisibility}
-                        />
-                      );
-                    }
+                if (linecutType === 'Vertical' && verticalLinecuts.length > 0) {
+                  return (
+                    <VerticalLinecutWidget
+                      key={`linecut-section-${linecutType}`}
+                      linecutType={linecutType}
+                      linecuts={verticalLinecuts}
+                      qXMatrix={qXMatrix}
+                      updateVerticalLinecutPosition={updateVerticalLinecutPosition}
+                      updateVerticalLinecutWidth={updateVerticalLinecutWidth}
+                      updateVerticalLinecutColor={updateVerticalLinecutColor}
+                      deleteVerticalLinecut={deleteVerticalLinecut}
+                      toggleVerticalLinecutVisibility={toggleVerticalLinecutVisibility}
+                    />
+                  );
+                }
 
-                    return null;
-                  })}
-                </div>
-              </Accordion.Panel>
-            </Accordion.Item>
+                if (linecutType === 'Inclined' && inclinedLinecuts.length > 0) {
+                  return (
+                    <InclinedLinecutWidget
+                      key={`linecut-section-${linecutType}`}
+                      linecutType={linecutType}
+                      linecuts={inclinedLinecuts}
+                      units="nm⁻¹"
+                      updateInclinedLinecutAngle={updateInclinedLinecutAngle}
+                      updateInclinedLinecutWidth={updateInclinedLinecutWidth}
+                      updateInclinedLinecutColor={updateInclinedLinecutColor}
+                      deleteInclinedLinecut={deleteInclinedLinecut}
+                      toggleInclinedLinecutVisibility={toggleInclinedLinecutVisibility}
+                    />
+                  );
+                }
 
-          </Accordion>
+                // Azimuthal integration
+                if (linecutType === 'Azimuthal' && azimuthalIntegrations.length > 0) {
+                  return (
+                    <AzimuthalIntegrationWidget
+                      key={`linecut-section-${linecutType}`}
+                      integrations={azimuthalIntegrations}
+                      maxQValue={maxQValue}
+                      updateAzimuthalQRange={updateAzimuthalQRange}
+                      updateAzimuthalRange={updateAzimuthalRange}
+                      updateAzimuthalColor={updateAzimuthalColor}
+                      deleteAzimuthalIntegration={deleteAzimuthalIntegration}
+                      toggleAzimuthalVisibility={toggleAzimuthalVisibility}
+                    />
+                  );
+                }
+
+                return null;
+              })}
+            </div>
+          </div>
           )}
         </div>
       </div>
@@ -804,7 +791,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
           <div className="flex gap-2 h-[320px] flex-shrink-0 overflow-x-auto">
             {/* Horizontal Linecut Card */}
             {selectedLinecuts.includes('Horizontal') && horizontalLinecuts.length > 0 && (
-              <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex-1 min-w-[300px] overflow-hidden flex flex-col">
+              <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex-1 overflow-hidden flex flex-col">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 text-sky-950">
                   <h2 className="text-lg font-bold">Horizontal Linecut</h2>
                 </div>
@@ -825,7 +812,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
 
             {/* Vertical Linecut Card */}
             {selectedLinecuts.includes('Vertical') && verticalLinecuts.length > 0 && (
-              <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex-1 min-w-[300px] overflow-hidden flex flex-col">
+              <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex-1 overflow-hidden flex flex-col">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 text-sky-950">
                   <h2 className="text-lg font-bold">Vertical Linecut</h2>
                 </div>
@@ -846,7 +833,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
 
             {/* Inclined Linecut Card */}
             {selectedLinecuts.includes('Inclined') && inclinedLinecuts.length > 0 && (
-              <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex-1 min-w-[300px] overflow-hidden flex flex-col">
+              <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex-1 overflow-hidden flex flex-col">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 text-sky-950">
                   <h2 className="text-lg font-bold">Inclined Linecut</h2>
                 </div>
@@ -870,7 +857,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
             {experimentType === 'SAXS' &&
               selectedLinecuts.includes('Azimuthal') &&
               azimuthalIntegrations.length > 0 && (
-              <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex-1 min-w-[300px] overflow-hidden flex flex-col">
+              <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex-1 overflow-hidden flex flex-col">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 text-sky-950">
                   <h2 className="text-lg font-bold">Azimuthal Integration</h2>
                 </div>
