@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { decode } from "@msgpack/msgpack";
+import { unpack } from 'msgpackr';
 import { CalibrationParams } from '../types';
 
 /**
@@ -87,7 +87,7 @@ export default function useScattering() {
       }
 
       // Decode the msgpack response
-      const decodedData = decode(new Uint8Array(await response.arrayBuffer()));
+      const decodedData = unpack(new Uint8Array(await response.arrayBuffer()));
 
       // Validate the response format using the type guard
       if (!isQMatricesResponse(decodedData)) {

@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { notifications } from '@/components/ui';
-import { decode } from "@msgpack/msgpack";
+import { unpack } from 'msgpackr';
 import { DisplayOption } from '../types';
 
 interface SummaryOverview {
@@ -191,7 +191,7 @@ export default function useSummary() {
 
             // Assuming the response is in MessagePack format
             const buffer = await response.arrayBuffer();
-            const decoded = decode(new Uint8Array(buffer)) as any;
+            const decoded = unpack(new Uint8Array(buffer)) as any;
 
             // Set number of scans
             const numScans = decoded.num_scans || 0;

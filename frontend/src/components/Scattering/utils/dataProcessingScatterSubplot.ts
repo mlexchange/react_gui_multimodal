@@ -1,12 +1,3 @@
-import { ExtData } from "@msgpack/msgpack";
-
-export function extractBinary(ext: ExtData | Uint8Array): Uint8Array {
-  if (ext instanceof Uint8Array) {
-    return ext;
-  }
-  return typeof ext.data === 'function' ? ext.data(0) : ext.data;
-}
-
 export function reconstructFloat32Array(buffer: Uint8Array, shape: [number, number]): number[][] {
   let float32Array: Float32Array;
 

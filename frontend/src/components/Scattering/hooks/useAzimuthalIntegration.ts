@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { debounce } from 'lodash';
-import { decode } from "@msgpack/msgpack";
+import { unpack } from 'msgpackr';
 import { AzimuthalData, AzimuthalIntegration, CalibrationParams } from '../types';
 import { leftImageColorPalette, rightImageColorPalette } from '../utils/constants';
 
@@ -205,7 +205,7 @@ export default function useAzimuthalIntegration(
                 }
 
                 // Decode the binary msgpack response
-                const decodedData = decode(new Uint8Array(await response.arrayBuffer()));
+                const decodedData = unpack(new Uint8Array(await response.arrayBuffer()));
 
                 // Validate the response format
                 if (!isAzimuthalIntegratorResponse(decodedData)) {

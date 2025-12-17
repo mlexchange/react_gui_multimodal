@@ -293,8 +293,8 @@ export async function fetchWithCache(scanUri: string): Promise<ArrayBuffer> {
 
   // Cache the result asynchronously (don't block return)
   // We need to decode to get metadata for caching
-  const { decode } = await import('@msgpack/msgpack');
-  const decoded = decode(new Uint8Array(buffer)) as { metadata: { shape: [number, number]; dtype: string } };
+  const { unpack } = await import('msgpackr');
+  const decoded = unpack(new Uint8Array(buffer)) as { metadata: { shape: [number, number]; dtype: string } };
 
   cacheImage(scanUri, buffer, decoded.metadata).catch((error) => {
     console.error('Failed to cache image:', error);

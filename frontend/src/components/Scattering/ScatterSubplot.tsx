@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import Plot from "react-plotly.js";
-import { decode } from "@msgpack/msgpack";
+import { unpack } from 'msgpackr';
 import { notifications } from '@/components/ui';
 import {
   ResolutionDataType,
@@ -13,7 +13,7 @@ import {
 } from './types';
 import { downsampleArray } from './utils/downsampleArray';
 import { handleRelayout } from './utils/handleRelayout';
-import { extractBinary, reconstructFloat32Array } from './utils/dataProcessingScatterSubplot';
+import { reconstructFloat32Array } from './utils/dataProcessingScatterSubplot';
 import { generateHorizontalLinecutOverlay } from './utils/generateHorizontalLinecutOverlay';
 import { generateVerticalLinecutOverlay } from './utils/generateVerticalLinecutOverlay';
 import { generateInclinedLinecutOverlay } from './utils/generateInclinedLinecutOverlay';
@@ -466,12 +466,12 @@ const ScatterSubplot: React.FC<ScatterSubplotProps> = React.memo(({
     ])
       .then(([leftBuffer, rightBuffer]) => {
         // Decode both responses
-        const decodedLeft = decode(new Uint8Array(leftBuffer)) as any;
-        const decodedRight = decode(new Uint8Array(rightBuffer)) as any;
+        const decodedLeft = unpack(new Uint8Array(leftBuffer)) as any;
+        const decodedRight = unpack(new Uint8Array(rightBuffer)) as any;
 
         // Reconstruct full resolution data
-        const fullArray1 = reconstructFloat32Array(extractBinary(decodedLeft.image), decodedLeft.metadata.shape);
-        const fullArray2 = reconstructFloat32Array(extractBinary(decodedRight.image), decodedRight.metadata.shape);
+        const fullArray1 = reconstructFloat32Array(decodedLeft.image, decodedLeft.metadata.shape);
+        const fullArray2 = reconstructFloat32Array(decodedRight.image, decodedRight.metadata.shape);
         const fullDiff = calculateDifferenceArray(fullArray1, fullArray2);
         // const fullDiff = calculateResult(fullArray1, fullArray2);
 

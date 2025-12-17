@@ -49,7 +49,7 @@ async def fetch_scan_image(scan_uri: str):
         packed_data = msgpack.packb(
             {
                 "metadata": metadata,
-                "image": msgpack.ExtType(1, image_bytes),
+                "image": image_bytes,
             }
         )
         
