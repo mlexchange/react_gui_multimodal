@@ -1,13 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
 import Plot from "react-plotly.js";
-import { DisplayOption } from "./RawDataOverviewAccordion";
+import { DisplayOption } from "./types";
 import { PlotMouseEvent } from "plotly.js";
-import ProgressBar from "./RawDataOverviewProgressBar";
+import ProgressBar from "./SummaryProgressBar";
 
 // Define the autorange type
 type AutorangeType = boolean | "max" | "min" | "reversed" | "min reversed" | "max reversed";
 
-interface RawDataOverviewFigProps {
+interface SummaryFigProps {
   maxIntensities: number[];
   avgIntensities: number[];
   leftImageIndex: number | "";
@@ -32,7 +32,7 @@ interface ContextMenuPosition {
   y: number;
 }
 
-const RawDataOverviewFig: React.FC<RawDataOverviewFigProps> = ({
+const SummaryFig: React.FC<SummaryFigProps> = ({
   maxIntensities,
   avgIntensities,
   leftImageIndex,
@@ -406,4 +406,4 @@ const RawDataOverviewFig: React.FC<RawDataOverviewFigProps> = ({
   );
 };
 
-export default RawDataOverviewFig;
+export default SummaryFig;

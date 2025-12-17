@@ -66,7 +66,7 @@ export interface SessionState {
 
   /** UI state */
   isSidebarCollapsed: boolean;
-  isRawDataCollapsed: boolean;
+  isSummaryCollapsed: boolean;
   operationType: 'subtract' | 'divide';
 
   /** Timestamp when session was saved */
@@ -118,7 +118,7 @@ export function createDefaultSessionState(): SessionState {
     selectedLinecuts: [],
     azimuthalIntegrations: [],
     isSidebarCollapsed: false,
-    isRawDataCollapsed: false,
+    isSummaryCollapsed: false,
     operationType: 'subtract',
     savedAt: Date.now()
   };
@@ -215,7 +215,7 @@ function isValidSessionState(state: unknown): state is SessionState {
   if (!Array.isArray(s.selectedLinecuts)) return false;
   if (!Array.isArray(s.azimuthalIntegrations)) return false;
   if (typeof s.isSidebarCollapsed !== 'boolean') return false;
-  if (typeof s.isRawDataCollapsed !== 'boolean') return false;
+  if (typeof s.isSummaryCollapsed !== 'boolean') return false;
   if (s.operationType !== 'subtract' && s.operationType !== 'divide') return false;
   if (typeof s.savedAt !== 'number') return false;
 

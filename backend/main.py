@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from routers import (
     azimuthal_integrator,
     q_vectors,
-    raw_data_overview,
+    summary,
     fetch_scan_image,
     websocket,
 )
@@ -21,7 +21,7 @@ app.add_middleware(
 
 
 # Main API routers (/api)
-app.include_router(raw_data_overview.router, prefix="/api", tags=["Raw Data Overview"])
+app.include_router(summary.router, prefix="/api", tags=["Summary"])
 app.include_router(fetch_scan_image.router, prefix="/api", tags=["Scan Image"])
 app.include_router(azimuthal_integrator.router, prefix="/api", tags=["Azimuthal Integrator"])
 app.include_router(q_vectors.router, prefix="/api", tags=["Q Vectors"])

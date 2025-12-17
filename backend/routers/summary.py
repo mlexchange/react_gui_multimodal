@@ -32,8 +32,8 @@ def process_single_image(args):
         return index, 0.0, 0.0, f"Error: {scan_uri}", scan_uri, False
 
 
-@router.get("/raw-data-overview")
-async def create_raw_data_overview(container_path: str):
+@router.get("/summary")
+async def create_summary(container_path: str):
     """
     Get metadata for all scans in a folder.
 
@@ -41,7 +41,7 @@ async def create_raw_data_overview(container_path: str):
         container_path: The Tiled container path (e.g., 'path/to/folder')
                        without the base URL or '/metadata/' prefix
 
-    Returns scan URIs, names, and intensity statistics for the Raw Data Overview.
+    Returns scan URIs, names, and intensity statistics for the Summary view.
     Does NOT return actual image arrays.
     """
     tiled_client = get_tiled_client()

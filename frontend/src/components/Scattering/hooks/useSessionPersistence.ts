@@ -41,7 +41,7 @@ export interface PersistableState {
   selectedLinecuts: string[];
   azimuthalIntegrations: AzimuthalIntegration[];
   isSidebarCollapsed: boolean;
-  isRawDataCollapsed: boolean;
+  isSummaryCollapsed: boolean;
   operationType: 'subtract' | 'divide';
 }
 

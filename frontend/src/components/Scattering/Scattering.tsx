@@ -14,7 +14,7 @@ import useHorizontalLinecut from './hooks/useHorizontalLinecut';
 import useVerticalLinecut from './hooks/useVerticalLinecut';
 import useInclinedLinecut from './hooks/useInclinedLinecut';
 import useDataTransformation from './hooks/useDataTransformation';
-import useRawDataOverview from './hooks/useRawDataOverview';
+import useSummary from './hooks/useSummary';
 import useSessionPersistence, { PersistableState } from './hooks/useSessionPersistence';
 
 // Import components
@@ -27,7 +27,7 @@ import CalibrationAccordion from './CalibrationAccordion';
 import LinecutFig from './LinecutFig';
 import InclinedLinecutFig from './InclinedLinecutFig';
 import AzimuthalIntegrationFig from './AzimuthalIntegrationFig';
-import RawDataOverviewFig from './RawDataOverviewFig';
+import SummaryFig from './SummaryFig';
 
 // Import utilities
 import { handleExperimentTypeChange, addLinecut } from './utils/linecutHandlers';
@@ -52,7 +52,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isCalibrationOpen, setIsCalibrationOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [isRawDataCollapsed, setIsRawDataCollapsed] = useState(false);
+  const [isSummaryCollapsed, setIsSummaryCollapsed] = useState(false);
   const [operationType, setOperationType] = useState<OperationType>('subtract');
 
   // Session persistence hook
@@ -192,7 +192,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     displayOption,
     setDisplayOption,
 
-  } = useRawDataOverview();
+  } = useSummary();
 
   // Get scan URIs for selected images
   // These will be used for azimuthal integration API calls
@@ -250,7 +250,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
 
     // 5. Restore UI state
     setIsSidebarCollapsed(restoredSession.isSidebarCollapsed);
-    setIsRawDataCollapsed(restoredSession.isRawDataCollapsed);
+    setIsSummaryCollapsed(restoredSession.isSummaryCollapsed);
     setOperationType(restoredSession.operationType);
 
     // 6. If we have a container path, fetch the summary data
@@ -313,7 +313,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
       selectedLinecuts,
       azimuthalIntegrations,
       isSidebarCollapsed,
-      isRawDataCollapsed,
+      isSummaryCollapsed,
       operationType,
     };
 
@@ -338,7 +338,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     selectedLinecuts,
     azimuthalIntegrations,
     isSidebarCollapsed,
-    isRawDataCollapsed,
+    isSummaryCollapsed,
     operationType,
     triggerAutoSave,
   ]);
@@ -625,7 +625,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
 
       {/* Second Column - Main Content Area */}
       <div className="h-full flex-grow flex flex-col overflow-hidden p-2 gap-2 bg-slate-500">
-        {/* Top Row - Scatter Images + Raw Data Overview */}
+        {/* Top Row - Scatter Images + Summary */}
         <div className="flex-1 flex overflow-hidden gap-2">
           {/* Scatter Images Card */}
           <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex-1 overflow-hidden flex flex-col">
@@ -737,21 +737,34 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
             </div>
           </div>
 
-          {/* Raw Data Overview Card */}
-          <div className={`h-full flex-shrink-0 transition-all duration-300 ${isRawDataCollapsed ? 'w-[48px]' : 'w-[280px]'}`}>
+          {/* Summary Card */}
+          <div className={`h-full flex-shrink-0 transition-all duration-300 ${isSummaryCollapsed ? 'w-[48px]' : 'w-[280px]'}`}>
             <div className="bg-white border border-gray-200 rounded-lg shadow-sm h-full flex flex-col">
               <div className="flex items-center justify-between px-3 py-3 border-b border-gray-200 flex-shrink-0 text-sky-950">
-                {!isRawDataCollapsed && <h2 className="text-lg font-bold">Raw Data Overview</h2>}
+                {!isSummaryCollapsed && <h2 className="text-lg font-bold">Summary</h2>}
                 <ListIcon
                   size={24}
                   weight="bold"
                   className="cursor-pointer hover:text-sky-600"
-                  onClick={() => setIsRawDataCollapsed(!isRawDataCollapsed)}
+                  onClick={() => setIsSummaryCollapsed(!isSummaryCollapsed)}
                 />
               </div>
-              {!isRawDataCollapsed && (
-              <div className="flex-1 overflow-hidden">
-                <RawDataOverviewFig
+              {!isSummaryCollapsed && (
+              <div className="flex-1 overflow-hidden flex flex-col">
+                <div className="px-2 pt-2">
+                  <Select
+                    label="Display option"
+                    value={displayOption}
+                    onChange={(value) => setDisplayOption(value as 'both' | 'max' | 'avg')}
+                    data={[
+                      { value: 'both', label: 'Both' },
+                      { value: 'max', label: 'Max' },
+                      { value: 'avg', label: 'Avg' },
+                    ]}
+                    size="sm"
+                  />
+                </div>
+                <SummaryFig
                   maxIntensities={maxIntensities}
                   avgIntensities={avgIntensities}
                   leftImageIndex={leftImageIndex}

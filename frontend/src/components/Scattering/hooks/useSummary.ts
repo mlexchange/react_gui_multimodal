@@ -1,9 +1,9 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { notifications } from '@/components/ui';
 import { decode } from "@msgpack/msgpack";
-import { DisplayOption } from '../RawDataOverviewAccordion';
+import { DisplayOption } from '../types';
 
-interface RawDataOverview {
+interface SummaryOverview {
     max_intensities: number[];
     avg_intensities: number[];
     image_names: string[];
@@ -53,7 +53,7 @@ function extractContainerPath(tiledUrl: string): string {
     }
 }
 
-export default function useRawDataOverview() {
+export default function useSummary() {
     // State for the left image index with initial value of empty string
     const [leftImageIndex, setLeftImageIndex] = useState<number | "">("");
 
@@ -76,7 +76,7 @@ export default function useRawDataOverview() {
     const [displayOption, setDisplayOption] = useState<DisplayOption>('both');
 
     // New state for summary data
-    const [summaryData, setSummaryData] = useState<RawDataOverview>({
+    const [summaryData, setSummaryData] = useState<SummaryOverview>({
         max_intensities: [],
         avg_intensities: [],
         image_names: [],
@@ -180,7 +180,7 @@ export default function useRawDataOverview() {
                 throw new Error('Container path is required');
             }
 
-            const url = new URL('/api/raw-data-overview', window.location.origin);
+            const url = new URL('/api/summary', window.location.origin);
             url.searchParams.append('container_path', containerPath);
 
             const response = await fetch(url.toString());

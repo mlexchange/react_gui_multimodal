@@ -1,5 +1,7 @@
 // Scattering module types
 
+export type DisplayOption = 'both' | 'max' | 'avg';
+
 export interface Linecut {
   id: number;
   position: number;      // Q-value position (in q-space)
