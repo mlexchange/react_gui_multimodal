@@ -195,7 +195,7 @@ const InclinedLinecutFig: React.FC<InclinedLinecutFigProps> = ({
                         y: data1,
                         type: 'scatter' as const,
                         mode: 'lines' as const,
-                        name: `Left Linecut ${linecut.id}`,
+                        name: `Left #${linecut.id}`,
                         line: {
                             color: linecut.leftColor,
                             width: 2,
@@ -207,7 +207,7 @@ const InclinedLinecutFig: React.FC<InclinedLinecutFigProps> = ({
                         y: data2,
                         type: 'scatter' as const,
                         mode: 'lines' as const,
-                        name: `Right Linecut ${linecut.id}`,
+                        name: `Right #${linecut.id}`,
                         line: {
                             color: linecut.rightColor,
                             width: 2,

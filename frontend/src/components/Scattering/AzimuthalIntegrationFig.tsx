@@ -63,7 +63,7 @@ const AzimuthalIntegrationFig: React.FC<AzimuthalIntegrationFigProps> = ({
             y: data1.intensity,
             type: "scatter" as const,
             mode: "lines" as const,
-            name: `Left Integration ${integration.id}`,
+            name: `Left #${integration.id}`,
             line: {
               color: integration.leftColor,
               width: 2,
@@ -74,7 +74,7 @@ const AzimuthalIntegrationFig: React.FC<AzimuthalIntegrationFigProps> = ({
             y: data2.intensity,
             type: "scatter" as const,
             mode: "lines" as const,
-            name: `Right Integration ${integration.id}`,
+            name: `Right #${integration.id}`,
             line: {
               color: integration.rightColor,
               width: 2,

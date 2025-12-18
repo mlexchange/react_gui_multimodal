@@ -795,7 +795,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
             {selectedLinecuts.includes('Horizontal') && horizontalLinecuts.length > 0 && (
               <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex-1 overflow-hidden flex flex-col">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 text-sky-950">
-                  <h2 className="text-lg font-bold">Horizontal Linecut</h2>
+                  <h2 className="text-lg font-bold">Horizontal Linecuts</h2>
                 </div>
                 <div className="p-2 flex-1 overflow-hidden">
                   <LinecutFig
@@ -817,7 +817,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
             {selectedLinecuts.includes('Vertical') && verticalLinecuts.length > 0 && (
               <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex-1 overflow-hidden flex flex-col">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 text-sky-950">
-                  <h2 className="text-lg font-bold">Vertical Linecut</h2>
+                  <h2 className="text-lg font-bold">Vertical Linecuts</h2>
                 </div>
                 <div className="p-2 flex-1 overflow-hidden">
                   <LinecutFig
@@ -839,7 +839,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
             {selectedLinecuts.includes('Inclined') && inclinedLinecuts.length > 0 && (
               <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex-1 overflow-hidden flex flex-col">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 text-sky-950">
-                  <h2 className="text-lg font-bold">Inclined Linecut</h2>
+                  <h2 className="text-lg font-bold">Inclined Linecuts</h2>
                 </div>
                 <div className="p-2 flex-1 overflow-hidden">
                   <InclinedLinecutFig
@@ -863,7 +863,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
               azimuthalIntegrations.length > 0 && (
               <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex-1 overflow-hidden flex flex-col">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 text-sky-950">
-                  <h2 className="text-lg font-bold">Azimuthal Integration</h2>
+                  <h2 className="text-lg font-bold">Azimuthal Integrations</h2>
                 </div>
                 <div className="p-2 flex-1 overflow-hidden">
                   <AzimuthalIntegrationFig

@@ -225,7 +225,7 @@ const LinecutFig: React.FC<LinecutFigProps> = ({
           y: averagedDataLeft,
           type: "scatter" as const,
           mode: "lines" as const,
-          name: `Left Linecut ${linecut.id} ${positionLabel}`,
+          name: `Left #${linecut.id} ${positionLabel}`,
           line: {
             color: linecut.leftColor,
             width: 2,
@@ -236,7 +236,7 @@ const LinecutFig: React.FC<LinecutFigProps> = ({
           y: averagedDataRight,
           type: "scatter" as const,
           mode: "lines" as const,
-          name: `Right Linecut ${linecut.id} ${positionLabel}`,
+          name: `Right #${linecut.id} ${positionLabel}`,
           line: {
             color: linecut.rightColor,
             width: 2,
