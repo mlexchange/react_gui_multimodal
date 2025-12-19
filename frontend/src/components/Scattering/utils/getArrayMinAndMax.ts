@@ -2,15 +2,10 @@ export const getArrayMinMax = (data: number[][]): [number, number] => {
     let min = Infinity;
     let max = -Infinity;
 
-    // Single pass through the data
-    for (let i = 0; i < data.length; i++) {
-        const row = data[i];
-        for (let j = 0; j < row.length; j++) {
-            const val = row[j];
-            if (!Number.isNaN(val)) {
-                if (val < min) min = val;
-                if (val > max) max = val;
-            }
+    for (const row of data) {
+        for (const val of row) {
+            if (val < min) min = val;
+            if (val > max) max = val;
         }
     }
 
