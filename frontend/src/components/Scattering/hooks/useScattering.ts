@@ -73,8 +73,6 @@ export default function useScattering() {
       });
 
       // Add image dimensions from the loaded image data
-      const imageHeight = imageData1.length;
-      const imageWidth = imageData1[0]?.length || 0;
       url.searchParams.set('image_height', imageHeight.toString());
       url.searchParams.set('image_width', imageWidth.toString());
 
@@ -101,7 +99,7 @@ export default function useScattering() {
     } catch (error) {
       console.error('Error fetching q-matrices:', error);
     }
-  }, [calibrationParams, imageData1]);
+  }, [calibrationParams, imageHeight, imageWidth]);
 
   /**
    * Update calibration parameters and trigger q-matrix refresh
@@ -126,14 +124,13 @@ export default function useScattering() {
     }
   }, []);
 
-  // Fetch q-matrices when calibration parameters change
-  // Only fetch if we have actual image data loaded (not initial empty state)
+  // Fetch q-matrices when calibration parameters or image dimensions change
   useEffect(() => {
     // Only fetch Q-vectors if images are loaded
-    if (imageData1.length > 0 || imageData2.length > 0) {
+    if (imageHeight > 0 || imageWidth > 0) {
       fetchQVectors();
     }
-  }, [fetchQVectors, imageData1.length, imageData2.length]);
+  }, [fetchQVectors, imageHeight, imageWidth]);
 
   return {
     // Existing state
