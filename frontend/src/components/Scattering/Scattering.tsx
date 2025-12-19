@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Select, Menu, Popover, IconButton, notifications } from '@/components/ui';
-import { CircleHalfTiltIcon, GearIcon, GitDiffIcon, InfoIcon, ListIcon, TreeStructureIcon, WrenchIcon, XIcon } from '@phosphor-icons/react';
+import { CaretLeftIcon, CaretRightIcon, CircleHalfTiltIcon, GearIcon, GitDiffIcon, InfoIcon, ListIcon, TreeStructureIcon, WrenchIcon, XIcon } from '@phosphor-icons/react';
 import { CalibrationParams } from './types';
 
 import { Button } from '@blueskyproject/finch';
@@ -453,33 +453,6 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
 
 
 
-              {/* Left Image Dropdown */}
-              <Select
-                label="Left image"
-                placeholder="Select left image"
-                value={leftImageIndex === "" ? "" : String(leftImageIndex)}
-                onChange={(value) => setLeftImageIndex(value === null ? "" : Number(value))}
-                data={imageNames.map((name, index) => ({
-                  value: String(index),
-                  label: name,
-                }))}
-                searchable
-                disabled={isFetchingData || numOfFiles === 0}
-              />
-
-              {/* Right Image Dropdown */}
-              <Select
-                label="Right image"
-                placeholder="Select right image"
-                value={rightImageIndex === "" ? "" : String(rightImageIndex)}
-                onChange={(value) => setRightImageIndex(value === null ? "" : Number(value))}
-                data={imageNames.map((name, index) => ({
-                  value: String(index),
-                  label: name,
-                }))}
-                searchable
-                disabled={isFetchingData || numOfFiles === 0}
-              />
             </div>
             )}
           </div>
@@ -658,48 +631,137 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                 </IconButton>
               </div>
             </div>
-            <div className="p-4 flex-1 overflow-hidden">
-              <ScatterSubplot
-                operationType={operationType}
-                setOperationType={setOperationType}
-                setImageHeight={setImageHeight}
-                setImageWidth={setImageWidth}
-                setImageData1={setImageData1}
-                setImageData2={setImageData2}
-                horizontalLinecuts={horizontalLinecuts}
-                verticalLinecuts={verticalLinecuts}
-                inclinedLinecuts={inclinedLinecuts}
-                leftImageColorPalette={leftImageColorPalette}
-                rightImageColorPalette={rightImageColorPalette}
-                setZoomedXPixelRange={setZoomedXPixelRange}
-                setZoomedYPixelRange={setZoomedYPixelRange}
-                setResolutionMessage={setResolutionMessage}
-                isLogScale={isLogScale}
-                lowerPercentile={lowerPercentile}
-                upperPercentile={upperPercentile}
-                normalization={normalization}
-                imageColormap={imageColormap}
-                differenceColormap={differenceColormap}
-                normalizationMode={normalizationMode}
-                azimuthalIntegrations={azimuthalIntegrations}
-                azimuthalData1={azimuthalData1}
-                azimuthalData2={azimuthalData2}
-                maxQValue={maxQValue}
-                calibrationParams={calibrationParams}
-                qYMatrix={qYMatrix}
-                qXMatrix={qXMatrix}
-                units="nm⁻¹"
-                mainTransformDataFunction={mainTransformDataFunction}
-                leftImageIndex={leftImageIndex}
-                rightImageIndex={rightImageIndex}
-                scanUris={scanUris}
-                isLoadingImages={isLoadingImages}
-                setIsLoadingImages={setIsLoadingImages}
-                isAzimuthalProcessing={isProcessing}
-              />
+            <div className="p-4 flex-1 overflow-hidden flex flex-col">
+              <div className="flex gap-6 mb-2 shrink-0 justify-center">
+                {/* Left Image Select */}
+                <div className="flex flex-col items-center gap-1">
+                  <span className="text-sm text-slate-700">Left Image</span>
+                  <div className="flex items-center gap-1">
+                    <IconButton
+                      variant="subtle"
+                      size="sm"
+                      onClick={() => {
+                        if (typeof leftImageIndex === 'number' && leftImageIndex > 0) {
+                          setLeftImageIndex(leftImageIndex - 1);
+                        }
+                      }}
+                      disabled={isFetchingData || numOfFiles === 0 || typeof leftImageIndex !== 'number' || leftImageIndex <= 0}
+                    >
+                      <CaretLeftIcon size={18} />
+                    </IconButton>
+                    <Select
+                      placeholder="Select image"
+                      value={leftImageIndex === "" ? "" : String(leftImageIndex)}
+                      onChange={(value) => setLeftImageIndex(value === null ? "" : Number(value))}
+                      data={imageNames.map((name, index) => ({
+                        value: String(index),
+                        label: name,
+                      }))}
+                      searchable
+                      disabled={isFetchingData || numOfFiles === 0}
+                    />
+                    <IconButton
+                      variant="subtle"
+                      size="sm"
+                      onClick={() => {
+                        if (typeof leftImageIndex === 'number' && leftImageIndex < numOfFiles - 1) {
+                          setLeftImageIndex(leftImageIndex + 1);
+                        }
+                      }}
+                      disabled={isFetchingData || numOfFiles === 0 || typeof leftImageIndex !== 'number' || leftImageIndex >= numOfFiles - 1}
+                    >
+                      <CaretRightIcon size={18} />
+                    </IconButton>
+                  </div>
+                </div>
+
+                {/* Right Image Select */}
+                <div className="flex flex-col items-center gap-1">
+                  <span className="text-sm text-slate-700">Right Image</span>
+                  <div className="flex items-center gap-1">
+                    <IconButton
+                      variant="subtle"
+                      size="sm"
+                      onClick={() => {
+                        if (typeof rightImageIndex === 'number' && rightImageIndex > 0) {
+                          setRightImageIndex(rightImageIndex - 1);
+                        }
+                      }}
+                      disabled={isFetchingData || numOfFiles === 0 || typeof rightImageIndex !== 'number' || rightImageIndex <= 0}
+                    >
+                      <CaretLeftIcon size={18} />
+                    </IconButton>
+                    <Select
+                      placeholder="Select image"
+                      value={rightImageIndex === "" ? "" : String(rightImageIndex)}
+                      onChange={(value) => setRightImageIndex(value === null ? "" : Number(value))}
+                      data={imageNames.map((name, index) => ({
+                        value: String(index),
+                        label: name,
+                      }))}
+                      searchable
+                      disabled={isFetchingData || numOfFiles === 0}
+                    />
+                    <IconButton
+                      variant="subtle"
+                      size="sm"
+                      onClick={() => {
+                        if (typeof rightImageIndex === 'number' && rightImageIndex < numOfFiles - 1) {
+                          setRightImageIndex(rightImageIndex + 1);
+                        }
+                      }}
+                      disabled={isFetchingData || numOfFiles === 0 || typeof rightImageIndex !== 'number' || rightImageIndex >= numOfFiles - 1}
+                    >
+                      <CaretRightIcon size={18} />
+                    </IconButton>
+                  </div>
+                </div>
+              </div>
+
+              {/* Plots container */}
+              <div className="flex-1 flex items-center justify-center min-h-0">
+                <ScatterSubplot
+                  operationType={operationType}
+                  setOperationType={setOperationType}
+                  setImageHeight={setImageHeight}
+                  setImageWidth={setImageWidth}
+                  setImageData1={setImageData1}
+                  setImageData2={setImageData2}
+                  horizontalLinecuts={horizontalLinecuts}
+                  verticalLinecuts={verticalLinecuts}
+                  inclinedLinecuts={inclinedLinecuts}
+                  leftImageColorPalette={leftImageColorPalette}
+                  rightImageColorPalette={rightImageColorPalette}
+                  setZoomedXPixelRange={setZoomedXPixelRange}
+                  setZoomedYPixelRange={setZoomedYPixelRange}
+                  setResolutionMessage={setResolutionMessage}
+                  isLogScale={isLogScale}
+                  lowerPercentile={lowerPercentile}
+                  upperPercentile={upperPercentile}
+                  normalization={normalization}
+                  imageColormap={imageColormap}
+                  differenceColormap={differenceColormap}
+                  normalizationMode={normalizationMode}
+                  azimuthalIntegrations={azimuthalIntegrations}
+                  azimuthalData1={azimuthalData1}
+                  azimuthalData2={azimuthalData2}
+                  maxQValue={maxQValue}
+                  calibrationParams={calibrationParams}
+                  qYMatrix={qYMatrix}
+                  qXMatrix={qXMatrix}
+                  units="nm⁻¹"
+                  mainTransformDataFunction={mainTransformDataFunction}
+                  leftImageIndex={leftImageIndex}
+                  rightImageIndex={rightImageIndex}
+                  scanUris={scanUris}
+                  isLoadingImages={isLoadingImages}
+                  setIsLoadingImages={setIsLoadingImages}
+                  isAzimuthalProcessing={isProcessing}
+                />
+              </div>
 
               {resolutionMessage && (
-                <div className="flex items-center text-gray-500 text-left mt-4 mb-1 whitespace-nowrap overflow-x-auto">
+                <div className="flex items-center text-gray-500 text-left pt-2 whitespace-nowrap overflow-x-auto shrink-0">
                   <span>{resolutionMessage}</span>
                   <Popover width={900} position="top">
                     <Popover.Target>
