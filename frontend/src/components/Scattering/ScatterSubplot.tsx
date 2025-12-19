@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import Plot from "react-plotly.js";
-import { unpack } from 'msgpackr';
 import { notifications } from '@/components/ui';
 import {
   ResolutionDataType,
@@ -11,20 +10,17 @@ import {
   CalibrationParams,
   TransformDataFunction,
 } from './types';
-import { downsampleArray } from './utils/downsampleArray';
 import { handleRelayout } from './utils/handleRelayout';
-import { reconstructFloat32Array } from './utils/dataProcessingScatterSubplot';
 import { generateHorizontalLinecutOverlay } from './utils/generateHorizontalLinecutOverlay';
 import { generateVerticalLinecutOverlay } from './utils/generateVerticalLinecutOverlay';
 import { generateInclinedLinecutOverlay } from './utils/generateInclinedLinecutOverlay';
 import { generateAzimuthalOverlay } from './utils/generateAzimuthalOverlay';
 import { getArrayMinMax } from './utils/getArrayMinAndMax';
-// import { calculateMinMax } from './utils/transformationUtils';
 import { calculateDifferenceArray } from './utils/calculateDifferenceArray';
 
 import AzimuthalLoadingSpinner from "./AzimuthalLoadingSpinner";
 import { calculateDivisionArray } from './utils/calculateDivisionArray';
-import { fetchWithCache } from './services/scatteringImageCache';
+import { fetchWithCache, ProcessedImageData } from './services/scatteringImageCache';
 
 // Add a type for operation
 export type OperationType = 'subtract' | 'divide';
@@ -435,6 +431,38 @@ const ScatterSubplot: React.FC<ScatterSubplotProps> = React.memo(({
   }, []); // Empty dependency array since we're using refs and closure
 
 
+  // Helper to build resolution data from two processed images
+  const buildResolutionData = useCallback((
+    leftProcessed: ProcessedImageData,
+    rightProcessed: ProcessedImageData
+  ) => {
+    // Calculate difference arrays at each resolution level
+    const lowDiff = calculateDifferenceArray(leftProcessed.low.array, rightProcessed.low.array);
+    const mediumDiff = calculateDifferenceArray(leftProcessed.medium.array, rightProcessed.medium.array);
+    const fullDiff = calculateDifferenceArray(leftProcessed.full.array, rightProcessed.full.array);
+
+    return {
+      low: {
+        array1: leftProcessed.low.array,
+        array2: rightProcessed.low.array,
+        diff: lowDiff,
+        factor: leftProcessed.low.factor
+      },
+      medium: {
+        array1: leftProcessed.medium.array,
+        array2: rightProcessed.medium.array,
+        diff: mediumDiff,
+        factor: leftProcessed.medium.factor
+      },
+      full: {
+        array1: leftProcessed.full.array,
+        array2: rightProcessed.full.array,
+        diff: fullDiff,
+        factor: 1
+      }
+    };
+  }, []);
+
   // Initial data fetch
   useEffect(() => {
 
@@ -459,29 +487,23 @@ const ScatterSubplot: React.FC<ScatterSubplotProps> = React.memo(({
     // Show loading spinner
     setIsLoadingImages(true);
 
-    // Fetch both images in parallel (using IndexedDB cache)
+    // Fetch both images in parallel
     Promise.all([
       fetchWithCache(leftScanUri),
       fetchWithCache(rightScanUri)
     ])
-      .then(([leftBuffer, rightBuffer]) => {
-        // Decode both responses
-        const decodedLeft = unpack(new Uint8Array(leftBuffer)) as any;
-        const decodedRight = unpack(new Uint8Array(rightBuffer)) as any;
+      .then(([leftProcessed, rightProcessed]) => {
+        // Use pre-processed resolution data from cache
+        const fullArray1 = leftProcessed.full.array;
+        const fullArray2 = rightProcessed.full.array;
 
-        // Reconstruct full resolution data
-        const fullArray1 = reconstructFloat32Array(decodedLeft.image, decodedLeft.metadata.shape);
-        const fullArray2 = reconstructFloat32Array(decodedRight.image, decodedRight.metadata.shape);
-        const fullDiff = calculateDifferenceArray(fullArray1, fullArray2);
-        // const fullDiff = calculateResult(fullArray1, fullArray2);
+        // Build resolution data structure
+        const resData = buildResolutionData(leftProcessed, rightProcessed);
 
-        // Determine factors based on image width
-        const lowFactor = fullArray1[0].length > 2000 || fullArray1.length > 2000 ? 8 : 4;
-        const mediumFactor = fullArray1[0].length > 2000 || fullArray1.length > 2000 ? 4 : 2;
-
+        // Get min/max for color scaling
         const [minValue1, maxValue1] = getArrayMinMax(fullArray1);
         const [minValue2, maxValue2] = getArrayMinMax(fullArray2);
-        const [minValueDiff, maxValueDiff] = getArrayMinMax(fullDiff);
+        const [minValueDiff, maxValueDiff] = getArrayMinMax(resData.full.diff);
 
         // Set dimensions and full resolution data for linecuts
         setImageHeight(fullArray1.length);
@@ -489,36 +511,8 @@ const ScatterSubplot: React.FC<ScatterSubplotProps> = React.memo(({
         setImageData1(fullArray1);
         setImageData2(fullArray2);
 
-        const array1DownsampledLowRes = downsampleArray(fullArray1, lowFactor);
-        const array2DownsampledLowRes = downsampleArray(fullArray2, lowFactor);
-        const diffDownsampledLowRes = downsampleArray(fullDiff, lowFactor);
-
-        const array1DownsampledMediumRes = downsampleArray(fullArray1, mediumFactor);
-        const array2DownsampledMediumRes = downsampleArray(fullArray2, mediumFactor);
-        const diffDownsampledMediumRes = downsampleArray(fullDiff, mediumFactor);
-
-
-        // Update resolution data with clipped arrays for display
-        setResolutionData({
-          low: {
-            array1: array1DownsampledLowRes,
-            array2: array2DownsampledLowRes,
-            diff: diffDownsampledLowRes,
-            factor: lowFactor
-          },
-          medium: {
-            array1: array1DownsampledMediumRes,
-            array2: array2DownsampledMediumRes,
-            diff: diffDownsampledMediumRes,
-            factor: mediumFactor
-          },
-          full: {
-            array1: fullArray1,
-            array2: fullArray2,
-            diff: fullDiff,
-            factor: 1
-          }
-        });
+        // Update resolution data
+        setResolutionData(resData);
 
         // Calculate global min/max values for consistent color scaling
         const globalMinValue = Math.min(minValue1, minValue2);
@@ -530,7 +524,7 @@ const ScatterSubplot: React.FC<ScatterSubplotProps> = React.memo(({
           data: [
             {
               type: 'heatmap',
-              z: array1DownsampledLowRes,
+              z: resData.low.array1,
               zmin: globalMinValue,
               zmax: globalMaxValue,
               coloraxis: 'coloraxis',
@@ -540,7 +534,7 @@ const ScatterSubplot: React.FC<ScatterSubplotProps> = React.memo(({
             },
             {
               type: 'heatmap',
-              z: array2DownsampledLowRes,
+              z: resData.low.array2,
               zmin: globalMinValue,
               zmax: globalMaxValue,
               coloraxis: 'coloraxis',
@@ -550,7 +544,7 @@ const ScatterSubplot: React.FC<ScatterSubplotProps> = React.memo(({
             },
             {
               type: 'heatmap',
-              z: diffDownsampledLowRes,
+              z: resData.low.diff,
               zmin: -maxAbsDiff,
               zmax: maxAbsDiff,
               coloraxis: 'coloraxis2',
@@ -669,6 +663,7 @@ const ScatterSubplot: React.FC<ScatterSubplotProps> = React.memo(({
     setImageData1,
     setImageData2,
     setIsLoadingImages,
+    buildResolutionData,
   ]);
 
 

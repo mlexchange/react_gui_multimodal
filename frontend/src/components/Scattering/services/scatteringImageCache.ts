@@ -1,22 +1,38 @@
 /**
  * IndexedDB-based cache service for scan images.
- * Caches the last N fetched scans to avoid re-fetching when navigating between images.
+ * Caches processed resolution data to avoid re-computing when navigating between images.
  */
+
+import { unpack } from 'msgpackr';
+import { reconstructFloat32Array } from '../utils/dataProcessingScatterSubplot';
+import { downsampleArray } from '../utils/downsampleArray';
 
 const DB_NAME = 'scattering_analysis_cache';
 const DB_VERSION = 1;
 const STORE_NAME = 'images';
 const MAX_ENTRIES = 25;
 
+/**
+ * Resolution data for a single image at one resolution level.
+ */
+export interface ResolutionLevel {
+  array: number[][];
+  factor: number;
+}
+
+/**
+ * Processed image data with all resolution levels pre-computed.
+ */
+export interface ProcessedImageData {
+  low: ResolutionLevel;
+  medium: ResolutionLevel;
+  full: ResolutionLevel;
+}
+
 export interface CachedScatteringImage {
   scanUri: string;              // Primary key
-  imageData: ArrayBuffer;       // msgpack binary
-  metadata: {
-    shape: [number, number];
-    dtype: string;
-  };
+  resolutions: ProcessedImageData;
   cachedAt: number;             // Timestamp for LRU eviction
-  size: number;                 // Size in bytes for stats
 }
 
 export interface CacheStats {
@@ -130,12 +146,11 @@ async function updateCachedAt(scanUri: string): Promise<void> {
 }
 
 /**
- * Cache an image. Automatically enforces storage limits via LRU eviction.
+ * Cache image data. Automatically enforces storage limits via LRU eviction.
  */
-export async function cacheImage(
+export async function cacheProcessedImage(
   scanUri: string,
-  imageData: ArrayBuffer,
-  metadata: { shape: [number, number]; dtype: string }
+  resolutions: ProcessedImageData
 ): Promise<void> {
   const db = await initializeCache();
 
@@ -148,10 +163,8 @@ export async function cacheImage(
 
     const cacheEntry: CachedScatteringImage = {
       scanUri,
-      imageData,
-      metadata,
+      resolutions,
       cachedAt: Date.now(),
-      size: imageData.byteLength,
     };
 
     const request = store.put(cacheEntry);
@@ -162,7 +175,7 @@ export async function cacheImage(
     };
 
     request.onsuccess = () => {
-      console.log(`Cached: ${scanUri} (${(imageData.byteLength / 1024 / 1024).toFixed(1)} MB)`);
+      console.log(`Cached: ${scanUri}`);
       resolve();
     };
   });
@@ -270,14 +283,49 @@ export async function getCacheStats(): Promise<CacheStats> {
 }
 
 /**
- * Fetch an image, using cache if available.
- * This is the main function to use for fetching scattering images.
+ * Process raw image data into resolution levels.
  */
-export async function fetchWithCache(scanUri: string): Promise<ArrayBuffer> {
+function processImageToResolutions(
+  buffer: ArrayBuffer
+): ProcessedImageData {
+  const decoded = unpack(new Uint8Array(buffer)) as {
+    image: Uint8Array;
+    metadata: { shape: [number, number]; dtype: string };
+  };
+
+  // Reconstruct full resolution array
+  const fullArray = reconstructFloat32Array(decoded.image, decoded.metadata.shape);
+
+  // Determine factors based on image dimensions
+  const isLargeImage = fullArray[0].length > 2000 || fullArray.length > 2000;
+  const lowFactor = isLargeImage ? 8 : 4;
+  const mediumFactor = isLargeImage ? 4 : 2;
+
+  return {
+    low: {
+      array: downsampleArray(fullArray, lowFactor),
+      factor: lowFactor,
+    },
+    medium: {
+      array: downsampleArray(fullArray, mediumFactor),
+      factor: mediumFactor,
+    },
+    full: {
+      array: fullArray,
+      factor: 1,
+    },
+  };
+}
+
+/**
+ * Fetch and process an image, using cache if available.
+ * Returns processed resolution data ready for display.
+ */
+export async function fetchWithCache(scanUri: string): Promise<ProcessedImageData> {
   // Try to get from cache first
   const cached = await getCachedImage(scanUri);
   if (cached) {
-    return cached.imageData;
+    return cached.resolutions;
   }
 
   // Cache miss - fetch from server
@@ -291,14 +339,13 @@ export async function fetchWithCache(scanUri: string): Promise<ArrayBuffer> {
 
   const buffer = await response.arrayBuffer();
 
-  // Cache the result asynchronously (don't block return)
-  // We need to decode to get metadata for caching
-  const { unpack } = await import('msgpackr');
-  const decoded = unpack(new Uint8Array(buffer)) as { metadata: { shape: [number, number]; dtype: string } };
+  // Process into resolution levels
+  const resolutions = processImageToResolutions(buffer);
 
-  cacheImage(scanUri, buffer, decoded.metadata).catch((error) => {
+  // Cache the processed result asynchronously (don't block return)
+  cacheProcessedImage(scanUri, resolutions).catch((error) => {
     console.error('Failed to cache image:', error);
   });
 
-  return buffer;
+  return resolutions;
 }
