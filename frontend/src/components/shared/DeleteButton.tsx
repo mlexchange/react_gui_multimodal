@@ -1,5 +1,5 @@
 import { TrashSimpleIcon } from "@phosphor-icons/react";
-import { IconButton } from "./IconButton";
+import { IconButton } from "@/components/ui";
 
 interface DeleteButtonProps {
   onClick: () => void;

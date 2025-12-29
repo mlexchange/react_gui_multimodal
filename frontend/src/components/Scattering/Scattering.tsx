@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
-import { Select, Menu, Popover, IconButton, notifications, ImageSelect, ContentCard } from '@/components/ui';
-import { CircleHalfTiltIcon, GearIcon, GitDiffIcon, InfoIcon, ListIcon, TreeStructureIcon, WrenchIcon, XIcon } from '@phosphor-icons/react';
+import { Select, Menu, Popover, IconButton, notifications } from '@/components/ui';
+import { PrevNextSelect, ContentCard, LoadingOverlay, Modal } from '@/components/shared';
+import { CircleHalfTiltIcon, GearIcon, GitDiffIcon, InfoIcon, ListIcon, TreeStructureIcon, WrenchIcon } from '@phosphor-icons/react';
 import { CalibrationParams } from './types';
 
 import { Button } from '@blueskyproject/finch';
 import { Tiled } from '@blueskyproject/tiled';
 import '@blueskyproject/tiled/style.css';
+import './styles.css';
 
 // Import hooks
 import useScattering from './hooks/useScattering';
@@ -39,10 +41,7 @@ import { leftImageColorPalette, rightImageColorPalette } from './utils/constants
 
 // Import assets
 import alsLogo from '@/assets/als-logo.png';
-import iconHorizontalLinecut from '@/assets/icon-horizontal-linecut.svg';
-import iconVerticalLinecut from '@/assets/icon-vertical-linecut.svg';
-import iconInclinedLinecut from '@/assets/icon-inclined-linecut.svg';
-import iconAzimuthalIntegration from '@/assets/icon-azimuthal-integration.svg';
+import { scatteringIcons } from './icons';
 
 const tiledUrl = import.meta.env.SCATTERING_TILED_URL;
 const tiledApiKey = import.meta.env.SCATTERING_TILED_API_KEY;
@@ -391,6 +390,13 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
       }
   };
 
+  const linecutButtonsConfig = [
+    { type: 'Horizontal' as const, icon: scatteringIcons.horizontalLinecut, addFn: addHorizontalLinecut },
+    { type: 'Vertical' as const, icon: scatteringIcons.verticalLinecut, addFn: addVerticalLinecut },
+    { type: 'Inclined' as const, icon: scatteringIcons.inclinedLinecut, addFn: addInclinedLinecut },
+    { type: 'Azimuthal' as const, icon: scatteringIcons.azimuthalIntegration, addFn: addAzimuthalIntegration, saxsOnly: true },
+  ];
+
   return (
     <div className={`flex flex-col ${standalone ? 'h-screen' : 'h-full'} w-full`}>
       {standalone && (
@@ -414,12 +420,13 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                 <span className="text-lg font-semibold">Experimental data</span>
               </div>
               )}
-              <ListIcon
-                size={24}
-                weight="bold"
-                className="cursor-pointer hover:text-sky-600"
+              <IconButton
+                variant="subtle"
+                size="md"
                 onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-              />
+              >
+                <ListIcon size={24} weight="bold" />
+              </IconButton>
             </div>
 
             {/* Content */}
@@ -473,55 +480,22 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
 
             {/* Linecut Type Icons */}
             <div className="flex justify-around">
-              <button
-                className="flex flex-col items-center gap-1 p-1 rounded hover:bg-slate-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
-                onClick={() => {
-                  addLinecut('Horizontal', selectedLinecuts, setSelectedLinecuts);
-                  addHorizontalLinecut();
-                }}
-                disabled={isFetchingData || !numOfFiles}
-              >
-                <img src={iconHorizontalLinecut} alt="Horizontal" className="w-8 h-8" />
-                <span className="text-xs text-slate-700">Horizontal</span>
-              </button>
-
-              <button
-                className="flex flex-col items-center gap-1 p-1 rounded hover:bg-slate-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
-                onClick={() => {
-                  addLinecut('Vertical', selectedLinecuts, setSelectedLinecuts);
-                  addVerticalLinecut();
-                }}
-                disabled={isFetchingData || !numOfFiles}
-              >
-                <img src={iconVerticalLinecut} alt="Vertical" className="w-8 h-8" />
-                <span className="text-xs text-slate-700">Vertical</span>
-              </button>
-
-              <button
-                className="flex flex-col items-center gap-1 p-1 rounded hover:bg-slate-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
-                onClick={() => {
-                  addLinecut('Inclined', selectedLinecuts, setSelectedLinecuts);
-                  addInclinedLinecut();
-                }}
-                disabled={isFetchingData || !numOfFiles}
-              >
-                <img src={iconInclinedLinecut} alt="Inclined" className="w-8 h-8" />
-                <span className="text-xs text-slate-700">Inclined</span>
-              </button>
-
-              {experimentType === 'SAXS' && (
-                <button
-                  className="flex flex-col items-center gap-1 p-1 rounded hover:bg-slate-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
-                  onClick={() => {
-                    addLinecut('Azimuthal', selectedLinecuts, setSelectedLinecuts);
-                    addAzimuthalIntegration();
-                  }}
-                  disabled={isFetchingData || !numOfFiles}
-                >
-                  <img src={iconAzimuthalIntegration} alt="Azimuthal" className="w-8 h-8" />
-                  <span className="text-xs text-slate-700">Azimuthal</span>
-                </button>
-              )}
+              {linecutButtonsConfig
+                .filter(({ saxsOnly }) => !saxsOnly || experimentType === 'SAXS')
+                .map(({ type, icon, addFn }) => (
+                  <button
+                    key={type}
+                    className="flex flex-col items-center gap-1 p-1 rounded hover:bg-slate-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                    onClick={() => {
+                      addLinecut(type, selectedLinecuts, setSelectedLinecuts);
+                      addFn();
+                    }}
+                    disabled={isFetchingData || !numOfFiles}
+                  >
+                    <div className="w-8 h-8">{icon}</div>
+                    <span className="text-xs text-slate-700">{type}</span>
+                  </button>
+                ))}
             </div>
 
             {/* Render all selected LinecutSections */}
@@ -679,7 +653,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                     isLoadingImages={isLoadingImages}
                     setIsLoadingImages={setIsLoadingImages}
                     leftHeader={
-                      <ImageSelect
+                      <PrevNextSelect
                         value={leftImageIndex}
                         onChange={setLeftImageIndex}
                         options={imageNames.map((name, index) => ({ value: String(index), label: name }))}
@@ -688,7 +662,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                       />
                     }
                     rightHeader={
-                      <ImageSelect
+                      <PrevNextSelect
                         value={rightImageIndex}
                         onChange={setRightImageIndex}
                         options={imageNames.map((name, index) => ({ value: String(index), label: name }))}
@@ -797,7 +771,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
               title={isSummaryCollapsed ? undefined : "Summary"}
               centerHeader={isSummaryCollapsed}
               headerChildren={
-                <IconButton variant="subtle" size="md" onClick={() => setIsSummaryCollapsed(!isSummaryCollapsed)}>
+                <IconButton variant="subtle" size="sm" onClick={() => setIsSummaryCollapsed(!isSummaryCollapsed)}>
                   <ListIcon size={24} className="text-sky-950" />
                 </IconButton>
               }
@@ -833,14 +807,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
             {/* Horizontal Linecut Card */}
             {selectedLinecuts.includes('Horizontal') && horizontalLinecuts.length > 0 && (
               <ContentCard title="Horizontal Linecuts" className="flex-1" contentClassName="p-2 relative">
-                {isLoadingImages && (
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10 rounded">
-                    <div className="bg-white px-4 py-2 rounded-lg shadow flex items-center gap-2">
-                      <div className="w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin" />
-                      <span className="text-sm text-gray-700">Loading...</span>
-                    </div>
-                  </div>
-                )}
+                {isLoadingImages && <LoadingOverlay />}
                 <LinecutFig
                   direction="horizontal"
                   linecuts={horizontalLinecuts}
@@ -858,14 +825,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
             {/* Vertical Linecut Card */}
             {selectedLinecuts.includes('Vertical') && verticalLinecuts.length > 0 && (
               <ContentCard title="Vertical Linecuts" className="flex-1" contentClassName="p-2 relative">
-                {isLoadingImages && (
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10 rounded">
-                    <div className="bg-white px-4 py-2 rounded-lg shadow flex items-center gap-2">
-                      <div className="w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin" />
-                      <span className="text-sm text-gray-700">Loading...</span>
-                    </div>
-                  </div>
-                )}
+                {isLoadingImages && <LoadingOverlay />}
                 <LinecutFig
                   direction="vertical"
                   linecuts={verticalLinecuts}
@@ -883,14 +843,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
             {/* Inclined Linecut Card */}
             {selectedLinecuts.includes('Inclined') && inclinedLinecuts.length > 0 && (
               <ContentCard title="Inclined Linecuts" className="flex-1" contentClassName="p-2 relative">
-                {isLoadingImages && (
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10 rounded">
-                    <div className="bg-white px-4 py-2 rounded-lg shadow flex items-center gap-2">
-                      <div className="w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin" />
-                      <span className="text-sm text-gray-700">Loading...</span>
-                    </div>
-                  </div>
-                )}
+                {isLoadingImages && <LoadingOverlay />}
                 <InclinedLinecutFig
                   linecuts={inclinedLinecuts}
                   inclinedLinecutData1={inclinedLinecutData1 || []}
@@ -911,12 +864,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
               azimuthalIntegrations.length > 0 && (
               <ContentCard title="Azimuthal Integrations" className="flex-1" contentClassName="p-2 relative">
                 {(isLoadingImages || isProcessing) && (
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10 rounded">
-                    <div className="bg-white px-4 py-2 rounded-lg shadow flex items-center gap-2">
-                      <div className="w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin" />
-                      <span className="text-sm text-gray-700">{isProcessing ? 'Processing...' : 'Loading...'}</span>
-                    </div>
-                  </div>
+                  <LoadingOverlay message={isProcessing ? 'Processing...' : 'Loading...'} />
                 )}
                 <AzimuthalIntegrationFig
                   integrations={azimuthalIntegrations}
@@ -932,68 +880,42 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
       </div>
 
       {/* Settings Overlay */}
-      {isSettingsOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center"
-          onClick={() => setIsSettingsOpen(false)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[80vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-              <h3 className="text-lg font-bold text-sky-900">Data Transformation</h3>
-              <IconButton variant="subtle" size="md" onClick={() => setIsSettingsOpen(false)}>
-                <XIcon size={20} />
-              </IconButton>
-            </div>
-            <div className="p-4">
-              <DataTransformationAccordion
-                isLogScale={isLogScale}
-                setIsLogScale={setIsLogScale}
-                lowerPercentile={lowerPercentile}
-                setLowerPercentile={setLowerPercentile}
-                upperPercentile={upperPercentile}
-                setUpperPercentile={setUpperPercentile}
-                normalization={normalization}
-                setNormalization={setNormalization}
-                imageColormap={imageColormap}
-                setImageColormap={setImageColormap}
-                differenceColormap={differenceColormap}
-                setDifferenceColormap={setDifferenceColormap}
-                normalizationMode={normalizationMode}
-                setNormalizationMode={setNormalizationMode}
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      <Modal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        title="Data Transformation"
+      >
+        <DataTransformationAccordion
+          isLogScale={isLogScale}
+          setIsLogScale={setIsLogScale}
+          lowerPercentile={lowerPercentile}
+          setLowerPercentile={setLowerPercentile}
+          upperPercentile={upperPercentile}
+          setUpperPercentile={setUpperPercentile}
+          normalization={normalization}
+          setNormalization={setNormalization}
+          imageColormap={imageColormap}
+          setImageColormap={setImageColormap}
+          differenceColormap={differenceColormap}
+          setDifferenceColormap={setDifferenceColormap}
+          normalizationMode={normalizationMode}
+          setNormalizationMode={setNormalizationMode}
+        />
+      </Modal>
 
       {/* Calibration Overlay */}
-      {isCalibrationOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center"
-          onClick={() => setIsCalibrationOpen(false)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[80vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 text-sky-950">
-              <div className="flex items-center gap-2">
-                <WrenchIcon size={24} weight="bold" />
-                <h3 className="text-lg font-semibold">Calibration parameters</h3>
-              </div>
-            </div>
-            <div className="p-4">
-              <CalibrationAccordion
-                onCalibrationUpdate={handleCalibrationUpdate}
-                calibrationParams={calibrationParams}
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      <Modal
+        isOpen={isCalibrationOpen}
+        onClose={() => setIsCalibrationOpen(false)}
+        title="Calibration parameters"
+        titleIcon={<WrenchIcon size={24} weight="bold" />}
+        showCloseButton={false}
+      >
+        <CalibrationAccordion
+          onCalibrationUpdate={handleCalibrationUpdate}
+          calibrationParams={calibrationParams}
+        />
+      </Modal>
     </div>
   );
 }

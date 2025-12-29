@@ -1,9 +1,8 @@
 import React from 'react';
 import { CaretLeftIcon, CaretRightIcon } from '@phosphor-icons/react';
-import { Select } from './Select';
-import { IconButton } from './IconButton';
+import { Select, IconButton } from '@/components/ui';
 
-interface ImageSelectProps {
+interface PrevNextSelectProps {
   label?: string;
   value: number | "";
   onChange: (value: number | "") => void;
@@ -12,7 +11,7 @@ interface ImageSelectProps {
   numItems: number;
 }
 
-export const ImageSelect: React.FC<ImageSelectProps> = ({ value, onChange, options, disabled, numItems }) => {
+export const PrevNextSelect: React.FC<PrevNextSelectProps> = ({ value, onChange, options, disabled, numItems }) => {
   const index = typeof value === 'number' ? value : -1;
   return (
     <div className="flex items-center gap-1">
@@ -25,7 +24,7 @@ export const ImageSelect: React.FC<ImageSelectProps> = ({ value, onChange, optio
         <CaretLeftIcon size={18} />
       </IconButton>
       <Select
-        placeholder="Select image"
+        placeholder="Select item"
         value={value === "" ? "" : String(value)}
         onChange={(v) => onChange(v === null ? "" : Number(v))}
         data={options}

@@ -1,8 +1,9 @@
 import { EyeIcon, EyeSlashIcon } from '@phosphor-icons/react';
 import { InputSliderRange } from '@blueskyproject/finch';
 import { AzimuthalIntegration } from './types';
-import ColorPickerPopup from '../ColorPickerPopup';
-import { ColorBox, IconButton, DeleteButton, SectionHeader, ItemContainer } from '@/components/ui';
+import { IconButton } from '@/components/ui';
+import { ColorPickerPopup, ColorBox, DeleteButton } from '@/components/shared';
+import { LinecutSectionHeader, LinecutItemContainer } from './LinecutItemContainer';
 import { useColorPicker } from '../../hooks/useColorPicker';
 
 interface AzimuthalIntegrationWidgetProps {
@@ -42,14 +43,14 @@ export default function AzimuthalIntegrationWidget({
 
   return (
     <div className="w-full relative mb-4">
-      <SectionHeader>Azimuthal Integrations</SectionHeader>
+      <LinecutSectionHeader>Azimuthal Integrations</LinecutSectionHeader>
 
       <div className="w-full">
         {integrations.map((integration) => {
           const currentQRange = getQRangeValues(integration);
 
           return (
-            <ItemContainer key={integration.id} id={integration.id}>
+            <LinecutItemContainer key={integration.id} id={integration.id}>
               <div className="flex items-center justify-between w-full mb-2">
                 <span className="text-sm font-semibold">#{integration.id}</span>
                 <div className="flex items-center gap-2">
@@ -191,7 +192,7 @@ export default function AzimuthalIntegrationWidget({
                   </div>
                 </div>
               </div>
-            </ItemContainer>
+            </LinecutItemContainer>
           );
         })}
       </div>

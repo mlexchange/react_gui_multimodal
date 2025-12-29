@@ -2,8 +2,9 @@ import React from "react";
 import { EyeIcon, EyeSlashIcon } from "@phosphor-icons/react";
 import { Linecut } from './types';
 import { InputSlider } from "@blueskyproject/finch";
-import ColorPickerPopup from "../ColorPickerPopup";
-import { ColorBox, IconButton, DeleteButton, SectionHeader, ItemContainer } from "@/components/ui";
+import { IconButton } from "@/components/ui";
+import { ColorPickerPopup, ColorBox, DeleteButton } from "@/components/shared";
+import { LinecutSectionHeader, LinecutItemContainer } from "./LinecutItemContainer";
 import { useColorPicker } from "../../hooks/useColorPicker";
 
 type LinecutDirection = 'horizontal' | 'vertical';
@@ -83,11 +84,11 @@ const LinecutWidget: React.FC<LinecutWidgetProps> = ({
 
   return (
     <div className="w-full relative mb-4">
-      <SectionHeader>{linecutType} Linecuts</SectionHeader>
+      <LinecutSectionHeader>{linecutType} Linecuts</LinecutSectionHeader>
 
       <div className="w-full">
         {linecuts.map((linecut) => (
-          <ItemContainer key={linecut.id} id={linecut.id}>
+          <LinecutItemContainer key={linecut.id} id={linecut.id}>
             <div className="flex items-center justify-between w-full mb-2">
               <span className="text-sm font-semibold">#{linecut.id}</span>
               <div className="flex items-center gap-2">
@@ -139,7 +140,7 @@ const LinecutWidget: React.FC<LinecutWidgetProps> = ({
                 styles="w-full"
               />
             </div>
-          </ItemContainer>
+          </LinecutItemContainer>
         ))}
       </div>
 

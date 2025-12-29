@@ -1,0 +1,8 @@
+/* H5Web customizations for Scattering visualizations */
+
+/* Make horizontal ColorBar thinner */
+[data-horizontal] {
+  height: 3rem !important;
+  grid-template-rows: 1rem 1.75rem !important;
+  padding: 4px 0 !important;
+}

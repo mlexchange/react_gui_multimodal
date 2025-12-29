@@ -3,8 +3,7 @@ import { NumberInput } from '@/components/ui';
 import { Button } from '@blueskyproject/finch';
 import { CrosshairSimpleIcon, GridFourIcon, AngleIcon } from '@phosphor-icons/react';
 
-import iconSDD from '@/assets/icon-sdd.svg';
-import iconMonochromator from '@/assets/icon-monochromator.svg';
+import { scatteringIcons } from './icons';
 
 // Helper component for icon + label in calibration rows
 interface IconLabelProps {
@@ -130,7 +129,7 @@ export default function CalibrationAccordion({
             {/* Row 1: Sample-to-detector distance */}
             <div className="flex items-center gap-4">
                 <IconLabel
-                    icon={<img src={iconSDD} />}
+                    icon={<div className="w-8 h-8">{scatteringIcons.sampleDetectorDistance}</div>}
                     label="SDD"
                 />
                 <div className="flex-1">
@@ -149,7 +148,7 @@ export default function CalibrationAccordion({
             {/* Row 2: Wavelength + Energy */}
             <div className="flex items-center gap-4">
                 <IconLabel
-                    icon={<img src={iconMonochromator} />}
+                    icon={<div className="w-14 h-8">{scatteringIcons.monochromator}</div>}
                     label="Monochromator"
                 />
                 <div className="flex-1 flex gap-2">
