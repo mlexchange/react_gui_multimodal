@@ -1,3 +1,4 @@
+import '@h5web/lib/styles.css';
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { ToastProvider } from "@/components/ui";

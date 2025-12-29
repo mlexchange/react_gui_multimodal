@@ -8,3 +8,10 @@
   padding: 1rem;
   font-size: 0.875rem;
 }
+
+/* Make h5web horizontal ColorBar thinner */
+[data-horizontal] {
+  height: 3rem !important;
+  grid-template-rows: 1rem 1.75rem !important;
+  padding: 4px 0 !important;
+}

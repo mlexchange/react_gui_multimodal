@@ -1,5 +1,5 @@
 import { EyeIcon, EyeSlashIcon } from '@phosphor-icons/react';
-import InputSliderRange from '../InputSliderRange';
+import { InputSliderRange } from '@blueskyproject/finch';
 import { AzimuthalIntegration } from './types';
 import ColorPickerPopup from '../ColorPickerPopup';
 import { ColorBox, IconButton, DeleteButton, SectionHeader, ItemContainer } from '@/components/ui';
@@ -85,6 +85,7 @@ export default function AzimuthalIntegrationWidget({
                     min={0}
                     max={Number(maxQValue.toFixed(1))}
                     step={0.1}
+                    showSideInput={false}
                   />
                   <div className="flex flex-col space-y-2">
                     <div className="flex items-center justify-between w-full">
@@ -142,6 +143,7 @@ export default function AzimuthalIntegrationWidget({
                     min={-180}
                     max={180}
                     step={1}
+                    showSideInput={false}
                   />
                   <div className="flex flex-col space-y-2">
                     <div className="flex items-center justify-between w-full">

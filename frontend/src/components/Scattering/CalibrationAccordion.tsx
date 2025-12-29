@@ -15,7 +15,7 @@ interface IconLabelProps {
 const IconLabel: React.FC<IconLabelProps> = ({ icon, label }) => (
     <div className="flex flex-col items-center w-28 flex-shrink-0 pt-1">
         {icon}
-        <span className="text-md text-slate-800 text-center mt-1">{label}</span>
+        <span className="text-sm text-slate-800 text-center mt-1">{label}</span>
     </div>
 );
 

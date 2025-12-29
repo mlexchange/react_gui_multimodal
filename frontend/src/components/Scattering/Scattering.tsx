@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Select, Menu, Popover, IconButton, notifications } from '@/components/ui';
-import { CaretLeftIcon, CaretRightIcon, CircleHalfTiltIcon, GearIcon, GitDiffIcon, InfoIcon, ListIcon, TreeStructureIcon, WrenchIcon, XIcon } from '@phosphor-icons/react';
+import { Select, Menu, Popover, IconButton, notifications, ImageSelect, ContentCard } from '@/components/ui';
+import { CircleHalfTiltIcon, GearIcon, GitDiffIcon, InfoIcon, ListIcon, TreeStructureIcon, WrenchIcon, XIcon } from '@phosphor-icons/react';
 import { CalibrationParams } from './types';
 
 import { Button } from '@blueskyproject/finch';
@@ -19,6 +19,10 @@ import useSessionPersistence, { PersistableState } from './hooks/useSessionPersi
 
 // Import components
 import ScatterSubplot, { OperationType } from './ScatterSubplot';
+import H5WebScatterSubplot from './H5WebScatterSubplot';
+
+// Toggle between Plotly and H5Web implementations
+const USE_H5WEB = true;
 import LinecutWidget from './LinecutWidget';
 import InclinedLinecutWidget from './InclinedLinecutWidget';
 import AzimuthalIntegrationWidget from './AzimuthalIntegrationWidget';
@@ -433,12 +437,12 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
               />
 
               {/* Tiled Load Data */}
-              <div className="w-full [&_button]:w-full [&_button]:bg-sky-500 [&_button]:hover:bg-sky-600 [&_button]:ml-0 [&_button]:rounded-xl [&_button]:py-2">
+              <div className="w-full [&_button]:w-full [&_button]:font-medium [&_button]:bg-sky-500 [&_button]:hover:bg-sky-600 [&_button]:ml-0 [&_button]:text-md [&_button]:rounded-xl [&_button]:py-2 [&_button]:px-3">
                 <Tiled
                   tiledBaseUrl={tiledUrl}
                   apiKey={tiledApiKey}
                   isButtonMode={true}
-                  buttonModeText="Load data"
+                  buttonModeText="Select data"
                   onSelectCallback={handleTiledSelection}
                 />
               </div>
@@ -446,9 +450,10 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
               {/* Calibration Button */}
               <Button
                 size="medium"
-                styles="w-full"
+                styles="w-full disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
                 cb={() => setIsCalibrationOpen(true)}
                 text="Calibration"
+                disabled={isFetchingData || !numOfFiles}
               />
 
 
@@ -474,7 +479,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                   addLinecut('Horizontal', selectedLinecuts, setSelectedLinecuts);
                   addHorizontalLinecut();
                 }}
-                disabled={isFetchingData || numOfFiles === 0}
+                disabled={isFetchingData || !numOfFiles}
               >
                 <img src={iconHorizontalLinecut} alt="Horizontal" className="w-8 h-8" />
                 <span className="text-xs text-slate-700">Horizontal</span>
@@ -486,7 +491,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                   addLinecut('Vertical', selectedLinecuts, setSelectedLinecuts);
                   addVerticalLinecut();
                 }}
-                disabled={isFetchingData || numOfFiles === 0}
+                disabled={isFetchingData || !numOfFiles}
               >
                 <img src={iconVerticalLinecut} alt="Vertical" className="w-8 h-8" />
                 <span className="text-xs text-slate-700">Vertical</span>
@@ -498,7 +503,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                   addLinecut('Inclined', selectedLinecuts, setSelectedLinecuts);
                   addInclinedLinecut();
                 }}
-                disabled={isFetchingData || numOfFiles === 0}
+                disabled={isFetchingData || !numOfFiles}
               >
                 <img src={iconInclinedLinecut} alt="Inclined" className="w-8 h-8" />
                 <span className="text-xs text-slate-700">Inclined</span>
@@ -511,7 +516,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                     addLinecut('Azimuthal', selectedLinecuts, setSelectedLinecuts);
                     addAzimuthalIntegration();
                   }}
-                  disabled={isFetchingData || numOfFiles === 0}
+                  disabled={isFetchingData || !numOfFiles}
                 >
                   <img src={iconAzimuthalIntegration} alt="Azimuthal" className="w-8 h-8" />
                   <span className="text-xs text-slate-700">Azimuthal</span>
@@ -601,9 +606,10 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
         {/* Top Row - Scatter Images + Summary */}
         <div className="flex-1 flex overflow-hidden gap-2">
           {/* Scatter Images Card */}
-          <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex-1 overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 text-sky-950">
-              <h2 className="text-lg font-semibold">2D Scattering Data</h2>
+          <ContentCard
+            title="2D Scattering Data"
+            headerChildren={!USE_H5WEB && (
+              /* Legacy mode: show menu and settings button */
               <div className="flex items-center gap-1">
                 <Menu position="bottom-end">
                   <Menu.Target>
@@ -630,134 +636,121 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                   <GearIcon size={24} className='text-sky-950'/>
                 </IconButton>
               </div>
-            </div>
-            <div className="p-4 flex-1 overflow-hidden flex flex-col">
-              <div className="flex gap-6 mb-2 shrink-0 justify-center">
-                {/* Left Image Select */}
-                <div className="flex flex-col items-center gap-1">
-                  <span className="text-sm text-slate-700">Left Image</span>
-                  <div className="flex items-center gap-1">
-                    <IconButton
-                      variant="subtle"
-                      size="sm"
-                      onClick={() => {
-                        if (typeof leftImageIndex === 'number' && leftImageIndex > 0) {
-                          setLeftImageIndex(leftImageIndex - 1);
-                        }
-                      }}
-                      disabled={isFetchingData || numOfFiles === 0 || typeof leftImageIndex !== 'number' || leftImageIndex <= 0}
-                    >
-                      <CaretLeftIcon size={18} />
-                    </IconButton>
-                    <Select
-                      placeholder="Select image"
-                      value={leftImageIndex === "" ? "" : String(leftImageIndex)}
-                      onChange={(value) => setLeftImageIndex(value === null ? "" : Number(value))}
-                      data={imageNames.map((name, index) => ({
-                        value: String(index),
-                        label: name,
-                      }))}
-                      searchable
-                      disabled={isFetchingData || numOfFiles === 0}
-                    />
-                    <IconButton
-                      variant="subtle"
-                      size="sm"
-                      onClick={() => {
-                        if (typeof leftImageIndex === 'number' && leftImageIndex < numOfFiles - 1) {
-                          setLeftImageIndex(leftImageIndex + 1);
-                        }
-                      }}
-                      disabled={isFetchingData || numOfFiles === 0 || typeof leftImageIndex !== 'number' || leftImageIndex >= numOfFiles - 1}
-                    >
-                      <CaretRightIcon size={18} />
-                    </IconButton>
-                  </div>
-                </div>
-
-                {/* Right Image Select */}
-                <div className="flex flex-col items-center gap-1">
-                  <span className="text-sm text-slate-700">Right Image</span>
-                  <div className="flex items-center gap-1">
-                    <IconButton
-                      variant="subtle"
-                      size="sm"
-                      onClick={() => {
-                        if (typeof rightImageIndex === 'number' && rightImageIndex > 0) {
-                          setRightImageIndex(rightImageIndex - 1);
-                        }
-                      }}
-                      disabled={isFetchingData || numOfFiles === 0 || typeof rightImageIndex !== 'number' || rightImageIndex <= 0}
-                    >
-                      <CaretLeftIcon size={18} />
-                    </IconButton>
-                    <Select
-                      placeholder="Select image"
-                      value={rightImageIndex === "" ? "" : String(rightImageIndex)}
-                      onChange={(value) => setRightImageIndex(value === null ? "" : Number(value))}
-                      data={imageNames.map((name, index) => ({
-                        value: String(index),
-                        label: name,
-                      }))}
-                      searchable
-                      disabled={isFetchingData || numOfFiles === 0}
-                    />
-                    <IconButton
-                      variant="subtle"
-                      size="sm"
-                      onClick={() => {
-                        if (typeof rightImageIndex === 'number' && rightImageIndex < numOfFiles - 1) {
-                          setRightImageIndex(rightImageIndex + 1);
-                        }
-                      }}
-                      disabled={isFetchingData || numOfFiles === 0 || typeof rightImageIndex !== 'number' || rightImageIndex >= numOfFiles - 1}
-                    >
-                      <CaretRightIcon size={18} />
-                    </IconButton>
-                  </div>
-                </div>
-              </div>
-
+            )}
+            className="flex-1"
+            contentClassName="p-4 flex flex-col">
               {/* Plots container */}
-              <div className="flex-1 flex items-center justify-center min-h-0">
-                <ScatterSubplot
-                  operationType={operationType}
-                  setOperationType={setOperationType}
-                  setImageHeight={setImageHeight}
-                  setImageWidth={setImageWidth}
-                  setImageData1={setImageData1}
-                  setImageData2={setImageData2}
-                  horizontalLinecuts={horizontalLinecuts}
-                  verticalLinecuts={verticalLinecuts}
-                  inclinedLinecuts={inclinedLinecuts}
-                  leftImageColorPalette={leftImageColorPalette}
-                  rightImageColorPalette={rightImageColorPalette}
-                  setZoomedXPixelRange={setZoomedXPixelRange}
-                  setZoomedYPixelRange={setZoomedYPixelRange}
-                  setResolutionMessage={setResolutionMessage}
-                  isLogScale={isLogScale}
-                  lowerPercentile={lowerPercentile}
-                  upperPercentile={upperPercentile}
-                  normalization={normalization}
-                  imageColormap={imageColormap}
-                  differenceColormap={differenceColormap}
-                  normalizationMode={normalizationMode}
-                  azimuthalIntegrations={azimuthalIntegrations}
-                  azimuthalData1={azimuthalData1}
-                  azimuthalData2={azimuthalData2}
-                  maxQValue={maxQValue}
-                  calibrationParams={calibrationParams}
-                  qYMatrix={qYMatrix}
-                  qXMatrix={qXMatrix}
-                  units="nm⁻¹"
-                  mainTransformDataFunction={mainTransformDataFunction}
-                  leftImageIndex={leftImageIndex}
-                  rightImageIndex={rightImageIndex}
-                  scanUris={scanUris}
-                  isLoadingImages={isLoadingImages}
-                  setIsLoadingImages={setIsLoadingImages}
-                  isAzimuthalProcessing={isProcessing}
-                />
+              <div className="flex-1 flex flex-col min-h-0">
+                {USE_H5WEB ? (
+                  <H5WebScatterSubplot
+                    operationType={operationType}
+                    setOperationType={setOperationType}
+                    setImageHeight={setImageHeight}
+                    setImageWidth={setImageWidth}
+                    setImageData1={setImageData1}
+                    setImageData2={setImageData2}
+                    horizontalLinecuts={horizontalLinecuts}
+                    verticalLinecuts={verticalLinecuts}
+                    inclinedLinecuts={inclinedLinecuts}
+                    leftImageColorPalette={leftImageColorPalette}
+                    rightImageColorPalette={rightImageColorPalette}
+                    setZoomedXPixelRange={setZoomedXPixelRange}
+                    setZoomedYPixelRange={setZoomedYPixelRange}
+                    setResolutionMessage={setResolutionMessage}
+                    isLogScale={isLogScale}
+                    lowerPercentile={lowerPercentile}
+                    upperPercentile={upperPercentile}
+                    normalization={normalization}
+                    imageColormap={imageColormap}
+                    differenceColormap={differenceColormap}
+                    normalizationMode={normalizationMode}
+                    azimuthalIntegrations={azimuthalIntegrations}
+                    azimuthalData1={azimuthalData1}
+                    azimuthalData2={azimuthalData2}
+                    maxQValue={maxQValue}
+                    calibrationParams={calibrationParams}
+                    qYMatrix={qYMatrix}
+                    qXMatrix={qXMatrix}
+                    units="nm⁻¹"
+                    mainTransformDataFunction={mainTransformDataFunction}
+                    leftImageIndex={leftImageIndex}
+                    rightImageIndex={rightImageIndex}
+                    scanUris={scanUris}
+                    isLoadingImages={isLoadingImages}
+                    setIsLoadingImages={setIsLoadingImages}
+                    leftHeader={
+                      <ImageSelect
+                        value={leftImageIndex}
+                        onChange={setLeftImageIndex}
+                        options={imageNames.map((name, index) => ({ value: String(index), label: name }))}
+                        disabled={isFetchingData || isLoadingImages || numOfFiles === 0}
+                        numItems={numOfFiles}
+                      />
+                    }
+                    rightHeader={
+                      <ImageSelect
+                        value={rightImageIndex}
+                        onChange={setRightImageIndex}
+                        options={imageNames.map((name, index) => ({ value: String(index), label: name }))}
+                        disabled={isFetchingData || isLoadingImages || numOfFiles === 0}
+                        numItems={numOfFiles}
+                      />
+                    }
+                    comparisonHeader={
+                      <div className="flex items-center gap-1">
+                        <span className="font-medium">
+                          {operationType === 'subtract' ? 'Difference' : 'Ratio'}
+                        </span>
+                        <IconButton
+                          variant="subtle"
+                          size="sm"
+                          onClick={() => setOperationType(operationType === 'subtract' ? 'divide' : 'subtract')}
+                        >
+                          <GitDiffIcon size={16} className='text-sky-950'/>
+                        </IconButton>
+                      </div>
+                    }
+                  />
+                ) : (
+                  <ScatterSubplot
+                    operationType={operationType}
+                    setOperationType={setOperationType}
+                    setImageHeight={setImageHeight}
+                    setImageWidth={setImageWidth}
+                    setImageData1={setImageData1}
+                    setImageData2={setImageData2}
+                    horizontalLinecuts={horizontalLinecuts}
+                    verticalLinecuts={verticalLinecuts}
+                    inclinedLinecuts={inclinedLinecuts}
+                    leftImageColorPalette={leftImageColorPalette}
+                    rightImageColorPalette={rightImageColorPalette}
+                    setZoomedXPixelRange={setZoomedXPixelRange}
+                    setZoomedYPixelRange={setZoomedYPixelRange}
+                    setResolutionMessage={setResolutionMessage}
+                    isLogScale={isLogScale}
+                    lowerPercentile={lowerPercentile}
+                    upperPercentile={upperPercentile}
+                    normalization={normalization}
+                    imageColormap={imageColormap}
+                    differenceColormap={differenceColormap}
+                    normalizationMode={normalizationMode}
+                    azimuthalIntegrations={azimuthalIntegrations}
+                    azimuthalData1={azimuthalData1}
+                    azimuthalData2={azimuthalData2}
+                    maxQValue={maxQValue}
+                    calibrationParams={calibrationParams}
+                    qYMatrix={qYMatrix}
+                    qXMatrix={qXMatrix}
+                    units="nm⁻¹"
+                    mainTransformDataFunction={mainTransformDataFunction}
+                    leftImageIndex={leftImageIndex}
+                    rightImageIndex={rightImageIndex}
+                    scanUris={scanUris}
+                    isLoadingImages={isLoadingImages}
+                    setIsLoadingImages={setIsLoadingImages}
+                    isAzimuthalProcessing={isProcessing}
+                  />
+                )}
               </div>
 
               {resolutionMessage && (
@@ -796,51 +789,35 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                   </Popover>
                 </div>
               )}
-            </div>
-          </div>
+          </ContentCard>
 
           {/* Summary Card */}
           <div className={`h-full flex-shrink-0 transition-all duration-300 ${isSummaryCollapsed ? 'w-[48px]' : 'w-[280px]'}`}>
-            <div className="bg-white border border-gray-200 rounded-lg shadow-sm h-full flex flex-col">
-              <div className="flex items-center justify-between px-3 py-3 border-b border-gray-200 flex-shrink-0 text-sky-950">
-                {!isSummaryCollapsed && <h2 className="text-lg font-bold">Summary</h2>}
-                <ListIcon
-                  size={24}
-                  weight="bold"
-                  className="cursor-pointer hover:text-sky-600"
-                  onClick={() => setIsSummaryCollapsed(!isSummaryCollapsed)}
-                />
-              </div>
-              {!isSummaryCollapsed && (
-              <div className="flex-1 overflow-hidden flex flex-col">
-                <div className="px-2 pt-2">
-                  <Select
-                    label="Display option"
-                    value={displayOption}
-                    onChange={(value) => setDisplayOption(value as 'both' | 'max' | 'avg')}
-                    data={[
-                      { value: 'both', label: 'Both' },
-                      { value: 'max', label: 'Max' },
-                      { value: 'avg', label: 'Avg' },
-                    ]}
-                    size="sm"
-                  />
-                </div>
-                <SummaryFig
-                  maxIntensities={maxIntensities}
-                  avgIntensities={avgIntensities}
-                  leftImageIndex={leftImageIndex}
-                  rightImageIndex={rightImageIndex}
-                  onSelectImages={handleImageIndicesChange}
-                  isFetchingData={isFetchingData}
-                  displayOption={displayOption}
-                  imageNames={imageNames}
-                  progress={progress}
-                  progressMessage={progressMessage}
-                />
-              </div>
-              )}
-            </div>
+            <ContentCard
+              title={isSummaryCollapsed ? undefined : "Summary"}
+              centerHeader={isSummaryCollapsed}
+              headerChildren={
+                <IconButton variant="subtle" size="md" onClick={() => setIsSummaryCollapsed(!isSummaryCollapsed)}>
+                  <ListIcon size={24} className="text-sky-950" />
+                </IconButton>
+              }
+              className="h-full"
+              contentClassName={isSummaryCollapsed ? "hidden" : "flex flex-col px-4"}
+            >
+              <SummaryFig
+                maxIntensities={maxIntensities}
+                avgIntensities={avgIntensities}
+                leftImageIndex={leftImageIndex}
+                rightImageIndex={rightImageIndex}
+                onSelectImages={handleImageIndicesChange}
+                isFetchingData={isFetchingData}
+                displayOption={displayOption}
+                setDisplayOption={setDisplayOption}
+                imageNames={imageNames}
+                progress={progress}
+                progressMessage={progressMessage}
+              />
+            </ContentCard>
           </div>
         </div>
 
@@ -855,87 +832,99 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
           <div className="flex gap-2 h-[320px] flex-shrink-0 overflow-x-auto">
             {/* Horizontal Linecut Card */}
             {selectedLinecuts.includes('Horizontal') && horizontalLinecuts.length > 0 && (
-              <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex-1 overflow-hidden flex flex-col">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 text-sky-950">
-                  <h2 className="text-lg font-bold">Horizontal Linecuts</h2>
-                </div>
-                <div className="p-2 flex-1 overflow-hidden">
-                  <LinecutFig
-                    direction="horizontal"
-                    linecuts={horizontalLinecuts}
-                    imageData1={imageData1}
-                    imageData2={imageData2}
-                    zoomedXPixelRange={zoomedXPixelRange}
-                    zoomedYPixelRange={zoomedYPixelRange}
-                    qXMatrix={qXMatrix}
-                    qYMatrix={qYMatrix}
-                    units="nm⁻¹"
-                  />
-                </div>
-              </div>
+              <ContentCard title="Horizontal Linecuts" className="flex-1" contentClassName="p-2 relative">
+                {isLoadingImages && (
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10 rounded">
+                    <div className="bg-white px-4 py-2 rounded-lg shadow flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin" />
+                      <span className="text-sm text-gray-700">Loading...</span>
+                    </div>
+                  </div>
+                )}
+                <LinecutFig
+                  direction="horizontal"
+                  linecuts={horizontalLinecuts}
+                  imageData1={imageData1}
+                  imageData2={imageData2}
+                  zoomedXPixelRange={zoomedXPixelRange}
+                  zoomedYPixelRange={zoomedYPixelRange}
+                  qXMatrix={qXMatrix}
+                  qYMatrix={qYMatrix}
+                  units="nm⁻¹"
+                />
+              </ContentCard>
             )}
 
             {/* Vertical Linecut Card */}
             {selectedLinecuts.includes('Vertical') && verticalLinecuts.length > 0 && (
-              <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex-1 overflow-hidden flex flex-col">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 text-sky-950">
-                  <h2 className="text-lg font-bold">Vertical Linecuts</h2>
-                </div>
-                <div className="p-2 flex-1 overflow-hidden">
-                  <LinecutFig
-                    direction="vertical"
-                    linecuts={verticalLinecuts}
-                    imageData1={imageData1}
-                    imageData2={imageData2}
-                    zoomedXPixelRange={zoomedXPixelRange}
-                    zoomedYPixelRange={zoomedYPixelRange}
-                    qXMatrix={qXMatrix}
-                    qYMatrix={qYMatrix}
-                    units="nm⁻¹"
-                  />
-                </div>
-              </div>
+              <ContentCard title="Vertical Linecuts" className="flex-1" contentClassName="p-2 relative">
+                {isLoadingImages && (
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10 rounded">
+                    <div className="bg-white px-4 py-2 rounded-lg shadow flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin" />
+                      <span className="text-sm text-gray-700">Loading...</span>
+                    </div>
+                  </div>
+                )}
+                <LinecutFig
+                  direction="vertical"
+                  linecuts={verticalLinecuts}
+                  imageData1={imageData1}
+                  imageData2={imageData2}
+                  zoomedXPixelRange={zoomedXPixelRange}
+                  zoomedYPixelRange={zoomedYPixelRange}
+                  qXMatrix={qXMatrix}
+                  qYMatrix={qYMatrix}
+                  units="nm⁻¹"
+                />
+              </ContentCard>
             )}
 
             {/* Inclined Linecut Card */}
             {selectedLinecuts.includes('Inclined') && inclinedLinecuts.length > 0 && (
-              <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex-1 overflow-hidden flex flex-col">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 text-sky-950">
-                  <h2 className="text-lg font-bold">Inclined Linecuts</h2>
-                </div>
-                <div className="p-2 flex-1 overflow-hidden">
-                  <InclinedLinecutFig
-                    linecuts={inclinedLinecuts}
-                    inclinedLinecutData1={inclinedLinecutData1 || []}
-                    inclinedLinecutData2={inclinedLinecutData2 || []}
-                    beamCenterX={calibrationParams.beam_center_x}
-                    beamCenterY={calibrationParams.beam_center_y}
-                    zoomedXQRange={zoomedXQRange}
-                    qXVector={qXVector}
-                    qYVector={qYVector}
-                    units="nm⁻¹"
-                  />
-                </div>
-              </div>
+              <ContentCard title="Inclined Linecuts" className="flex-1" contentClassName="p-2 relative">
+                {isLoadingImages && (
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10 rounded">
+                    <div className="bg-white px-4 py-2 rounded-lg shadow flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin" />
+                      <span className="text-sm text-gray-700">Loading...</span>
+                    </div>
+                  </div>
+                )}
+                <InclinedLinecutFig
+                  linecuts={inclinedLinecuts}
+                  inclinedLinecutData1={inclinedLinecutData1 || []}
+                  inclinedLinecutData2={inclinedLinecutData2 || []}
+                  beamCenterX={calibrationParams.beam_center_x}
+                  beamCenterY={calibrationParams.beam_center_y}
+                  zoomedXQRange={zoomedXQRange}
+                  qXVector={qXVector}
+                  qYVector={qYVector}
+                  units="nm⁻¹"
+                />
+              </ContentCard>
             )}
 
             {/* Azimuthal Integration Card */}
             {experimentType === 'SAXS' &&
               selectedLinecuts.includes('Azimuthal') &&
               azimuthalIntegrations.length > 0 && (
-              <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex-1 overflow-hidden flex flex-col">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 text-sky-950">
-                  <h2 className="text-lg font-bold">Azimuthal Integrations</h2>
-                </div>
-                <div className="p-2 flex-1 overflow-hidden">
-                  <AzimuthalIntegrationFig
-                    integrations={azimuthalIntegrations}
-                    azimuthalData1={azimuthalData1}
-                    azimuthalData2={azimuthalData2}
-                    zoomedQRange={globalQRange}
-                  />
-                </div>
-              </div>
+              <ContentCard title="Azimuthal Integrations" className="flex-1" contentClassName="p-2 relative">
+                {(isLoadingImages || isProcessing) && (
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10 rounded">
+                    <div className="bg-white px-4 py-2 rounded-lg shadow flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin" />
+                      <span className="text-sm text-gray-700">{isProcessing ? 'Processing...' : 'Loading...'}</span>
+                    </div>
+                  </div>
+                )}
+                <AzimuthalIntegrationFig
+                  integrations={azimuthalIntegrations}
+                  azimuthalData1={azimuthalData1}
+                  azimuthalData2={azimuthalData2}
+                  zoomedQRange={globalQRange}
+                />
+              </ContentCard>
             )}
           </div>
         )}

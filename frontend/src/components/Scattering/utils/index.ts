@@ -8,7 +8,6 @@ export * from './calculateQSpaceToPixelWidthInclinedLinecut';
 export * from './clipPolygonToImageBoundaries';
 export * from './constants';
 export * from './dataProcessingScatterSubplot';
-export * from './downsampleArray';
 export * from './findPixelPositionForQValue';
 export * from './generateAzimuthalOverlay';
 export * from './generateHorizontalLinecutOverlay';

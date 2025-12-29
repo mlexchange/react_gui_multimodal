@@ -3,9 +3,7 @@ import Plot from "react-plotly.js";
 import { DisplayOption } from "./types";
 import { PlotMouseEvent } from "plotly.js";
 import ProgressBar from "./SummaryProgressBar";
-
-// Define the autorange type
-type AutorangeType = boolean | "max" | "min" | "reversed" | "min reversed" | "max reversed";
+import { Toggle } from "@/components/ui";
 
 interface SummaryFigProps {
   maxIntensities: number[];
@@ -15,6 +13,7 @@ interface SummaryFigProps {
   onSelectImages: (left: number | "", right: number | "") => void;
   isFetchingData?: boolean;
   displayOption: DisplayOption;
+  setDisplayOption: (option: DisplayOption) => void;
   imageNames?: string[];
   progress?: number;
   progressMessage?: string;
@@ -40,6 +39,7 @@ const SummaryFig: React.FC<SummaryFigProps> = ({
   onSelectImages,
   isFetchingData = false,
   displayOption = 'both',
+  setDisplayOption,
   imageNames = [],
   progress = 0,
   progressMessage = 'Loading data...'
@@ -122,7 +122,7 @@ const SummaryFig: React.FC<SummaryFigProps> = ({
   };
 
   // Create x-axis values (image indices)
-  const indices = Array.from({ length: maxIntensities.length }, (_, i) => i);
+  const indices = Array.from({ length: maxIntensities.length }, (_, i) => i + 1);
 
   // Create plot data based on display option
   const createPlotData = () => {
@@ -140,7 +140,7 @@ const SummaryFig: React.FC<SummaryFigProps> = ({
         x: displayOption === 'max' ? maxIntensities[leftImageIndex] :
           displayOption === 'avg' ? avgIntensities[leftImageIndex] :
           maxIntensities[leftImageIndex],
-        y: leftImageIndex,
+        y: leftImageIndex + 1,
         text: 'L',
         showarrow: false,
         font: {
@@ -157,7 +157,7 @@ const SummaryFig: React.FC<SummaryFigProps> = ({
         x: displayOption === 'max' ? maxIntensities[rightImageIndex] :
           displayOption === 'avg' ? avgIntensities[rightImageIndex] :
           maxIntensities[rightImageIndex],
-        y: rightImageIndex,
+        y: rightImageIndex + 1,
         text: 'R',
         showarrow: false,
         font: {
@@ -181,11 +181,13 @@ const SummaryFig: React.FC<SummaryFigProps> = ({
           color: 'rgb(31, 119, 180)',
           line: {
             width: indices.map(i => {
-              return (i === leftImageIndex || i === rightImageIndex) ? 4 : 0;
+              const leftMatch = typeof leftImageIndex === 'number' && i === leftImageIndex + 1;
+              const rightMatch = typeof rightImageIndex === 'number' && i === rightImageIndex + 1;
+              return (leftMatch || rightMatch) ? 4 : 0;
             }),
             color: indices.map(i => {
-              if (i === leftImageIndex) return 'red';
-              if (i === rightImageIndex) {
+              if (typeof leftImageIndex === 'number' && i === leftImageIndex + 1) return 'red';
+              if (typeof rightImageIndex === 'number' && i === rightImageIndex + 1) {
                 return RIGHT_IMAGE_COLOR;
               }
               return 'rgba(0,0,0,0)';
@@ -210,18 +212,22 @@ const SummaryFig: React.FC<SummaryFigProps> = ({
           size: 6,
           color: 'rgb(255, 127, 14)',
           line: {
-            width: indices.map(i => (i === leftImageIndex || i === rightImageIndex) ? 4 : 0),
+            width: indices.map(i => {
+              const leftMatch = typeof leftImageIndex === 'number' && i === leftImageIndex + 1;
+              const rightMatch = typeof rightImageIndex === 'number' && i === rightImageIndex + 1;
+              return (leftMatch || rightMatch) ? 4 : 0;
+            }),
             color: indices.map(i => {
-              if (i === leftImageIndex) return 'red';
-              if (i === rightImageIndex) return RIGHT_IMAGE_COLOR;
+              if (typeof leftImageIndex === 'number' && i === leftImageIndex + 1) return 'red';
+              if (typeof rightImageIndex === 'number' && i === rightImageIndex + 1) return RIGHT_IMAGE_COLOR;
               return 'rgba(0,0,0,0)';
             })
           }
         },
         text: imageNames.length > 0 ? imageNames : undefined,
         hovertemplate: imageNames.length > 0
-          ? 'Image %{y}<br>Name: %{text}<br>Avg: %{x:.2f}<extra></extra>'
-          : 'Image %{y}<br>Avg: %{x:.2f}<extra></extra>',
+          ? 'Image #%{y}<br>%{text}<br>Avg: %{x:.2f}<extra></extra>'
+          : 'Image #%{y}<br>Avg: %{x:.2f}<extra></extra>',
       });
     }
 
@@ -290,8 +296,7 @@ const SummaryFig: React.FC<SummaryFigProps> = ({
         font: { size: 12 }
       },
       tickfont: { size: 11 },
-      range: [-2, null],
-      autorange: 'max' as AutorangeType,
+      autorange: true,
     },
     yaxis: {
       title: {
@@ -301,17 +306,17 @@ const SummaryFig: React.FC<SummaryFigProps> = ({
       tickfont: { size: 11 },
       tickmode: 'linear' as const,
       dtick: Math.ceil(indices.length / 20),
-      range: [Math.max(indices.length, 10), -2],
+      range: [Math.max(indices.length, 10) + 0.5, 0.5],
       autorange: false
     },
     legend: {
       x: 0.5,
-      y: -0.15,
+      y: -0.10,
       orientation: 'h' as const,
       font: { size: 10 },
       xanchor: 'center' as const,
     },
-    margin: { l: 50, r: 20, t: 20, b: 60 },
+    margin: { l: 40, r: 20, t: 30, b: 60 },
     hovermode: 'closest' as const,
     clickmode: 'event' as const,
     uirevision: uiRevisionId,
@@ -322,16 +327,51 @@ const SummaryFig: React.FC<SummaryFigProps> = ({
   // Determine if we should show the progress bar
   const showProgressBar = isFetchingData && progress < 100;
 
+  const hasData = maxIntensities.length > 0 || avgIntensities.length > 0;
+
   return (
     <div ref={containerRef} className="w-full h-full relative flex flex-col">
       {/* Progress Bar */}
-      <div className="w-full">
+      <div className="w-full pt-3">
         <ProgressBar
           progress={progress}
           isVisible={showProgressBar}
           label={progressMessage}
         />
       </div>
+
+      {/* Display Toggle Buttons */}
+      {hasData && (
+        <div className="flex items-center gap-2 px-2 shrink-0">
+          <span className="text-sm text-gray-600">Display:</span>
+          <Toggle
+            pressed={displayOption === 'max' || displayOption === 'both'}
+            onPressedChange={(pressed) => {
+              const avgPressed = displayOption === 'avg' || displayOption === 'both';
+              if (pressed && avgPressed) setDisplayOption('both');
+              else if (pressed) setDisplayOption('max');
+              else if (avgPressed) setDisplayOption('avg');
+              else setDisplayOption('avg');
+            }}
+            size="sm"
+          >
+            Max
+          </Toggle>
+          <Toggle
+            pressed={displayOption === 'avg' || displayOption === 'both'}
+            onPressedChange={(pressed) => {
+              const maxPressed = displayOption === 'max' || displayOption === 'both';
+              if (pressed && maxPressed) setDisplayOption('both');
+              else if (pressed) setDisplayOption('avg');
+              else if (maxPressed) setDisplayOption('max');
+              else setDisplayOption('max');
+            }}
+            size="sm"
+          >
+            Average
+          </Toggle>
+        </div>
+      )}
 
       <div className="flex-grow relative">
         {isFetchingData && progress < 100 && (
@@ -342,18 +382,18 @@ const SummaryFig: React.FC<SummaryFigProps> = ({
           </div>
         )}
 
-        {maxIntensities.length > 0 || avgIntensities.length > 0 ? (
+        {hasData ? (
           <Plot
             data={plotData}
             layout={layout}
             config={{
-              displayModeBar: true,
+              displayModeBar: "hover",
               responsive: true,
               displaylogo: false,
               scrollZoom: true,
-              doubleClick: 'reset',
+              doubleClick: 'autosize',
               modeBarButtons: [
-                ['pan2d', 'zoom2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d', 'toImage'],
+                ['pan2d', 'zoom2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'toImage'],
               ],
               showTips: true,
             }}
@@ -375,7 +415,7 @@ const SummaryFig: React.FC<SummaryFigProps> = ({
         <div
           className="fixed z-[9999] bg-white shadow-lg rounded-md border border-gray-200"
           style={{
-            left: `${contextMenu.x}px`,
+            left: `${contextMenu.x - 250}px`,
             top: `${contextMenu.y}px`,
             width: "250px"
           }}
@@ -383,8 +423,8 @@ const SummaryFig: React.FC<SummaryFigProps> = ({
         >
           <div className="p-3 text-center text-base font-semibold border-b border-gray-200 bg-gray-50">
             {imageNames.length > contextMenu.pointIndex
-              ? `Image: ${imageNames[contextMenu.pointIndex]}`
-              : `Image #${contextMenu.pointIndex}`}
+              ? `Image #${contextMenu.pointIndex + 1} ${imageNames[contextMenu.pointIndex]}`
+              : `Image #${contextMenu.pointIndex + 1}`}
           </div>
 
           <div

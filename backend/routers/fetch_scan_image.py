@@ -1,10 +1,8 @@
 import msgpack
-import numpy as np
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 
-from utils.scans import get_processed_image
-from utils.tiled_client import get_tiled_base_uri, get_tiled_client_for_uri
+from utils.image_cache import get_cached_processed_image
 
 router = APIRouter()
 
@@ -12,47 +10,43 @@ router = APIRouter()
 @router.get("/fetch-scan-image")
 async def fetch_scan_image(scan_uri: str):
     """
-    Get the image array for a single scan.
+    Get the processed image with all resolution levels for a single scan.
 
     Args:
         scan_uri: The scan URI like "rawdata/NaCl_small/NaCl_1_10_sample_2_2m"
 
     Returns:
-        msgpack binary containing the image array and metadata
+        msgpack binary containing all resolution levels:
+        - low: {image: bytes, shape: [h, w], factor: int, dtype: str}
+        - medium: {image: bytes, shape: [h, w], factor: int, dtype: str}
+        - full: {image: bytes, shape: [h, w], factor: int, dtype: str}
+        - original_shape: [height, width]
+        - scan_uri: string
     """
-    # Construct full URI for the scan
     scan_uri = scan_uri.lstrip('/')
-    full_uri = f"{get_tiled_base_uri()}{scan_uri}"
 
     try:
-        # Load image from Tiled
-        image_client = get_tiled_client_for_uri(full_uri)
-        image_array = image_client.read()
+        # Get from cache (will fetch from Tiled and process if not cached)
+        processed = get_cached_processed_image(scan_uri)
 
-        # Apply preprocessing (masking, etc.)
-        processed_image = get_processed_image(image_array, mask_detector=None)
-
-        # Convert to float32
-        processed_image = processed_image.astype(np.float32)
-
-        # Serialize to bytes
-        image_bytes = processed_image.tobytes()
-
-        # Prepare metadata
-        metadata = {
-            "shape": processed_image.shape,
-            "dtype": str(processed_image.dtype),
-            "scan_uri": scan_uri,
-        }
-
-        # Pack data
-        packed_data = msgpack.packb(
-            {
-                "metadata": metadata,
-                "image": image_bytes,
+        # Serialize each resolution level
+        def serialize_level(level):
+            return {
+                "image": level.array.tobytes(),
+                "shape": list(level.array.shape),
+                "factor": level.factor,
+                "dtype": str(level.array.dtype),
             }
-        )
-        
+
+        # Pack all data
+        packed_data = msgpack.packb({
+            "low": serialize_level(processed.low),
+            "medium": serialize_level(processed.medium),
+            "full": serialize_level(processed.full),
+            "original_shape": list(processed.original_shape),
+            "scan_uri": scan_uri,
+        })
+
         return Response(content=packed_data, media_type="application/octet-stream")
 
     except Exception as e:

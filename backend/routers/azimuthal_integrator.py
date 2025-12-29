@@ -6,8 +6,7 @@ from fastapi import APIRouter, Query
 from fastapi.responses import Response
 from pyFAI.integrator.azimuthal import AzimuthalIntegrator
 
-from utils.scans import get_single_image_array_and_name
-from utils.tiled_client import get_tiled_base_uri
+from utils.image_cache import get_cached_processed_image
 
 router = APIRouter()
 
@@ -81,30 +80,19 @@ async def azimuthal_integration(
     Now uses direct scan URIs instead of folder_url + indices for more efficient access.
     """
 
-    # Get base URI from centralized tiled client
-    TILED_BASE_URI = get_tiled_base_uri()
+    # Get images from cache (uses full resolution for integration accuracy)
+    # This reuses cached images if the user previously viewed them in the scatter subplot
+    processed_1 = get_cached_processed_image(left_scan_uri.lstrip('/'))
+    processed_2 = get_cached_processed_image(right_scan_uri.lstrip('/'))
 
-    # Fetch the two images directly by their URIs
-    scatter_image_array_1, _ = get_single_image_array_and_name(
-        left_scan_uri,
-        mask_detector=None,
-        tiled_uri=TILED_BASE_URI
-    )
-
-    scatter_image_array_2, _ = get_single_image_array_and_name(
-        right_scan_uri,
-        mask_detector=None,
-        tiled_uri=TILED_BASE_URI
-    )
+    scatter_image_array_1 = processed_1.full.array
+    scatter_image_array_2 = processed_2.full.array
 
     # Parse the range parameters
     azimuth_range = parse_range_parameter(azimuth_range_deg, None)
     q_range_tuple = parse_range_parameter(q_range, None)
 
-    # Convert the input scatter images to NumPy arrays for processing
-    # The full resolution images are used to maintain maximum data quality
-    scatter_image_array_1 = np.array(scatter_image_array_1)
-    scatter_image_array_2 = np.array(scatter_image_array_2)
+    # Images from cache are already numpy arrays (float32)
 
     # Package all calibration parameters into a dictionary for easier handling
     azimuthal_integration_calibration_params = {

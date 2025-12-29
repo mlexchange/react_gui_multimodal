@@ -1,11 +1,13 @@
 /**
  * IndexedDB-based cache service for scan images.
- * Caches processed resolution data to avoid re-computing when navigating between images.
+ * Caches processed resolution data from the backend.
+ *
+ * The backend now handles all resolution processing (downsampling).
+ * This service simply stores and retrieves the pre-processed data.
  */
 
 import { unpack } from 'msgpackr';
 import { reconstructFloat32Array } from '../utils/dataProcessingScatterSubplot';
-import { downsampleArray } from '../utils/downsampleArray';
 
 const DB_NAME = 'scattering_analysis_cache';
 const DB_VERSION = 1;
@@ -283,42 +285,52 @@ export async function getCacheStats(): Promise<CacheStats> {
 }
 
 /**
- * Process raw image data into resolution levels.
+ * Backend response format for a single resolution level.
  */
-function processImageToResolutions(
-  buffer: ArrayBuffer
-): ProcessedImageData {
-  const decoded = unpack(new Uint8Array(buffer)) as {
-    image: Uint8Array;
-    metadata: { shape: [number, number]; dtype: string };
-  };
+interface BackendResolutionLevel {
+  image: Uint8Array;
+  shape: [number, number];
+  factor: number;
+  dtype: string;
+}
 
-  // Reconstruct full resolution array
-  const fullArray = reconstructFloat32Array(decoded.image, decoded.metadata.shape);
+/**
+ * Backend response format containing all resolution levels.
+ */
+interface BackendImageResponse {
+  low: BackendResolutionLevel;
+  medium: BackendResolutionLevel;
+  full: BackendResolutionLevel;
+  original_shape: [number, number];
+  scan_uri: string;
+}
 
-  // Determine factors based on image dimensions
-  const isLargeImage = fullArray[0].length > 2000 || fullArray.length > 2000;
-  const lowFactor = isLargeImage ? 8 : 4;
-  const mediumFactor = isLargeImage ? 4 : 2;
+/**
+ * Deserialize backend response containing all resolution levels.
+ * The backend now handles all resolution processing.
+ */
+function deserializeBackendResponse(buffer: ArrayBuffer): ProcessedImageData {
+  const decoded = unpack(new Uint8Array(buffer)) as BackendImageResponse;
 
   return {
     low: {
-      array: downsampleArray(fullArray, lowFactor),
-      factor: lowFactor,
+      array: reconstructFloat32Array(decoded.low.image, decoded.low.shape),
+      factor: decoded.low.factor,
     },
     medium: {
-      array: downsampleArray(fullArray, mediumFactor),
-      factor: mediumFactor,
+      array: reconstructFloat32Array(decoded.medium.image, decoded.medium.shape),
+      factor: decoded.medium.factor,
     },
     full: {
-      array: fullArray,
-      factor: 1,
+      array: reconstructFloat32Array(decoded.full.image, decoded.full.shape),
+      factor: decoded.full.factor,
     },
   };
 }
 
 /**
- * Fetch and process an image, using cache if available.
+ * Fetch and cache an image with all resolution levels from backend.
+ * Backend handles all resolution processing.
  * Returns processed resolution data ready for display.
  */
 export async function fetchWithCache(scanUri: string): Promise<ProcessedImageData> {
@@ -339,8 +351,8 @@ export async function fetchWithCache(scanUri: string): Promise<ProcessedImageDat
 
   const buffer = await response.arrayBuffer();
 
-  // Process into resolution levels
-  const resolutions = processImageToResolutions(buffer);
+  // Deserialize response with all resolution levels from backend
+  const resolutions = deserializeBackendResponse(buffer);
 
   // Cache the processed result asynchronously (don't block return)
   cacheProcessedImage(scanUri, resolutions).catch((error) => {
