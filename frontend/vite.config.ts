@@ -2,8 +2,6 @@ import path, { resolve } from 'node:path';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import dts from 'vite-plugin-dts';
-import { NodeGlobalsPolyfillPlugin } from '@esbuild-plugins/node-globals-polyfill';
-import { NodeModulesPolyfillPlugin } from '@esbuild-plugins/node-modules-polyfill';
 import * as packageJson from './package.json';
 
 /** @type {import('vite').UserConfig} */
@@ -36,13 +34,6 @@ export default defineConfig(({ mode }) => {
         define: {
           global: 'globalThis',
         },
-        // Enable esbuild polyfill plugins
-        plugins: [
-          NodeGlobalsPolyfillPlugin({
-            buffer: true,
-          }),
-          NodeModulesPolyfillPlugin(),
-        ],
       },
     },
     build: {
@@ -54,12 +45,6 @@ export default defineConfig(({ mode }) => {
       },
       rollupOptions: {
         external: [...Object.keys(packageJson.peerDependencies)],
-        plugins: [
-          NodeGlobalsPolyfillPlugin({
-            buffer: true,
-          }),
-          NodeModulesPolyfillPlugin(),
-        ],
         output: {
           globals: {
             react: 'React',

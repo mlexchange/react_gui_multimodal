@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
-import Plot from 'react-plotly.js';
+import Plot from '@/components/ui/Plot';
 import { InclinedLinecut } from './types';
 import { calculateInclinedLineEndpoints } from './utils/calculateInclinedLinecutEndpoints';
 

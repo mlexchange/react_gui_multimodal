@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, useMemo } from "react";
-import Plot from "react-plotly.js";
+import Plot from "@/components/ui/Plot";
 import { AzimuthalIntegration, AzimuthalData } from './types';
 
 interface AzimuthalIntegrationFigProps {

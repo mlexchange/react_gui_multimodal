@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
-import Plot from "react-plotly.js";
+import Plot from "@/components/ui/Plot";
 import { notifications } from '@/components/ui';
 import {
   ResolutionDataType,

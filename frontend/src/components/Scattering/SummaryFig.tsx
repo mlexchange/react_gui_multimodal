@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import Plot from "react-plotly.js";
+import Plot, { PlotMouseEvent } from "@/components/ui/Plot";
 import { DisplayOption } from "./types";
-import { PlotMouseEvent } from "plotly.js";
 import ProgressBar from "./SummaryProgressBar";
 import { Toggle } from "@/components/ui";
 
