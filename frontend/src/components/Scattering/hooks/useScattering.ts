@@ -51,7 +51,8 @@ export default function useScattering() {
     pixel_size_y: 172,
     wavelength: 1.2398,
     tilt: 0,
-    tilt_plan_rotation: 0
+    tilt_plan_rotation: 0,
+    incident_angle: 0.16  // For GISAXS (degrees)
   });
 
   // Q-matrix state (replacing vector state)
@@ -61,6 +62,8 @@ export default function useScattering() {
   /**
    * Fetch q-matrices from the server
    * This fetches both q_x and q_y matrices based on current calibration parameters
+   * For GISAXS: returns qip (in-plane) and qoop (out-of-plane)
+   * For SAXS: returns standard qx and qy
    */
   const fetchQVectors = useCallback(async () => {
     try {
@@ -71,6 +74,9 @@ export default function useScattering() {
       Object.entries(calibrationParams).forEach(([key, value]) => {
         url.searchParams.set(key, value.toString());
       });
+
+      // Add experiment type to determine SAXS vs GISAXS q-vector calculation
+      url.searchParams.set('experiment_type', experimentType);
 
       // Add image dimensions from the loaded image data
       url.searchParams.set('image_height', imageHeight.toString());
@@ -93,13 +99,15 @@ export default function useScattering() {
       }
 
       // Store the q-matrices
+      // For GISAXS: q_x = qip (in-plane), q_y = qoop (out-of-plane)
+      // For SAXS: q_x and q_y are standard coordinates
       setQXMatrix(decodedData.q_x);
       setQYMatrix(decodedData.q_y);
 
     } catch (error) {
       console.error('Error fetching q-matrices:', error);
     }
-  }, [calibrationParams, imageHeight, imageWidth]);
+  }, [calibrationParams, experimentType, imageHeight, imageWidth]);
 
   /**
    * Update calibration parameters and trigger q-matrix refresh
@@ -124,13 +132,13 @@ export default function useScattering() {
     }
   }, []);
 
-  // Fetch q-matrices when calibration parameters or image dimensions change
+  // Fetch q-matrices when calibration parameters, experiment type, or image dimensions change
   useEffect(() => {
     // Only fetch Q-vectors if images are loaded
     if (imageHeight > 0 || imageWidth > 0) {
       fetchQVectors();
     }
-  }, [fetchQVectors, imageHeight, imageWidth]);
+  }, [fetchQVectors, imageHeight, imageWidth, experimentType]);
 
   return {
     // Existing state

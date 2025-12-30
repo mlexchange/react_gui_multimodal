@@ -84,7 +84,8 @@ const DEFAULT_CALIBRATION: CalibrationParams = {
   pixel_size_y: 172,
   wavelength: 1.2398,
   tilt: 0,
-  tilt_plan_rotation: 0
+  tilt_plan_rotation: 0,
+  incident_angle: 0.16  // For GISAXS (degrees)
 };
 
 /**

@@ -73,6 +73,7 @@ export interface CalibrationParams {
         wavelength: number;
         tilt: number;
         tilt_plan_rotation: number;
+        incident_angle: number;  // For GISAXS (degrees)
     }
 
 

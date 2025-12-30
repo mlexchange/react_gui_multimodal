@@ -914,6 +914,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
         <CalibrationAccordion
           onCalibrationUpdate={handleCalibrationUpdate}
           calibrationParams={calibrationParams}
+          experimentType={experimentType}
         />
       </Modal>
     </div>

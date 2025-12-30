@@ -27,11 +27,13 @@ interface CalibrationParams {
     wavelength: number;               // Wavelength in Angstroms
     tilt: number;                     // Detector tilt in degrees
     tilt_plan_rotation: number;       // Tilt plane rotation in degrees
+    incident_angle: number;           // Incident angle in degrees (for GISAXS)
 }
 
 interface CalibrationAccordionProps {
     calibrationParams: CalibrationParams;
     onCalibrationUpdate: (params: CalibrationParams) => void;
+    experimentType: string;           // 'SAXS' or 'GISAXS'
 }
 
 // Constants for energy-wavelength conversion
@@ -53,6 +55,7 @@ const energyToWavelength = (energy: number): number => {
 export default function CalibrationAccordion({
     calibrationParams,
     onCalibrationUpdate,
+    experimentType,
 }: CalibrationAccordionProps) {
     const [isModified, setIsModified] = useState(false);
     const [localParams, setLocalParams] = useState(calibrationParams);
@@ -260,6 +263,28 @@ export default function CalibrationAccordion({
                     />
                 </div>
             </div>
+
+            {/* Row 6: Incident Angle (GISAXS only) */}
+            {experimentType === 'GISAXS' && (
+                <div className="flex items-center gap-4">
+                    <IconLabel
+                        icon={<AngleIcon size={30} />}
+                        label="Incident angle"
+                    />
+                    <div className="flex-1">
+                        <NumberInput
+                            label="Incident angle (°)"
+                            value={localParams.incident_angle}
+                            onChange={handleParamChange('incident_angle')}
+                            decimalScale={3}
+                            step={0.001}
+                            min={0}
+                            max={5}
+                            size="sm"
+                        />
+                    </div>
+                </div>
+            )}
 
             {/* Update Button */}
             <Button
