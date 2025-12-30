@@ -8,7 +8,7 @@ dependencies = [
     "fastapi[standard]>=0.124.0",
     "msgpack>=1.1.2",
     "numpy>=2.3.5",
-    "pyfai>=2025.3.0",
+    "pyfai==2025.12.1",
     "python-dotenv>=1.2.1",
     "tiled[client]==0.1.0b16",
 ]

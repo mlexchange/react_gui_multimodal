@@ -1471,7 +1471,7 @@ wheels = [
 
 [[package]]
 name = "pyfai"
-version = "2025.3.0"
+version = "2025.12.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "fabio" },
@@ -1482,13 +1482,18 @@ dependencies = [
     { name = "scipy" },
     { name = "silx" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/25/83/f3d2cf65770e162c9c72ab2a02fbb6e87b09a556e441b42588055bd23b68/pyfai-2025.3.0.tar.gz", hash = "sha256:67b3bb7625170c63c33039c738e8aff02f0f1156f68a5eae444d56b5cdd06275", size = 67093744, upload-time = "2025-03-14T07:56:38.514Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1f/8b/25a4b3ec765ac65162d3c10c93850f245f536d11d2fd4a5c676999e7b564/pyfai-2025.12.1.tar.gz", hash = "sha256:88b5a7334af419de7ffba40c772896e85bd51dc1f05c099eb52c30f1d7752a2e", size = 68401729, upload-time = "2025-12-19T07:50:12.013Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1d/32/f10f70061da91758b0ffb09661f984f427e73a033fdde2962bf6bc4e4935/pyfai-2025.3.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:760e275381a0db8e5bd89aa51e524dd312e3ba493e4be613c3eebf2e215b12b7", size = 5412895, upload-time = "2025-03-14T07:56:05.556Z" },
-    { url = "https://files.pythonhosted.org/packages/25/22/ca162cfc38ba4c9e876aedbe7640f20c89614f5e9fcf0ae6f7abd7717dbb/pyfai-2025.3.0-cp313-cp313-macosx_11_0_x86_64.whl", hash = "sha256:7567b8e578f0920c9000af63de37205a7e91d94dd613065c6e01278a45c9522e", size = 5706575, upload-time = "2025-03-14T07:56:08.44Z" },
-    { url = "https://files.pythonhosted.org/packages/e8/70/9546d830fd7a28ba887583aa5658fb66827f97a62baae159f47f9607f0e8/pyfai-2025.3.0-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:ceeeca0ef2600b6d593cf7be9dd6cc79f08face10e6ccfb1071217d651bf1afa", size = 6932669, upload-time = "2025-03-14T07:56:11.372Z" },
-    { url = "https://files.pythonhosted.org/packages/8b/da/a7551af143e5a94adf0cabd6f220df472b86a0fbf8a1dad42f1ba8f7261a/pyfai-2025.3.0-cp313-cp313-win_amd64.whl", hash = "sha256:595f67a43697a3502c5b06454446f8e899425f0a641205f6e1f8e4400d365744", size = 5380885, upload-time = "2025-03-14T07:56:13.802Z" },
-    { url = "https://files.pythonhosted.org/packages/52/d1/ec4f26935e740cbca7b3ae77d561b76385da304f0a750c83296616014b2f/pyfai-2025.3.0-cp314-cp314-win_amd64.whl", hash = "sha256:066d2d7842bcb540075b7384b951a12f3f63a2e351b558c5b6b3f0b0f45216df", size = 5216348, upload-time = "2025-10-31T08:18:11.01Z" },
+    { url = "https://files.pythonhosted.org/packages/f7/7d/292cf095a8a6b5109ff31cf1130f70b42bc77cf7bd35fbf7440d91b36279/pyfai-2025.12.1-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:3f0676be03e85bb4adffd872dc0b3565fdc425a034081acf0ef3f4178b3d1367", size = 5602116, upload-time = "2025-12-19T08:08:38.668Z" },
+    { url = "https://files.pythonhosted.org/packages/10/90/e9bfa09405caebd5b4e7b817ad1170955dd887520880a64ef19c302e4cbb/pyfai-2025.12.1-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:a5a5c59ae25832998ab4fbf2cd1f583c5843f8c5940da300a4d65d715efa457b", size = 5163166, upload-time = "2025-12-19T08:08:40.578Z" },
+    { url = "https://files.pythonhosted.org/packages/23/a6/7bbc8ddd8c93a62b9eeb16797aa887e2814de4370aba7939d180d3a51cb6/pyfai-2025.12.1-cp313-cp313-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:8138dace04ac8ac5dc04a9d279970a528935dba18a16f99c26e3a8fd218ba8a4", size = 6911563, upload-time = "2025-12-19T08:08:42.792Z" },
+    { url = "https://files.pythonhosted.org/packages/01/5c/af3f4236c85fd3fbc219ed1401997eb9659586076086ba3e796c0da55ea0/pyfai-2025.12.1-cp313-cp313-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:5bb1167aafbd20e03c252d99b51743f1c1eec6da7d980a6b3fc0d255b109b824", size = 7007113, upload-time = "2025-12-19T07:35:58.505Z" },
+    { url = "https://files.pythonhosted.org/packages/b9/39/0a823de16e5620ee3d605635ef6ab89ce8531a52f386fe735c0f2d0aa3ab/pyfai-2025.12.1-cp313-cp313-win_amd64.whl", hash = "sha256:905bafbbc763b41e306b756ae97d7e353e64ff0665737fc6c6f4a818090cbba8", size = 5269115, upload-time = "2025-12-19T08:08:45.646Z" },
+    { url = "https://files.pythonhosted.org/packages/4a/d9/793533c5a231e9392e3ee32e471080d3100e7ebda448a0e3d630129eef33/pyfai-2025.12.1-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:e4c333dd344699d7da7c74b1ae7d9c135a15f306f76e50a53b011e036b7103be", size = 5193739, upload-time = "2025-12-19T08:08:47.928Z" },
+    { url = "https://files.pythonhosted.org/packages/7b/06/b4e915f035c4f3d23f1f1c12b374a7e55224147db5b1c3bfcd91af3ddbec/pyfai-2025.12.1-cp314-cp314-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:ab297f55e9d7ab6d2bedcfd8b24e10d4074a2b7bcf92702c93bdf8b6fa24266f", size = 7024334, upload-time = "2025-12-19T07:36:00.446Z" },
+    { url = "https://files.pythonhosted.org/packages/28/4f/1d7577ecfad3ff2258cbc1793ab9e1bb0a81c7c9c8e1e335f06a2fa49057/pyfai-2025.12.1-cp314-cp314-win_amd64.whl", hash = "sha256:928d881adba2376c2bebade8dcbb87a49ded9b2242616d3c9d1aeae7d018e0a7", size = 5361609, upload-time = "2025-12-19T08:08:52.754Z" },
+    { url = "https://files.pythonhosted.org/packages/b8/38/f49e3a6a72f7ef619e1d051f179e6c4082b55a23583b92d97fb6c825ecfa/pyfai-2025.12.1-cp314-cp314t-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:bc7919c31aa87de4b2706f4faaebc1e61b1558ce3717a2173df2c9ef93ca2dc9", size = 6644333, upload-time = "2025-12-19T07:36:02.8Z" },
+    { url = "https://files.pythonhosted.org/packages/ec/ea/5085e6563a20e24addc4e2016873815a1c361302fe2b68c7dc64b8172947/pyfai-2025.12.1-cp314-cp314t-win_amd64.whl", hash = "sha256:e66858246ff5e55334a55925c3491e602e88cafc28d2abf24f4685d45faee36b", size = 5987214, upload-time = "2025-12-19T08:08:50.842Z" },
 ]
 
 [[package]]
@@ -2143,7 +2148,7 @@ requires-dist = [
     { name = "fastapi", extras = ["standard"], specifier = ">=0.124.0" },
     { name = "msgpack", specifier = ">=1.1.2" },
     { name = "numpy", specifier = ">=2.3.5" },
-    { name = "pyfai", specifier = ">=2025.3.0" },
+    { name = "pyfai", specifier = "==2025.12.1" },
     { name = "python-dotenv", specifier = ">=1.2.1" },
     { name = "tiled", extras = ["client"], specifier = "==0.1.0b16" },
 ]
