@@ -48,7 +48,7 @@ export interface SessionState {
   experimentType: 'SAXS' | 'GISAXS';
 
   /** Calibration parameters */
-  calibrationParams: CalibrationParams;
+  calibrationParams: CalibrationParams | null;
 
   /** Display/transformation settings */
   displaySettings: DisplaySettings;
@@ -74,21 +74,6 @@ export interface SessionState {
 }
 
 /**
- * Default calibration parameters
- */
-const DEFAULT_CALIBRATION: CalibrationParams = {
-  sample_detector_distance: 274.83,
-  beam_center_x: 317.8,
-  beam_center_y: 1245.28,
-  pixel_size_x: 172,
-  pixel_size_y: 172,
-  wavelength: 1.2398,
-  tilt: 0,
-  tilt_plan_rotation: 0,
-  incident_angle: 0.16  // For GISAXS (degrees)
-};
-
-/**
  * Default display settings
  */
 const DEFAULT_DISPLAY_SETTINGS: DisplaySettings = {
@@ -111,7 +96,7 @@ export function createDefaultSessionState(): SessionState {
     leftImageIndex: "",
     rightImageIndex: "",
     experimentType: 'SAXS',
-    calibrationParams: { ...DEFAULT_CALIBRATION },
+    calibrationParams: null,
     displaySettings: { ...DEFAULT_DISPLAY_SETTINGS },
     horizontalLinecuts: [],
     verticalLinecuts: [],
@@ -208,7 +193,7 @@ function isValidSessionState(state: unknown): state is SessionState {
   if (s.leftImageIndex !== "" && typeof s.leftImageIndex !== 'number') return false;
   if (s.rightImageIndex !== "" && typeof s.rightImageIndex !== 'number') return false;
   if (s.experimentType !== 'SAXS' && s.experimentType !== 'GISAXS') return false;
-  if (typeof s.calibrationParams !== 'object') return false;
+  if (s.calibrationParams !== null && typeof s.calibrationParams !== 'object') return false;
   if (typeof s.displaySettings !== 'object') return false;
   if (!Array.isArray(s.horizontalLinecuts)) return false;
   if (!Array.isArray(s.verticalLinecuts)) return false;

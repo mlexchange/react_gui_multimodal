@@ -51,7 +51,7 @@ interface ScatterSubplotProps {
   azimuthalData1: AzimuthalData[];               // Integration data for first image
   azimuthalData2: AzimuthalData[];               // Integration data for second image
   maxQValue: number;
-  calibrationParams: CalibrationParams;
+  calibrationParams: CalibrationParams | null;
   qYMatrix: number[][]; // qYMatrix for q-value mapping
   qXMatrix: number[][]; // qXMatrix for q-value mapping
   // qYVector: number[]; // qYVector for q-value mapping
@@ -710,8 +710,8 @@ const ScatterSubplot: React.FC<ScatterSubplotProps> = React.memo(({
           factor,
           imageWidth,
           imageHeight,
-          beam_center_x: calibrationParams.beam_center_x,
-          beam_center_y: calibrationParams.beam_center_y,
+          beam_center_x: calibrationParams?.beam_center_x,
+          beam_center_y: calibrationParams?.beam_center_y,
           // qXVector,
           // qYVector,
           qXVector: qXMatrix[0], // First row as X vector
@@ -738,8 +738,8 @@ const ScatterSubplot: React.FC<ScatterSubplotProps> = React.memo(({
             factor,
             currentArray: currentArrayData,
             maxQValue: maxQValue,
-            beamCenterX: calibrationParams.beam_center_x,
-            beamCenterY: calibrationParams.beam_center_y,
+            beamCenterX: calibrationParams?.beam_center_x,
+            beamCenterY: calibrationParams?.beam_center_y,
           }),
           ...generateAzimuthalOverlay({
             integration,
@@ -748,8 +748,8 @@ const ScatterSubplot: React.FC<ScatterSubplotProps> = React.memo(({
             factor,
             currentArray: currentArrayData,
             maxQValue: maxQValue,
-            beamCenterX: calibrationParams.beam_center_x,
-            beamCenterY: calibrationParams.beam_center_y,
+            beamCenterX: calibrationParams?.beam_center_x,
+            beamCenterY: calibrationParams?.beam_center_y,
           })
         ];
       })

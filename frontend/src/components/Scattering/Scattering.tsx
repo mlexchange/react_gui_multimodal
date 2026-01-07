@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { Select, Menu, Popover, IconButton, notifications } from '@/components/ui';
 import { PrevNextSelect, ContentCard, LoadingOverlay, Modal } from '@/components/shared';
-import { CircleHalfTiltIcon, GearIcon, GitDiffIcon, InfoIcon, ListIcon, TreeStructureIcon, WrenchIcon } from '@phosphor-icons/react';
+import { CircleHalfTiltIcon, GearIcon, GitDiffIcon, InfoIcon, ListIcon, TreeStructureIcon, WarningIcon, WrenchIcon } from '@phosphor-icons/react';
 import { CalibrationParams } from './types';
 
-import { Button } from '@blueskyproject/finch';
+import { Button, ButtonWithIcon } from '@blueskyproject/finch';
 import { Tiled } from '@blueskyproject/tiled';
 import '@blueskyproject/tiled/style.css';
 import './styles.css';
@@ -90,6 +90,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     setResolutionMessage,
     calibrationParams,
     updateCalibration,
+    isCalibrationSet,
     qXMatrix,
     qYMatrix,
     restoreState: restoreScatteringState,
@@ -358,7 +359,11 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
           });
 
           // Update the calibration parameters in the hook
+          // This will trigger q-vectors fetch via the useEffect in useScattering
           updateCalibration(params);
+
+          // Close the calibration overlay
+          setIsCalibrationOpen(false);
 
           notifications.update({
               id: 'calibration-update',
@@ -455,13 +460,25 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
               </div>
 
               {/* Calibration Button */}
-              <Button
-                size="medium"
-                styles="w-full disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
-                cb={() => setIsCalibrationOpen(true)}
-                text="Calibration"
-                disabled={isFetchingData || !numOfFiles}
-              />
+              {numOfFiles && !isCalibrationSet ? (
+                <ButtonWithIcon
+                  icon={<WarningIcon weight="fill" size={24} />}
+                  text="Calibration Required"
+                  bgColor="bg-amber-500"
+                  hoverBgColor="hover:bg-amber-600"
+                  cb={() => setIsCalibrationOpen(true)}
+                  size="medium"
+                  styles="w-full"
+                />
+              ) : (
+                <Button
+                  size="medium"
+                  styles="w-full disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+                  cb={() => setIsCalibrationOpen(true)}
+                  text="Calibration"
+                  disabled={isFetchingData || !numOfFiles}
+                />
+              )}
 
 
 
@@ -490,7 +507,8 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                       addLinecut(type, selectedLinecuts, setSelectedLinecuts);
                       addFn();
                     }}
-                    disabled={isFetchingData || !numOfFiles}
+                    disabled={isFetchingData || !numOfFiles || !isCalibrationSet}
+                    title={!isCalibrationSet ? 'Set calibration parameters first' : undefined}
                   >
                     <div className="w-8 h-8">{icon}</div>
                     <span className="text-xs text-slate-700">{type}</span>
@@ -848,8 +866,8 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                   linecuts={inclinedLinecuts}
                   inclinedLinecutData1={inclinedLinecutData1 || []}
                   inclinedLinecutData2={inclinedLinecutData2 || []}
-                  beamCenterX={calibrationParams.beam_center_x}
-                  beamCenterY={calibrationParams.beam_center_y}
+                  beamCenterX={calibrationParams?.beam_center_x}
+                  beamCenterY={calibrationParams?.beam_center_y}
                   zoomedXQRange={zoomedXQRange}
                   qXVector={qXVector}
                   qYVector={qYVector}

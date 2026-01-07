@@ -4,6 +4,7 @@ import { Button } from '@blueskyproject/finch';
 import { CrosshairSimpleIcon, GridFourIcon, AngleIcon } from '@phosphor-icons/react';
 
 import { scatteringIcons } from './icons';
+import { CalibrationParams, isCalibrationComplete } from './types';
 
 // Helper component for icon + label in calibration rows
 interface IconLabelProps {
@@ -18,20 +19,8 @@ const IconLabel: React.FC<IconLabelProps> = ({ icon, label }) => (
     </div>
 );
 
-interface CalibrationParams {
-    sample_detector_distance: number;  // Distance in millimeters
-    beam_center_x: number;            // X-coordinate in pixels
-    beam_center_y: number;            // Y-coordinate in pixels
-    pixel_size_x: number;             // Size in micrometers
-    pixel_size_y: number;             // Size in micrometers
-    wavelength: number;               // Wavelength in Angstroms
-    tilt: number;                     // Detector tilt in degrees
-    tilt_plan_rotation: number;       // Tilt plane rotation in degrees
-    incident_angle: number;           // Incident angle in degrees (for GISAXS)
-}
-
 interface CalibrationAccordionProps {
-    calibrationParams: CalibrationParams;
+    calibrationParams: CalibrationParams | null;
     onCalibrationUpdate: (params: CalibrationParams) => void;
     experimentType: string;           // 'SAXS' or 'GISAXS'
 }
@@ -58,12 +47,16 @@ export default function CalibrationAccordion({
     experimentType,
 }: CalibrationAccordionProps) {
     const [isModified, setIsModified] = useState(false);
-    const [localParams, setLocalParams] = useState(calibrationParams);
-    const [energy, setEnergy] = useState(() => wavelengthToEnergy(calibrationParams.wavelength));
+    const [localParams, setLocalParams] = useState<CalibrationParams>(() =>
+        calibrationParams ?? {}
+    );
+    const [energy, setEnergy] = useState(() =>
+        wavelengthToEnergy(calibrationParams?.wavelength ?? 0)
+    );
 
     useEffect(() => {
-        setLocalParams(calibrationParams);
-        setEnergy(wavelengthToEnergy(calibrationParams.wavelength));
+        setLocalParams(calibrationParams ?? {});
+        setEnergy(wavelengthToEnergy(calibrationParams?.wavelength ?? 0));
         setIsModified(false);
     }, [calibrationParams]);
 
@@ -110,15 +103,14 @@ export default function CalibrationAccordion({
     };
 
     const handleSubmit = () => {
-        const isValid = Object.values(localParams).every(value =>
-            typeof value === 'number' && !isNaN(value)
-        );
-
-        if (isValid) {
+        if (isCalibrationComplete(localParams)) {
             onCalibrationUpdate(localParams);
             setIsModified(false);
         }
     };
+
+    // Check if form has enough data to submit
+    const canSubmit = isModified && isCalibrationComplete(localParams);
 
     return (
         <div className="space-y-4">
@@ -138,7 +130,7 @@ export default function CalibrationAccordion({
                 <div className="flex-1">
                     <NumberInput
                         label="Sample-to-detector distance (mm)"
-                        value={localParams.sample_detector_distance}
+                        value={localParams.sample_detector_distance ?? ''}
                         onChange={handleParamChange('sample_detector_distance')}
                         decimalScale={2}
                         step={0.1}
@@ -157,7 +149,7 @@ export default function CalibrationAccordion({
                 <div className="flex-1 flex gap-2">
                     <NumberInput
                         label="Wavelength (Å)"
-                        value={localParams.wavelength}
+                        value={localParams.wavelength ?? ''}
                         onChange={handleWavelengthChange}
                         decimalScale={4}
                         step={0.0001}
@@ -167,7 +159,7 @@ export default function CalibrationAccordion({
                     />
                     <NumberInput
                         label="Energy (eV)"
-                        value={energy}
+                        value={energy || ''}
                         onChange={handleEnergyChange}
                         decimalScale={2}
                         step={1}
@@ -187,7 +179,7 @@ export default function CalibrationAccordion({
                 <div className="flex-1 flex gap-2">
                     <NumberInput
                         label="X (px)"
-                        value={localParams.beam_center_x}
+                        value={localParams.beam_center_x ?? ''}
                         onChange={handleParamChange('beam_center_x')}
                         decimalScale={2}
                         step={0.1}
@@ -196,7 +188,7 @@ export default function CalibrationAccordion({
                     />
                     <NumberInput
                         label="Y (px)"
-                        value={localParams.beam_center_y}
+                        value={localParams.beam_center_y ?? ''}
                         onChange={handleParamChange('beam_center_y')}
                         decimalScale={2}
                         step={0.1}
@@ -215,7 +207,7 @@ export default function CalibrationAccordion({
                 <div className="flex-1 flex gap-2">
                     <NumberInput
                         label="X (μm)"
-                        value={localParams.pixel_size_x}
+                        value={localParams.pixel_size_x ?? ''}
                         onChange={handleParamChange('pixel_size_x')}
                         decimalScale={2}
                         step={1}
@@ -225,7 +217,7 @@ export default function CalibrationAccordion({
                     />
                     <NumberInput
                         label="Y (μm)"
-                        value={localParams.pixel_size_y}
+                        value={localParams.pixel_size_y ?? ''}
                         onChange={handleParamChange('pixel_size_y')}
                         decimalScale={2}
                         step={1}
@@ -245,7 +237,7 @@ export default function CalibrationAccordion({
                 <div className="flex-1 flex gap-2">
                     <NumberInput
                         label="Tilt (°)"
-                        value={localParams.tilt}
+                        value={localParams.tilt ?? 0}
                         onChange={handleParamChange('tilt')}
                         decimalScale={2}
                         step={0.1}
@@ -254,7 +246,7 @@ export default function CalibrationAccordion({
                     />
                     <NumberInput
                         label="Plane rotation (°)"
-                        value={localParams.tilt_plan_rotation}
+                        value={localParams.tilt_plan_rotation ?? 0}
                         onChange={handleParamChange('tilt_plan_rotation')}
                         decimalScale={2}
                         step={0.1}
@@ -274,7 +266,7 @@ export default function CalibrationAccordion({
                     <div className="flex-1">
                         <NumberInput
                             label="Incident angle (°)"
-                            value={localParams.incident_angle}
+                            value={localParams.incident_angle ?? ''}
                             onChange={handleParamChange('incident_angle')}
                             decimalScale={3}
                             step={0.001}
@@ -290,9 +282,9 @@ export default function CalibrationAccordion({
             <Button
                 size="medium"
                 styles="w-full"
-                bgColor={isModified ? "bg-sky-500" : "bg-gray-400"}
+                bgColor={canSubmit ? "bg-sky-500" : "bg-gray-400"}
                 cb={handleSubmit}
-                disabled={!isModified}
+                disabled={!canSubmit}
                 text="Update Calibration"
             />
         </div>

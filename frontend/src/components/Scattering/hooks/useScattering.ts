@@ -1,6 +1,6 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { unpack } from 'msgpackr';
-import { CalibrationParams } from '../types';
+import { CalibrationParams, isCalibrationComplete } from '../types';
 
 /**
  * State that can be restored from a saved session
@@ -43,17 +43,13 @@ export default function useScattering() {
   const [resolutionMessage, setResolutionMessage] = useState('');
 
   // Calibration parameters
-  const [calibrationParams, setCalibrationParams] = useState<CalibrationParams>({
-    sample_detector_distance: 274.83,
-    beam_center_x: 317.8,
-    beam_center_y: 1245.28,
-    pixel_size_x: 172,
-    pixel_size_y: 172,
-    wavelength: 1.2398,
-    tilt: 0,
-    tilt_plan_rotation: 0,
-    incident_angle: 0.16  // For GISAXS (degrees)
-  });
+  const [calibrationParams, setCalibrationParams] = useState<CalibrationParams | null>(null);
+
+  // Check if calibration is complete
+  const isCalibrationSet = useMemo(
+    () => isCalibrationComplete(calibrationParams),
+    [calibrationParams]
+  );
 
   // Q-matrix state (replacing vector state)
   const [qXMatrix, setQXMatrix] = useState<number[][]>([]);
@@ -66,13 +62,22 @@ export default function useScattering() {
    * For SAXS: returns standard qx and qy
    */
   const fetchQVectors = useCallback(async () => {
+    // Don't fetch if calibration is not set
+    if (!isCalibrationSet || !calibrationParams) {
+      setQXMatrix([]);
+      setQYMatrix([]);
+      return;
+    }
+
     try {
       // Create the URL with calibration parameters
       const url = new URL('/api/q-vectors', window.location.origin);
 
       // Add all calibration parameters to the URL
       Object.entries(calibrationParams).forEach(([key, value]) => {
-        url.searchParams.set(key, value.toString());
+        if (value !== undefined) {
+          url.searchParams.set(key, value.toString());
+        }
       });
 
       // Add experiment type to determine SAXS vs GISAXS q-vector calculation
@@ -107,7 +112,7 @@ export default function useScattering() {
     } catch (error) {
       console.error('Error fetching q-matrices:', error);
     }
-  }, [calibrationParams, experimentType, imageHeight, imageWidth]);
+  }, [calibrationParams, experimentType, imageHeight, imageWidth, isCalibrationSet]);
 
   /**
    * Update calibration parameters and trigger q-matrix refresh
@@ -132,13 +137,13 @@ export default function useScattering() {
     }
   }, []);
 
-  // Fetch q-matrices when calibration parameters, experiment type, or image dimensions change
+  // Fetch q-matrices when calibration is set and image dimensions are available
   useEffect(() => {
-    // Only fetch Q-vectors if images are loaded
-    if (imageHeight > 0 || imageWidth > 0) {
+    // Only fetch Q-vectors if images are loaded AND calibration is set
+    if ((imageHeight > 0 || imageWidth > 0) && isCalibrationSet) {
       fetchQVectors();
     }
-  }, [fetchQVectors, imageHeight, imageWidth, experimentType]);
+  }, [fetchQVectors, imageHeight, imageWidth, experimentType, isCalibrationSet]);
 
   return {
     // Existing state
@@ -164,6 +169,7 @@ export default function useScattering() {
     // Calibration parameters
     calibrationParams,
     updateCalibration,
+    isCalibrationSet,
 
     // Q-matrices instead of Q-vectors
     qXMatrix,

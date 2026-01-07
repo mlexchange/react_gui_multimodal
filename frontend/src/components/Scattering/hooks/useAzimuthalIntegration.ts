@@ -62,7 +62,7 @@ function isAzimuthalIntegratorResponse(value: unknown): value is AzimuthalIntegr
  * @returns Functions and state for azimuthal integration
  */
 export default function useAzimuthalIntegration(
-    calibrationParams: CalibrationParams,
+    calibrationParams: CalibrationParams | null,
     leftScanUri: string | null,
     rightScanUri: string | null
 ) {
@@ -162,6 +162,13 @@ export default function useAzimuthalIntegration(
         // Validate that scan URIs are available
         if (!leftScanUri || !rightScanUri) {
             console.warn('Cannot fetch azimuthal data: scan URIs not available');
+            setIsProcessing(false);
+            return;
+        }
+
+        // Validate that calibration parameters are set
+        if (!calibrationParams) {
+            console.warn('Cannot fetch azimuthal data: calibration not configured');
             setIsProcessing(false);
             return;
         }

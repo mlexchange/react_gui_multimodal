@@ -65,16 +65,39 @@ export interface AzimuthalData {
 
 
 export interface CalibrationParams {
-        sample_detector_distance: number;
-        beam_center_x: number;
-        beam_center_y: number;
-        pixel_size_x: number;
-        pixel_size_y: number;
-        wavelength: number;
-        tilt: number;
-        tilt_plan_rotation: number;
-        incident_angle: number;  // For GISAXS (degrees)
+        sample_detector_distance?: number;
+        beam_center_x?: number;
+        beam_center_y?: number;
+        pixel_size_x?: number;
+        pixel_size_y?: number;
+        wavelength?: number;
+        tilt?: number;
+        tilt_plan_rotation?: number;
+        incident_angle?: number;  // For GISAXS (degrees)
     }
+
+// Required fields that must be set before analysis can proceed
+const REQUIRED_CALIBRATION_FIELDS: (keyof CalibrationParams)[] = [
+    'sample_detector_distance',
+    'beam_center_x',
+    'beam_center_y',
+    'pixel_size_x',
+    'pixel_size_y',
+    'wavelength'
+];
+
+/**
+ * Check if all required calibration parameters are set and valid
+ * @param params - CalibrationParams object or null
+ * @returns true if all required fields are set and are valid numbers
+ */
+export function isCalibrationComplete(params: CalibrationParams | null): boolean {
+    if (!params) return false;
+    return REQUIRED_CALIBRATION_FIELDS.every(key => {
+        const value = params[key];
+        return value !== undefined && !isNaN(value);
+    });
+}
 
 
 export interface TransformDataFunction {

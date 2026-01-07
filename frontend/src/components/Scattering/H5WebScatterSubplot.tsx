@@ -746,7 +746,7 @@ interface H5WebScatterSubplotProps {
   azimuthalData1: AzimuthalData[];
   azimuthalData2: AzimuthalData[];
   maxQValue: number;
-  calibrationParams: CalibrationParams;
+  calibrationParams: CalibrationParams | null;
   qYMatrix: number[][];
   qXMatrix: number[][];
   units: string;
@@ -1318,8 +1318,8 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
           inclinedLinecuts={showOverlays ? leftInclinedLinecuts : []}
           inclinedPixelWidthCalculator={calculateInclinedPixelWidth}
           azimuthalIntegrations={showOverlays ? leftAzimuthalIntegrations : []}
-          beamCenterX={calibrationParams.beam_center_x}
-          beamCenterY={calibrationParams.beam_center_y}
+          beamCenterX={calibrationParams?.beam_center_x}
+          beamCenterY={calibrationParams?.beam_center_y}
           maxQValue={maxQValue}
           isLoading={isLoadingImages}
           loadingMessage="Loading image..."
@@ -1340,8 +1340,8 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
           inclinedLinecuts={showOverlays ? rightInclinedLinecuts : []}
           inclinedPixelWidthCalculator={calculateInclinedPixelWidth}
           azimuthalIntegrations={showOverlays ? rightAzimuthalIntegrations : []}
-          beamCenterX={calibrationParams.beam_center_x}
-          beamCenterY={calibrationParams.beam_center_y}
+          beamCenterX={calibrationParams?.beam_center_x}
+          beamCenterY={calibrationParams?.beam_center_y}
           maxQValue={maxQValue}
           isLoading={isLoadingImages}
           loadingMessage="Loading image..."
