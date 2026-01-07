@@ -3,12 +3,34 @@ import urllib.parse as urlparse
 from utils.tiled_client import get_tiled_client_for_uri
 from fastapi import HTTPException
 from tiled.client.container import Container
+from tiled.structures.core import StructureFamily
 import numpy as np
 
 
 def trim_base_from_uri(uri_to_trim: str, tiled_base_uri: str) -> str:
     """Trim the base Tiled URI from a full URI pointing to a dataset."""
     return uri_to_trim.replace(tiled_base_uri, "")
+
+
+def is_valid_scan(node_client) -> bool:
+    """Check if a node is a valid scan we can read.
+
+    A valid scan is either:
+    1. Has structure_family == 'array' (image/array data)
+    2. Has specs with name 'edf' or 'gb'
+    """
+    # Check for array structure family (covers images without specific specs)
+    if hasattr(node_client, "structure_family"):
+        if node_client.structure_family == StructureFamily.array:
+            return True
+
+    # Check for specific specs (legacy check)
+    if hasattr(node_client, "specs"):
+        specs = node_client.specs
+        if any(spec.name in ("edf", "gb") for spec in specs):
+            return True
+
+    return False
 
 
 def get_scans_from_folder(tiled_client, folder_path: str, tiled_base_uri: str) -> list:
@@ -43,30 +65,19 @@ def get_scans_from_folder(tiled_client, folder_path: str, tiled_base_uri: str) -
         for key in current_client.keys():
             node_client = current_client[key]
 
-            # Check if this is a scan we can read
-            if hasattr(node_client, "specs"):
-                specs = node_client.specs
-                if any(spec.name == "edf" or spec.name == "gb" for spec in specs):
-                    scan_uri = trim_base_from_uri(node_client.uri, tiled_base_uri)
-                    scan_uri_list.append(scan_uri)
+            if is_valid_scan(node_client):
+                scan_uri_list.append(trim_base_from_uri(node_client.uri, tiled_base_uri))
 
-            # Check for detector-specific folders
+            # Check for detector-specific folders (nested containers)
             if isinstance(node_client, Container):
                 for child_key in node_client.keys():
                     child_client = node_client[child_key]
-
-                    if hasattr(child_client, "specs"):
-                        specs = child_client.specs
-                        if any(spec.name == "edf" or spec.name == "gb" for spec in specs):
-                            scan_uri = trim_base_from_uri(child_client.uri, tiled_base_uri)
-                            scan_uri_list.append(scan_uri)
+                    if is_valid_scan(child_client):
+                        scan_uri_list.append(trim_base_from_uri(child_client.uri, tiled_base_uri))
     else:
         # If it's not a container, it might be a single scan
-        if hasattr(current_client, "specs"):
-            specs = current_client.specs
-            if any(spec.name == "edf" or spec.name == "gb" for spec in specs):
-                scan_uri = trim_base_from_uri(current_client.uri, tiled_base_uri)
-                scan_uri_list.append(scan_uri)
+        if is_valid_scan(current_client):
+            scan_uri_list.append(trim_base_from_uri(current_client.uri, tiled_base_uri))
 
     return scan_uri_list
 
@@ -84,13 +95,33 @@ def get_single_image_array_and_name(image_uri, mask_detector, tiled_uri):
     return processed_image, image_uri
 
 
+def ensure_2d_image(image: np.ndarray) -> np.ndarray:
+    """Ensure image array is 2D (height, width).
+
+    Handles common cases:
+    - (height, width) -> unchanged
+    - (1, height, width) -> squeeze to (height, width)
+    - (1, 1, height, width) -> squeeze to (height, width)
+    """
+    # Squeeze out any singleton dimensions
+    squeezed = np.squeeze(image)
+
+    if squeezed.ndim != 2:
+        raise ValueError(
+            f"Image must be 2D after squeezing, got shape {image.shape} -> {squeezed.shape}"
+        )
+
+    return squeezed
+
+
 def get_processed_image(image, mask_detector):
     """Process the image using the detector mask.
     Original mask_detector has: 1 = masked area (beam stop etc), 0 = unmasked area
     We invert it so that: 0 = masked area, 1 = unmasked area
     """
-    # Convert image to float32 first
-    processed_image = image.copy().astype(np.float32)
+    # Ensure 2D and convert to float32
+    image_2d = ensure_2d_image(image)
+    processed_image = image_2d.astype(np.float32)
 
     if mask_detector is None:
         return processed_image
