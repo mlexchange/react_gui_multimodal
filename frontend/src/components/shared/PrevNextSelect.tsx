@@ -14,28 +14,32 @@ interface PrevNextSelectProps {
 export const PrevNextSelect: React.FC<PrevNextSelectProps> = ({ value, onChange, options, disabled, numItems }) => {
   const index = typeof value === 'number' ? value : -1;
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1 min-w-0 w-full">
       <IconButton
         variant="subtle"
         size="sm"
         onClick={() => index > 0 && onChange(index - 1)}
         disabled={disabled || index <= 0}
+        className="shrink-0"
       >
         <CaretLeftIcon size={18} />
       </IconButton>
-      <Select
-        placeholder="Select item"
-        value={value === "" ? "" : String(value)}
-        onChange={(v) => onChange(v === null ? "" : Number(v))}
-        data={options}
-        searchable
-        disabled={disabled}
-      />
+      <div className="flex-1 min-w-0">
+        <Select
+          placeholder="Select item"
+          value={value === "" ? "" : String(value)}
+          onChange={(v) => onChange(v === null ? "" : Number(v))}
+          data={options}
+          searchable
+          disabled={disabled}
+        />
+      </div>
       <IconButton
         variant="subtle"
         size="sm"
         onClick={() => index < numItems - 1 && onChange(index + 1)}
         disabled={disabled || index >= numItems - 1}
+        className="shrink-0"
       >
         <CaretRightIcon size={18} />
       </IconButton>

@@ -60,12 +60,14 @@ export function Select({
         disabled={disabled}
       >
         <SelectPrimitive.Trigger
-          className={`w-full flex items-center justify-between bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 disabled:bg-gray-100 disabled:cursor-not-allowed ${sizeStyles[size]}`}
+          className={`w-full min-w-0 flex items-center justify-between gap-1 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 disabled:bg-gray-100 disabled:cursor-not-allowed ${sizeStyles[size]}`}
         >
-          <SelectPrimitive.Value placeholder={placeholder}>
-            {selectedLabel || placeholder}
-          </SelectPrimitive.Value>
-          <SelectPrimitive.Icon>
+          <span className="truncate min-w-0 flex-1 text-left">
+            <SelectPrimitive.Value placeholder={placeholder}>
+              {selectedLabel || placeholder}
+            </SelectPrimitive.Value>
+          </span>
+          <SelectPrimitive.Icon className="shrink-0">
             <CaretDownIcon size={16} className="text-gray-500" />
           </SelectPrimitive.Icon>
         </SelectPrimitive.Trigger>
