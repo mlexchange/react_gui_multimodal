@@ -630,7 +630,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
               </div>
             )}
             className="flex-1"
-            contentClassName="p-4 flex flex-col">
+            contentClassName="flex flex-col">
               {/* Plots container */}
               <div className="flex-1 flex flex-col min-h-0">
                 {USE_H5WEB ? (

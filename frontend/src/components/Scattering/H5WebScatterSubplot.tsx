@@ -1301,7 +1301,7 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
       </div>
 
       {/* Heatmap grid */}
-      <div className="grid grid-cols-3 gap-3 w-full flex-1 min-h-0 overflow-hidden py-2 px-3">
+      <div className="grid grid-cols-3 gap-0 w-full flex-1 min-h-0 overflow-hidden py-2 px-0">
         <HeatmapPanel
           header={leftHeader}
           dataArray={leftNdarray}
