@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useState, useEffect } from "react";
 
 interface NumberInputProps {
   label?: string;
@@ -31,9 +31,31 @@ export function NumberInput({
   disabled = false,
   className = "",
 }: NumberInputProps) {
+  // Local state to track the display value while typing
+  const [displayValue, setDisplayValue] = useState<string>(() => {
+    if (value === "" || value === undefined || value === null) return "";
+    if (typeof value === "number") return value.toString();
+    return value;
+  });
+  const [isFocused, setIsFocused] = useState(false);
+
+  // Sync display value with prop when not focused (external updates)
+  useEffect(() => {
+    if (!isFocused) {
+      if (value === "" || value === undefined || value === null) {
+        setDisplayValue("");
+      } else if (typeof value === "number") {
+        setDisplayValue(value.toFixed(decimalScale));
+      } else {
+        setDisplayValue(value);
+      }
+    }
+  }, [value, decimalScale, isFocused]);
+
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const rawValue = e.target.value;
+      setDisplayValue(rawValue);
 
       // Allow empty string for clearing the input
       if (rawValue === "") {
@@ -49,13 +71,21 @@ export function NumberInput({
     [onChange]
   );
 
-  const formatValue = () => {
-    if (value === "" || value === undefined || value === null) return "";
-    if (typeof value === "number") {
-      return value.toFixed(decimalScale);
+  const handleFocus = useCallback(() => {
+    setIsFocused(true);
+  }, []);
+
+  const handleBlur = useCallback(() => {
+    setIsFocused(false);
+    // Format the value on blur
+    if (displayValue === "") {
+      return;
     }
-    return value;
-  };
+    const parsed = parseFloat(displayValue);
+    if (!isNaN(parsed)) {
+      setDisplayValue(parsed.toFixed(decimalScale));
+    }
+  }, [displayValue, decimalScale]);
 
   return (
     <div className={`w-full ${className}`}>
@@ -64,8 +94,10 @@ export function NumberInput({
       )}
       <input
         type="number"
-        value={formatValue()}
+        value={displayValue}
         onChange={handleChange}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
         step={step}
         min={min}
         max={max}
