@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Select, Menu, Popover, IconButton, notifications } from '@/components/ui';
 import { PrevNextSelect, ContentCard, LoadingOverlay, Modal } from '@/components/shared';
-import { CircleHalfTiltIcon, GearIcon, GitDiffIcon, InfoIcon, ListIcon, TreeStructureIcon, WarningIcon, WrenchIcon } from '@phosphor-icons/react';
+import { CircleHalfTiltIcon, GearIcon, GitDiffIcon, InfoIcon, ListIcon, StackIcon, TreeStructureIcon, WarningIcon, WrenchIcon } from '@phosphor-icons/react';
 import { CalibrationParams } from './types';
 
 import { Button, ButtonWithIcon } from '@blueskyproject/finch';
@@ -18,6 +18,7 @@ import useInclinedLinecut from './hooks/useInclinedLinecut';
 import useDataTransformation from './hooks/useDataTransformation';
 import useSummary from './hooks/useSummary';
 import useSessionPersistence, { PersistableState } from './hooks/useSessionPersistence';
+import useBatchProcessing, { BatchProcessingParams } from './hooks/useBatchProcessing';
 
 // Import components
 import ScatterSubplot, { OperationType } from './ScatterSubplot';
@@ -34,6 +35,8 @@ import LinecutFig from './LinecutFig';
 import InclinedLinecutFig from './InclinedLinecutFig';
 import AzimuthalIntegrationFig from './AzimuthalIntegrationFig';
 import SummaryFig from './SummaryFig';
+import { BatchScanSelector } from './BatchScanSelector';
+import { BatchResultsOverlay } from './BatchResultsOverlay';
 
 // Import utilities
 import { handleExperimentTypeChange, addLinecut } from './utils/linecutHandlers';
@@ -74,9 +77,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     setExperimentType,
     selectedLinecuts,
     setSelectedLinecuts,
-    imageHeight,
     setImageHeight,
-    imageWidth,
     setImageWidth,
     imageData1,
     setImageData1,
@@ -218,6 +219,51 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
       toggleAzimuthalVisibility,
       restoreIntegrations: restoreAzimuthalIntegrations,
   } = useAzimuthalIntegration(calibrationParams, leftScanUri, rightScanUri);
+
+  // Batch processing hook
+  const {
+    currentJob: batchJob,
+    isProcessing: isBatchProcessing,
+    isResultsOpen: isBatchResultsOpen,
+    setIsResultsOpen: setIsBatchResultsOpen,
+    isSelectorOpen: isBatchSelectorOpen,
+    setIsSelectorOpen: setIsBatchSelectorOpen,
+    selectorOperationType: batchSelectorType,
+    openBatchSelector,
+    startBatchJob,
+  } = useBatchProcessing(calibrationParams, experimentType);
+
+  /**
+   * Handle starting a batch job for a specific operation type
+   */
+  const handleStartBatch = (selectedUris: string[]) => {
+    // Get current linecut/integration params based on selector type
+    const params: BatchProcessingParams = {};
+
+    if (batchSelectorType === 'horizontal' && horizontalLinecuts.length > 0) {
+      const linecut = horizontalLinecuts[0];
+      params.horizontal = { position: linecut.position, width: linecut.width };
+    } else if (batchSelectorType === 'vertical' && verticalLinecuts.length > 0) {
+      const linecut = verticalLinecuts[0];
+      params.vertical = { position: linecut.position, width: linecut.width };
+    } else if (batchSelectorType === 'inclined' && inclinedLinecuts.length > 0) {
+      const linecut = inclinedLinecuts[0];
+      params.inclined = {
+        q_x_position: linecut.qXPosition,
+        q_y_position: linecut.qYPosition,
+        angle: linecut.angle,
+        q_width: linecut.qWidth,
+      };
+    } else if (batchSelectorType === 'azimuthal' && azimuthalIntegrations.length > 0) {
+      const integration = azimuthalIntegrations[0];
+      params.azimuthal = {
+        azimuth_range: integration.azimuthRange,
+        q_range: integration.qRange,
+      };
+    }
+
+    startBatchJob(batchSelectorType, selectedUris, params);
+  };
 
   // ========== SESSION RESTORATION ==========
   // Restore session state when the component mounts and session data is available
@@ -463,7 +509,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
               {numOfFiles && !isCalibrationSet ? (
                 <ButtonWithIcon
                   icon={<WarningIcon weight="fill" size={24} />}
-                  text="Calibration Required"
+                  text="Calibration required"
                   bgColor="bg-amber-500"
                   hoverBgColor="hover:bg-amber-600"
                   cb={() => setIsCalibrationOpen(true)}
@@ -824,7 +870,21 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
           <div className="flex gap-2 h-[320px] flex-shrink-0 overflow-x-auto">
             {/* Horizontal Linecut Card */}
             {selectedLinecuts.includes('Horizontal') && horizontalLinecuts.length > 0 && (
-              <ContentCard title="Horizontal Linecuts" className="flex-1" contentClassName="p-2 relative">
+              <ContentCard
+                title="Horizontal Linecuts"
+                className="flex-1"
+                contentClassName="p-2 relative"
+                headerChildren={
+                  <IconButton
+                    variant="subtle"
+                    size="sm"
+                    onClick={() => openBatchSelector('horizontal')}
+                    title="Batch process horizontal linecuts"
+                  >
+                    <StackIcon size={18} className="text-sky-700" />
+                  </IconButton>
+                }
+              >
                 {isLoadingImages && <LoadingOverlay />}
                 <LinecutFig
                   direction="horizontal"
@@ -842,7 +902,21 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
 
             {/* Vertical Linecut Card */}
             {selectedLinecuts.includes('Vertical') && verticalLinecuts.length > 0 && (
-              <ContentCard title="Vertical Linecuts" className="flex-1" contentClassName="p-2 relative">
+              <ContentCard
+                title="Vertical Linecuts"
+                className="flex-1"
+                contentClassName="p-2 relative"
+                headerChildren={
+                  <IconButton
+                    variant="subtle"
+                    size="sm"
+                    onClick={() => openBatchSelector('vertical')}
+                    title="Batch process vertical linecuts"
+                  >
+                    <StackIcon size={18} className="text-sky-700" />
+                  </IconButton>
+                }
+              >
                 {isLoadingImages && <LoadingOverlay />}
                 <LinecutFig
                   direction="vertical"
@@ -860,7 +934,21 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
 
             {/* Inclined Linecut Card */}
             {selectedLinecuts.includes('Inclined') && inclinedLinecuts.length > 0 && (
-              <ContentCard title="Inclined Linecuts" className="flex-1" contentClassName="p-2 relative">
+              <ContentCard
+                title="Inclined Linecuts"
+                className="flex-1"
+                contentClassName="p-2 relative"
+                headerChildren={
+                  <IconButton
+                    variant="subtle"
+                    size="sm"
+                    onClick={() => openBatchSelector('inclined')}
+                    title="Batch process inclined linecuts"
+                  >
+                    <StackIcon size={18} className="text-sky-700" />
+                  </IconButton>
+                }
+              >
                 {isLoadingImages && <LoadingOverlay />}
                 <InclinedLinecutFig
                   linecuts={inclinedLinecuts}
@@ -880,7 +968,21 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
             {experimentType === 'SAXS' &&
               selectedLinecuts.includes('Azimuthal') &&
               azimuthalIntegrations.length > 0 && (
-              <ContentCard title="Azimuthal Integrations" className="flex-1" contentClassName="p-2 relative">
+              <ContentCard
+                title="Azimuthal Integrations"
+                className="flex-1"
+                contentClassName="p-2 relative"
+                headerChildren={
+                  <IconButton
+                    variant="subtle"
+                    size="sm"
+                    onClick={() => openBatchSelector('azimuthal')}
+                    title="Batch process azimuthal integrations"
+                  >
+                    <StackIcon size={18} className="text-sky-700" />
+                  </IconButton>
+                }
+              >
                 {(isLoadingImages || isProcessing) && (
                   <LoadingOverlay message={isProcessing ? 'Processing...' : 'Loading...'} />
                 )}
@@ -935,6 +1037,28 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
           experimentType={experimentType}
         />
       </Modal>
+
+      {/* Batch Scan Selector */}
+      <BatchScanSelector
+        isOpen={isBatchSelectorOpen}
+        onClose={() => setIsBatchSelectorOpen(false)}
+        scanUris={scanUris}
+        scanNames={imageNames}
+        operationType={batchSelectorType}
+        onStartBatch={handleStartBatch}
+        isProcessing={isBatchProcessing}
+      />
+
+      {/* Batch Results Overlay */}
+      <BatchResultsOverlay
+        isOpen={isBatchResultsOpen}
+        onClose={() => setIsBatchResultsOpen(false)}
+        results={batchJob.results}
+        operationType={batchJob.type}
+        totalScans={batchJob.totalScans}
+        successful={batchJob.successful}
+        failed={batchJob.failed}
+      />
     </div>
   );
 }
