@@ -1,10 +1,15 @@
-import { useState, useEffect, ReactNode } from 'react';
+import { useState, useEffect, ReactNode, useCallback } from 'react';
 import { NumberInput } from '@/components/ui';
 import { Button } from '@blueskyproject/finch';
+import { Tiled, TiledItemLinks } from '@blueskyproject/tiled';
 import { CrosshairSimpleIcon, GridFourIcon, AngleIcon } from '@phosphor-icons/react';
 
 import { scatteringIcons } from './icons';
 import { CalibrationParams, isCalibrationComplete } from './types';
+import { extractContainerPath } from './utils/extractContainerPath';
+
+const tiledUrl = import.meta.env.SCATTERING_TILED_URL;
+const tiledApiKey = import.meta.env.SCATTERING_TILED_API_KEY;
 
 // Helper component for icon + label in calibration rows
 interface IconLabelProps {
@@ -102,6 +107,60 @@ export default function CalibrationAccordion({
         }
     };
 
+    const handleTiledCalibrationSelection = useCallback(async (links: TiledItemLinks) => {
+        const containerPath = extractContainerPath(links.self);
+        console.log('Calibration item selected:', containerPath);
+
+        try {
+            const response = await fetch(links.self, {
+                headers: {
+                    'X-TILED-API-KEY': tiledApiKey,
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to fetch: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            console.log('Calibration data:', data);
+
+            // Check if this is a poni calibration file
+            const specs = data?.data?.attributes?.specs || [];
+            const isPoni = specs.some((spec: { name: string }) => spec.name === 'poni');
+
+            if (!isPoni) {
+                console.warn('Selected item is not a poni calibration file');
+                return;
+            }
+
+            // Extract calibration parameters from metadata
+            const metadata = data?.data?.attributes?.metadata;
+            if (!metadata) {
+                console.warn('No metadata found in calibration file');
+                return;
+            }
+
+            const newParams: CalibrationParams = {
+                sample_detector_distance: metadata.directDist,
+                beam_center_x: metadata.centerX,
+                beam_center_y: metadata.centerY,
+                pixel_size_x: metadata.pixelX,
+                pixel_size_y: metadata.pixelY,
+                wavelength: metadata.wavelength,
+                tilt: metadata.tilt ?? 0,
+                tilt_plan_rotation: metadata.tiltPlanRotation ?? 0,
+            };
+
+            console.log('Imported calibration parameters:', newParams);
+            setLocalParams(newParams);
+            setEnergy(wavelengthToEnergy(metadata.wavelength));
+            setIsModified(true);
+        } catch (error) {
+            console.error('Error fetching calibration data:', error);
+        }
+    }, []);
+
     const handleSubmit = () => {
         if (isCalibrationComplete(localParams)) {
             onCalibrationUpdate(localParams);
@@ -115,11 +174,15 @@ export default function CalibrationAccordion({
     return (
         <div className="space-y-4">
             {/* Load Calibration Button */}
-            <Button
-                size="medium"
-                styles="w-full"
-                text="Load Calibration"
+            <div className="w-full [&_button]:w-full [&_button]:font-medium [&_button]:bg-sky-500 [&_button]:hover:bg-sky-600 [&_button]:ml-0 [&_button]:text-md [&_button]:rounded-xl [&_button]:py-2 [&_button]:px-3">
+            <Tiled
+                tiledBaseUrl={tiledUrl}
+                apiKey={tiledApiKey}
+                isButtonMode={true}
+                buttonModeText="Load calibration parameters"
+                onSelectCallback={handleTiledCalibrationSelection}
             />
+            </div>
 
             {/* Row 1: Sample-to-detector distance */}
             <div className="flex items-center gap-4">
