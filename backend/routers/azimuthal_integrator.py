@@ -4,8 +4,8 @@ import msgpack
 import numpy as np
 from fastapi import APIRouter, Query
 from fastapi.responses import Response
-from pyFAI.integrator.azimuthal import AzimuthalIntegrator
 
+from utils.azimuthal_integration import create_azimuthal_integrator, integrate_1d
 from utils.image_cache import get_cached_processed_image
 
 router = APIRouter()
@@ -44,25 +44,25 @@ async def azimuthal_integration(
     # Image selection parameters - now using URIs directly
     left_scan_uri: str = Query(..., description="Tiled URI for the first scan (e.g., 'rawdata/scan_1')"),
     right_scan_uri: str = Query(..., description="Tiled URI for the second scan (e.g., 'rawdata/scan_2')"),
-    # Calibration parameters as query parameters with defaults
+    # Calibration parameters
     sample_detector_distance: float = Query(
-        default=274.83,
+        ...,
         description="Distance between sample and detector in millimeters",
     ),
     beam_center_x: float = Query(
-        default=317.8, description="X-coordinate of beam center in pixels"
+        ..., description="X-coordinate of beam center in pixels"
     ),
     beam_center_y: float = Query(
-        default=1245.28, description="Y-coordinate of beam center in pixels"
+        ..., description="Y-coordinate of beam center in pixels"
     ),
     pixel_size_x: float = Query(
-        default=172, description="Pixel size in X direction (micrometers)"
+        ..., description="Pixel size in X direction (micrometers)"
     ),
     pixel_size_y: float = Query(
-        default=172, description="Pixel size in Y direction (micrometers)"
+        ..., description="Pixel size in Y direction (micrometers)"
     ),
     wavelength: float = Query(
-        default=1.2398, description="X-ray wavelength in Angstroms"
+        ..., description="X-ray wavelength in Angstroms"
     ),
     tilt: float = Query(default=0.0, description="Detector tilt angle in degrees"),
     tilt_plan_rotation: float = Query(
@@ -94,67 +94,23 @@ async def azimuthal_integration(
 
     # Images from cache are already numpy arrays (float32)
 
-    # Package all calibration parameters into a dictionary for easier handling
-    azimuthal_integration_calibration_params = {
-        "sample_detector_distance": sample_detector_distance,
-        "beam_center_x": beam_center_x,
-        "beam_center_y": beam_center_y,
-        "pixel_size_x": pixel_size_x,
-        "pixel_size_y": pixel_size_y,
-        "wavelength": wavelength,
-        "tilt": tilt,
-        "tilt_plan_rotation": tilt_plan_rotation,
-    }
-
-    # # Initialize the azimuthal integrator with our experimental geometry
-    ai = AzimuthalIntegrator()
-    ai.setFit2D(
-        directDist=azimuthal_integration_calibration_params["sample_detector_distance"],
-        centerX=azimuthal_integration_calibration_params["beam_center_x"],
-        centerY=azimuthal_integration_calibration_params["beam_center_y"],
-        tilt=azimuthal_integration_calibration_params["tilt"],
-        tiltPlanRotation=azimuthal_integration_calibration_params["tilt_plan_rotation"],
-        pixelX=azimuthal_integration_calibration_params["pixel_size_x"],
-        pixelY=azimuthal_integration_calibration_params["pixel_size_y"],
-        wavelength=azimuthal_integration_calibration_params["wavelength"],
+    ai = create_azimuthal_integrator(
+        sample_detector_distance=sample_detector_distance,
+        beam_center_x=beam_center_x,
+        beam_center_y=beam_center_y,
+        pixel_size_x=pixel_size_x,
+        pixel_size_y=pixel_size_y,
+        wavelength=wavelength,
+        tilt=tilt,
+        tilt_plan_rotation=tilt_plan_rotation,
     )
 
-    # Set integration parameters
-    number_of_integration_points = 500  # Number of points in output 1D pattern
-    method = ("full", "csr", "cython")  # Integration method using CPU optimization
-    # Alternative GPU-accelerated method (commented out):
-    # method=("full", "csr", "opencl", (0,0))
-
-    # Perform integration for first scatter image
-    res_1 = ai.integrate1d(
-        scatter_image_array_1,
-        number_of_integration_points,
-        method=method,
-        azimuth_range=azimuth_range,
-        radial_range=q_range_tuple,
+    q_1, intensity_1 = integrate_1d(
+        ai, scatter_image_array_1, azimuth_range=azimuth_range, q_range=q_range_tuple
     )
-
-    # Perform integration for second scatter image
-    res_2 = ai.integrate1d(
-        scatter_image_array_2,
-        number_of_integration_points,
-        method=method,
-        azimuth_range=azimuth_range,
-        radial_range=q_range_tuple,
+    q_2, intensity_2 = integrate_1d(
+        ai, scatter_image_array_2, azimuth_range=azimuth_range, q_range=q_range_tuple
     )
-
-    # Access the integration engine for additional processing
-    engine = ai.engines[res_1.method].engine
-
-    # Perform advanced integration using the engine directly
-    res_1 = engine.integrate_ng(scatter_image_array_1)
-    res_2 = engine.integrate_ng(scatter_image_array_2)
-
-    # Extract q values and intensities from the integration results
-    q_1 = res_1.position  # q values for first image
-    intensity_1 = res_1.intensity  # Integrated intensities for first image
-    q_2 = res_2.position  # q values for second image
-    intensity_2 = res_2.intensity  # Integrated intensities for second image
 
     q_max = max(q_1.max(), q_2.max())
 
