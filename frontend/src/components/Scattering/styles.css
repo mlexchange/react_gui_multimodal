@@ -6,3 +6,7 @@
   grid-template-rows: 1rem 1.75rem !important;
   padding: 4px 0 !important;
 }
+
+.react-tooltip {
+  z-index: 9999;
+}
