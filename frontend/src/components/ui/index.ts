@@ -6,6 +6,7 @@ export { NumberInput } from "./NumberInput";
 // Radix-based components
 export { Select } from "./Select";
 export { Switch } from "./Switch";
+export { Tabs, TabsList, TabsTrigger, TabsContent } from "./Tabs";
 export { Toggle } from "./Toggle";
 export { Menu } from "./Menu";
 export { Popover } from "./Popover";
