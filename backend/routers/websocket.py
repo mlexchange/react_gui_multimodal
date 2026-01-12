@@ -29,6 +29,7 @@ async def send_progress_update(
 ):
     """
     Send progress updates to all connected clients.
+    Dead connections are automatically cleaned up.
 
     Args:
         progress_percentage: Progress from 0-100
@@ -49,8 +50,17 @@ async def send_progress_update(
     if current_scan is not None:
         payload["current_scan"] = current_scan
 
+    # Track failed connections for cleanup
+    failed_connections = []
+
     for connection in active_connections:
         try:
             await connection.send_json(payload)
         except Exception:
-            pass
+            # Mark connection for removal
+            failed_connections.append(connection)
+
+    # Remove dead connections
+    for connection in failed_connections:
+        if connection in active_connections:
+            active_connections.remove(connection)

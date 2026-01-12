@@ -13,6 +13,10 @@ import type {
   InclinedLinecut,
   AzimuthalIntegration
 } from '../types';
+import type {
+  BatchResultsStore,
+  BatchParameterHashes
+} from '../hooks/useBatchProcessing';
 
 // Storage key for sessionStorage
 const STORAGE_KEY = 'scattering_session_v1';
@@ -68,6 +72,11 @@ export interface SessionState {
   isSidebarCollapsed: boolean;
   isSummaryCollapsed: boolean;
   operationType: 'subtract' | 'divide';
+
+  /** Batch processing results (optional for backward compatibility) */
+  batchResults?: BatchResultsStore;
+  batchParameterHashes?: BatchParameterHashes;
+  batchSelectedScanUris?: string[];
 
   /** Timestamp when session was saved */
   savedAt: number;

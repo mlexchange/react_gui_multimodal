@@ -16,4 +16,5 @@ export * from './generateVerticalLinecutOverlay';
 export * from './getArrayMinAndMax';
 export * from './handleRelayout';
 export * from './linecutHandlers';
+export * from './parameterHash';
 export * from './transformationUtils';

@@ -29,99 +29,14 @@ function getDateString(): string {
 /**
  * Export batch results to CSV format.
  *
- * The CSV has the following structure:
- * - First row: header with scan_name and q-values
- * - Subsequent rows: scan_name followed by intensity values
+ * Format:
+ * - Each row is a q-value
+ * - Columns are: q, scan1, scan2, scan3, ...
  *
  * @param results - Array of linecut results
  * @param operationType - Type of operation (horizontal, vertical, etc.)
  */
 export function exportToCSV(
-  results: LinecutResult[],
-  operationType: string
-): void {
-  const successfulResults = results.filter(r => r.success);
-
-  if (successfulResults.length === 0) {
-    alert('No successful results to export');
-    return;
-  }
-
-  // Use the first result's q_values as reference
-  const qValues = successfulResults[0].q_values;
-
-  // Build header row
-  const header = [
-    'scan_name',
-    ...qValues.map(q => `q=${q.toFixed(4)}`)
-  ].join(',');
-
-  // Build data rows
-  const rows = successfulResults.map(result => {
-    const intensities = result.intensities.map(i => i.toExponential(4));
-    return [result.scan_name, ...intensities].join(',');
-  });
-
-  // Combine into CSV content
-  const csvContent = [header, ...rows].join('\n');
-
-  // Download
-  const filename = `batch_${operationType}_${getDateString()}.csv`;
-  downloadBlob(csvContent, filename, 'text/csv;charset=utf-8;');
-}
-
-/**
- * Export batch results to JSON format.
- *
- * The JSON has metadata and full result data for each scan.
- *
- * @param results - Array of linecut results
- * @param operationType - Type of operation (horizontal, vertical, etc.)
- */
-export function exportToJSON(
-  results: LinecutResult[],
-  operationType: string
-): void {
-  const exportData = {
-    metadata: {
-      operation_type: operationType,
-      export_date: new Date().toISOString(),
-      total_scans: results.length,
-      successful: results.filter(r => r.success).length,
-      failed: results.filter(r => !r.success).length,
-    },
-    results: results.map(r => ({
-      scan_name: r.scan_name,
-      scan_uri: r.scan_uri,
-      success: r.success,
-      error_message: r.error_message,
-      data: r.success ? {
-        q_values: r.q_values,
-        intensities: r.intensities,
-      } : null,
-    })),
-  };
-
-  const jsonContent = JSON.stringify(exportData, null, 2);
-
-  // Download
-  const filename = `batch_${operationType}_${getDateString()}.json`;
-  downloadBlob(jsonContent, filename, 'application/json');
-}
-
-/**
- * Export batch results to a transposed CSV format.
- *
- * This format has:
- * - Each row is a q-value
- * - Columns are: q, scan1, scan2, scan3, ...
- *
- * Useful for analysis in spreadsheet software.
- *
- * @param results - Array of linecut results
- * @param operationType - Type of operation (horizontal, vertical, etc.)
- */
-export function exportToTransposedCSV(
   results: LinecutResult[],
   operationType: string
 ): void {
@@ -147,6 +62,6 @@ export function exportToTransposedCSV(
   const csvContent = [header, ...rows].join('\n');
 
   // Download
-  const filename = `batch_${operationType}_transposed_${getDateString()}.csv`;
+  const filename = `batch_${operationType}_${getDateString()}.csv`;
   downloadBlob(csvContent, filename, 'text/csv;charset=utf-8;');
 }

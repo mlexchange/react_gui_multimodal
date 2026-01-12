@@ -18,7 +18,7 @@ import useInclinedLinecut from './hooks/useInclinedLinecut';
 import useDataTransformation from './hooks/useDataTransformation';
 import useSummary from './hooks/useSummary';
 import useSessionPersistence, { PersistableState } from './hooks/useSessionPersistence';
-import useBatchProcessing, { BatchProcessingParams } from './hooks/useBatchProcessing';
+import useBatchProcessing from './hooks/useBatchProcessing';
 
 // Import components
 import ScatterSubplot, { OperationType } from './ScatterSubplot';
@@ -35,8 +35,7 @@ import LinecutFig from './LinecutFig';
 import InclinedLinecutFig from './InclinedLinecutFig';
 import AzimuthalIntegrationFig from './AzimuthalIntegrationFig';
 import SummaryFig from './SummaryFig';
-import { BatchScanSelector } from './BatchScanSelector';
-import { BatchResultsOverlay } from './BatchResultsOverlay';
+import { BatchProcessingOverlay } from './BatchProcessingOverlay';
 
 // Import utilities
 import { handleExperimentTypeChange, addLinecut } from './utils/linecutHandlers';
@@ -60,6 +59,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isSummaryCollapsed, setIsSummaryCollapsed] = useState(false);
   const [operationType, setOperationType] = useState<OperationType>('subtract');
+  const [isBatchOverlayOpen, setIsBatchOverlayOpen] = useState(false);
 
   // Session persistence hook
   const {
@@ -221,49 +221,14 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
   } = useAzimuthalIntegration(calibrationParams, leftScanUri, rightScanUri);
 
   // Batch processing hook
-  const {
-    currentJob: batchJob,
-    isProcessing: isBatchProcessing,
-    isResultsOpen: isBatchResultsOpen,
-    setIsResultsOpen: setIsBatchResultsOpen,
-    isSelectorOpen: isBatchSelectorOpen,
-    setIsSelectorOpen: setIsBatchSelectorOpen,
-    selectorOperationType: batchSelectorType,
-    openBatchSelector,
-    startBatchJob,
-  } = useBatchProcessing(calibrationParams, experimentType);
-
-  /**
-   * Handle starting a batch job for a specific operation type
-   */
-  const handleStartBatch = (selectedUris: string[]) => {
-    // Get current linecut/integration params based on selector type
-    const params: BatchProcessingParams = {};
-
-    if (batchSelectorType === 'horizontal' && horizontalLinecuts.length > 0) {
-      const linecut = horizontalLinecuts[0];
-      params.horizontal = { position: linecut.position, width: linecut.width };
-    } else if (batchSelectorType === 'vertical' && verticalLinecuts.length > 0) {
-      const linecut = verticalLinecuts[0];
-      params.vertical = { position: linecut.position, width: linecut.width };
-    } else if (batchSelectorType === 'inclined' && inclinedLinecuts.length > 0) {
-      const linecut = inclinedLinecuts[0];
-      params.inclined = {
-        q_x_position: linecut.qXPosition,
-        q_y_position: linecut.qYPosition,
-        angle: linecut.angle,
-        q_width: linecut.qWidth,
-      };
-    } else if (batchSelectorType === 'azimuthal' && azimuthalIntegrations.length > 0) {
-      const integration = azimuthalIntegrations[0];
-      params.azimuthal = {
-        azimuth_range: integration.azimuthRange,
-        q_range: integration.qRange,
-      };
-    }
-
-    startBatchJob(batchSelectorType, selectedUris, params);
-  };
+  const batchProcessing = useBatchProcessing({
+    calibrationParams,
+    experimentType,
+    horizontalLinecuts,
+    verticalLinecuts,
+    inclinedLinecuts,
+    azimuthalIntegrations,
+  });
 
   // ========== SESSION RESTORATION ==========
   // Restore session state when the component mounts and session data is available
@@ -303,7 +268,16 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     setIsSummaryCollapsed(restoredSession.isSummaryCollapsed);
     setOperationType(restoredSession.operationType);
 
-    // 6. If we have a container path, fetch the summary data
+    // 6. Restore batch processing state if available
+    if (restoredSession.batchResults && restoredSession.batchParameterHashes) {
+      batchProcessing.restoreState(
+        restoredSession.batchResults,
+        restoredSession.batchParameterHashes,
+        restoredSession.batchSelectedScanUris || []
+      );
+    }
+
+    // 7. If we have a container path, fetch the summary data
     //    Then set the image indices after summary data is loaded
     if (restoredSession.containerPath) {
       setSelectedContainerPath(restoredSession.containerPath);
@@ -320,6 +294,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
 
     hasAppliedSession.current = true;
     console.log('Session restored successfully');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isRestoring,
     hasRestoredSession,
@@ -330,6 +305,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     restoreVerticalLinecuts,
     restoreInclinedLinecuts,
     restoreAzimuthalIntegrations,
+    batchProcessing.restoreState,
     setSelectedContainerPath,
     fetchSummaryData,
     setLeftImageIndex,
@@ -365,6 +341,10 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
       isSidebarCollapsed,
       isSummaryCollapsed,
       operationType,
+      // Batch processing state
+      batchResults: batchProcessing.results,
+      batchParameterHashes: batchProcessing.parameterHashes,
+      batchSelectedScanUris: batchProcessing.selectedScanUris,
     };
 
     triggerAutoSave(persistableState);
@@ -390,6 +370,9 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     isSidebarCollapsed,
     isSummaryCollapsed,
     operationType,
+    batchProcessing.results,
+    batchProcessing.parameterHashes,
+    batchProcessing.selectedScanUris,
     triggerAutoSave,
   ]);
 
@@ -633,6 +616,19 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
 
                 return null;
               })}
+
+              {/* Batch Processing Button */}
+              <div className="my-3">
+                <ButtonWithIcon
+                  icon={<StackIcon size={18} />}
+                  text="Batch Processing"
+                  cb={() => setIsBatchOverlayOpen(true)}
+                  size="small"
+                  disabled={!isCalibrationSet || !numOfFiles}
+                  styles="w-full"
+                />
+              </div>
+
             </div>
           </div>
           )}
@@ -874,16 +870,6 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                 title="Horizontal Linecuts"
                 className="flex-1"
                 contentClassName="p-2 relative"
-                headerChildren={
-                  <IconButton
-                    variant="subtle"
-                    size="sm"
-                    onClick={() => openBatchSelector('horizontal')}
-                    title="Batch process horizontal linecuts"
-                  >
-                    <StackIcon size={18} className="text-sky-700" />
-                  </IconButton>
-                }
               >
                 {isLoadingImages && <LoadingOverlay />}
                 <LinecutFig
@@ -906,16 +892,6 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                 title="Vertical Linecuts"
                 className="flex-1"
                 contentClassName="p-2 relative"
-                headerChildren={
-                  <IconButton
-                    variant="subtle"
-                    size="sm"
-                    onClick={() => openBatchSelector('vertical')}
-                    title="Batch process vertical linecuts"
-                  >
-                    <StackIcon size={18} className="text-sky-700" />
-                  </IconButton>
-                }
               >
                 {isLoadingImages && <LoadingOverlay />}
                 <LinecutFig
@@ -938,16 +914,6 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                 title="Inclined Linecuts"
                 className="flex-1"
                 contentClassName="p-2 relative"
-                headerChildren={
-                  <IconButton
-                    variant="subtle"
-                    size="sm"
-                    onClick={() => openBatchSelector('inclined')}
-                    title="Batch process inclined linecuts"
-                  >
-                    <StackIcon size={18} className="text-sky-700" />
-                  </IconButton>
-                }
               >
                 {isLoadingImages && <LoadingOverlay />}
                 <InclinedLinecutFig
@@ -972,16 +938,6 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                 title="Azimuthal Integrations"
                 className="flex-1"
                 contentClassName="p-2 relative"
-                headerChildren={
-                  <IconButton
-                    variant="subtle"
-                    size="sm"
-                    onClick={() => openBatchSelector('azimuthal')}
-                    title="Batch process azimuthal integrations"
-                  >
-                    <StackIcon size={18} className="text-sky-700" />
-                  </IconButton>
-                }
               >
                 {(isLoadingImages || isProcessing) && (
                   <LoadingOverlay message={isProcessing ? 'Processing...' : 'Loading...'} />
@@ -1038,26 +994,35 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
         />
       </Modal>
 
-      {/* Batch Scan Selector */}
-      <BatchScanSelector
-        isOpen={isBatchSelectorOpen}
-        onClose={() => setIsBatchSelectorOpen(false)}
+      {/* Batch Processing Overlay */}
+      <BatchProcessingOverlay
+        isOpen={isBatchOverlayOpen}
+        onClose={() => setIsBatchOverlayOpen(false)}
+        horizontalLinecuts={horizontalLinecuts}
+        verticalLinecuts={verticalLinecuts}
+        inclinedLinecuts={inclinedLinecuts}
+        azimuthalIntegrations={azimuthalIntegrations}
         scanUris={scanUris}
         scanNames={imageNames}
-        operationType={batchSelectorType}
-        onStartBatch={handleStartBatch}
-        isProcessing={isBatchProcessing}
-      />
-
-      {/* Batch Results Overlay */}
-      <BatchResultsOverlay
-        isOpen={isBatchResultsOpen}
-        onClose={() => setIsBatchResultsOpen(false)}
-        results={batchJob.results}
-        operationType={batchJob.type}
-        totalScans={batchJob.totalScans}
-        successful={batchJob.successful}
-        failed={batchJob.failed}
+        selectedScanUris={batchProcessing.selectedScanUris}
+        setSelectedScanUris={batchProcessing.setSelectedScanUris}
+        activeTab={batchProcessing.activeTab}
+        setActiveTab={batchProcessing.setActiveTab}
+        activeLinecutId={batchProcessing.activeLinecutId}
+        setActiveLinecutId={batchProcessing.setActiveLinecutId}
+        results={batchProcessing.results}
+        resultCounts={batchProcessing.resultCounts}
+        currentResult={batchProcessing.currentResult}
+        isStale={batchProcessing.isStale}
+        hasStaleResults={batchProcessing.hasStaleResults}
+        isProcessing={batchProcessing.isProcessing}
+        progress={batchProcessing.progress}
+        progressMessage={batchProcessing.progressMessage}
+        isSelectorOpen={batchProcessing.isSelectorOpen}
+        setIsSelectorOpen={batchProcessing.setIsSelectorOpen}
+        runBatchAll={batchProcessing.runBatchAll}
+        onCancel={batchProcessing.cancelBatch}
+        experimentType={experimentType}
       />
     </div>
   );

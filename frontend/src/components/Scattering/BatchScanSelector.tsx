@@ -9,10 +9,11 @@
  * - Start processing button
  */
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { Modal } from '@/components/shared';
 import { PlayIcon, StackIcon } from '@phosphor-icons/react';
 import { BatchOperationType } from './hooks/useBatchProcessing';
+import { OPERATION_LABELS_FULL } from './utils/constants';
 
 interface BatchScanSelectorProps {
   isOpen: boolean;
@@ -22,14 +23,9 @@ interface BatchScanSelectorProps {
   operationType: BatchOperationType;
   onStartBatch: (selectedUris: string[]) => void;
   isProcessing: boolean;
+  /** Optional: URIs of scans that should be pre-selected when modal opens */
+  initialSelectedUris?: string[];
 }
-
-const OPERATION_LABELS: Record<BatchOperationType, string> = {
-  horizontal: 'Horizontal Linecut',
-  vertical: 'Vertical Linecut',
-  inclined: 'Inclined Linecut',
-  azimuthal: 'Azimuthal Integration',
-};
 
 export function BatchScanSelector({
   isOpen,
@@ -39,12 +35,39 @@ export function BatchScanSelector({
   operationType,
   onStartBatch,
   isProcessing,
+  initialSelectedUris,
 }: BatchScanSelectorProps) {
   // Set of selected indices
   const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
 
   // Track last clicked index for shift+click range selection
   const lastClickedIndex = useRef<number | null>(null);
+
+  // Build a URI to index map for efficient lookup
+  const uriToIndexMap = useMemo(() => {
+    const map = new Map<string, number>();
+    scanUris.forEach((uri, index) => map.set(uri, index));
+    return map;
+  }, [scanUris]);
+
+  // Initialize selection when modal opens with initialSelectedUris
+  useEffect(() => {
+    if (isOpen) {
+      // Reset the last clicked index when modal opens
+      lastClickedIndex.current = null;
+
+      if (initialSelectedUris && initialSelectedUris.length > 0) {
+        const indices = new Set<number>();
+        initialSelectedUris.forEach(uri => {
+          const index = uriToIndexMap.get(uri);
+          if (index !== undefined) {
+            indices.add(index);
+          }
+        });
+        setSelectedIndices(indices);
+      }
+    }
+  }, [isOpen, initialSelectedUris, uriToIndexMap]);
 
   // Check if all scans are selected
   const allSelected = selectedIndices.size === scanUris.length && scanUris.length > 0;
@@ -67,11 +90,14 @@ export function BatchScanSelector({
    * Supports Shift+click for range selection
    */
   const handleToggle = useCallback((index: number, event: React.MouseEvent) => {
+    // Prevent default browser behavior (text selection, etc.)
+    event.preventDefault();
+
     setSelectedIndices(prev => {
       const next = new Set(prev);
 
       // Shift+click: select range from last clicked to current
-      if (event.shiftKey && lastClickedIndex.current !== null) {
+      if (event.shiftKey && lastClickedIndex.current !== null && lastClickedIndex.current !== index) {
         const start = Math.min(lastClickedIndex.current, index);
         const end = Math.max(lastClickedIndex.current, index);
         for (let i = start; i <= end; i++) {
@@ -84,12 +110,12 @@ export function BatchScanSelector({
         } else {
           next.add(index);
         }
+        // Update anchor point for future shift+clicks
+        lastClickedIndex.current = index;
       }
 
       return next;
     });
-
-    lastClickedIndex.current = index;
   }, []);
 
   /**
@@ -102,7 +128,7 @@ export function BatchScanSelector({
     onStartBatch(selectedUris);
   }, [selectedIndices, scanUris, onStartBatch]);
 
-  const operationLabel = OPERATION_LABELS[operationType];
+  const operationLabel = OPERATION_LABELS_FULL[operationType];
 
   return (
     <Modal
@@ -139,27 +165,24 @@ export function BatchScanSelector({
         ) : (
           <div className="max-h-64 overflow-y-auto border border-gray-200 rounded">
             {scanNames.map((name, index) => (
-              <label
+              <div
                 key={index}
-                className={`flex items-center gap-2 px-3 py-2 cursor-pointer border-b border-gray-100 last:border-b-0 ${
+                className={`flex items-center gap-2 px-3 py-2 cursor-pointer border-b border-gray-100 last:border-b-0 select-none ${
                   selectedIndices.has(index)
                     ? 'bg-sky-50'
                     : 'hover:bg-gray-50'
                 }`}
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleToggle(index, e);
-                }}
+                onClick={(e) => handleToggle(index, e)}
               >
                 <input
                   type="checkbox"
                   checked={selectedIndices.has(index)}
-                  onChange={() => {}}  // Handled by label onClick
-                  className="w-4 h-4 text-sky-600 border-gray-300 rounded focus:ring-sky-500 cursor-pointer"
+                  readOnly
+                  className="w-4 h-4 text-sky-600 border-gray-300 rounded focus:ring-sky-500 pointer-events-none"
                 />
                 <span className="text-sm text-gray-700 truncate flex-1">{name}</span>
                 <span className="text-xs text-gray-400 tabular-nums">#{index + 1}</span>
-              </label>
+              </div>
             ))}
           </div>
         )}

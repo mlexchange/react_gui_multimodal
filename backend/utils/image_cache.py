@@ -5,8 +5,10 @@ This module provides a centralized cache that:
 1. Caches processed images with all resolution levels pre-computed
 2. Allows azimuthal integration to reuse cached images instead of re-fetching
 3. Uses functools.lru_cache for simple, efficient in-memory caching
+4. Thread-safe for concurrent access from batch processing
 """
 
+import threading
 import urllib.parse as urlparse
 from dataclasses import dataclass
 from typing import Tuple
@@ -120,15 +122,22 @@ def _fetch_and_process_image(scan_uri: str) -> ProcessedImageData:
 _image_cache: dict[str, ProcessedImageData] = {}
 _cache_order: list[str] = []  # For LRU tracking
 _max_cache_size = 50
+_cache_lock = threading.Lock()  # Thread safety for concurrent access
 
 
-def get_cached_processed_image(scan_uri: str) -> ProcessedImageData:
+def get_cached_processed_image(
+    scan_uri: str,
+    bypass_cache: bool = False,
+) -> ProcessedImageData:
     """
     Get processed image from cache or compute and cache it.
     This is the main entry point for all image access.
+    Thread-safe for concurrent access from batch processing.
 
     Args:
         scan_uri: Scan URI like "rawdata/NaCl_small/NaCl_1_10_sample_2_2m"
+        bypass_cache: If True, skip cache entirely (useful for batch processing
+                      large datasets where cache thrashing would occur)
 
     Returns:
         ProcessedImageData with all resolution levels
@@ -138,28 +147,38 @@ def get_cached_processed_image(scan_uri: str) -> ProcessedImageData:
     # Normalize the scan_uri
     scan_uri = scan_uri.lstrip('/')
 
-    # Check cache
-    if scan_uri in _image_cache:
-        # Move to end of order list (most recently used)
-        _cache_order.remove(scan_uri)
-        _cache_order.append(scan_uri)
-        print(f"[CACHE HIT] {scan_uri}")
-        return _image_cache[scan_uri]
+    # If bypassing cache, just fetch and return without caching
+    if bypass_cache:
+        return _fetch_and_process_image(scan_uri)
+
+    # Check cache with lock
+    with _cache_lock:
+        if scan_uri in _image_cache:
+            # Move to end of order list (most recently used)
+            if scan_uri in _cache_order:
+                _cache_order.remove(scan_uri)
+            _cache_order.append(scan_uri)
+            print(f"[CACHE HIT] {scan_uri}")
+            return _image_cache[scan_uri]
 
     print(f"[CACHE MISS] {scan_uri}")
 
-    # Cache miss - fetch and process
+    # Cache miss - fetch and process (outside lock to allow concurrent fetches)
     processed = _fetch_and_process_image(scan_uri)
 
-    # Add to cache
-    _image_cache[scan_uri] = processed
-    _cache_order.append(scan_uri)
+    # Add to cache with lock
+    with _cache_lock:
+        # Check again in case another thread added it while we were fetching
+        if scan_uri not in _image_cache:
+            _image_cache[scan_uri] = processed
+            _cache_order.append(scan_uri)
 
-    # Enforce cache size limit (LRU eviction)
-    while len(_cache_order) > _max_cache_size:
-        oldest_uri = _cache_order.pop(0)
-        del _image_cache[oldest_uri]
-        print(f"[CACHE EVICT] {oldest_uri}")
+            # Enforce cache size limit (LRU eviction)
+            while len(_cache_order) > _max_cache_size:
+                oldest_uri = _cache_order.pop(0)
+                if oldest_uri in _image_cache:
+                    del _image_cache[oldest_uri]
+                print(f"[CACHE EVICT] {oldest_uri}")
 
     return processed
 
@@ -167,15 +186,17 @@ def get_cached_processed_image(scan_uri: str) -> ProcessedImageData:
 def clear_image_cache():
     """Clear the image cache. Useful for testing or memory management."""
     global _image_cache, _cache_order
-    _image_cache = {}
-    _cache_order = []
+    with _cache_lock:
+        _image_cache = {}
+        _cache_order = []
     print("[CACHE] Cleared")
 
 
 def get_cache_info() -> dict:
     """Get cache statistics."""
-    return {
-        "size": len(_image_cache),
-        "max_size": _max_cache_size,
-        "cached_uris": list(_cache_order),
-    }
+    with _cache_lock:
+        return {
+            "size": len(_image_cache),
+            "max_size": _max_cache_size,
+            "cached_uris": list(_cache_order),
+        }

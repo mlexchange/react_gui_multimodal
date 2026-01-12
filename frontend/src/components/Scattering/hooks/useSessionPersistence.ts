@@ -21,6 +21,10 @@ import type {
   InclinedLinecut,
   AzimuthalIntegration
 } from '../types';
+import type {
+  BatchResultsStore,
+  BatchParameterHashes
+} from './useBatchProcessing';
 
 // Auto-save debounce delay in milliseconds
 const AUTO_SAVE_DEBOUNCE_MS = 1000;
@@ -43,6 +47,10 @@ export interface PersistableState {
   isSidebarCollapsed: boolean;
   isSummaryCollapsed: boolean;
   operationType: 'subtract' | 'divide';
+  // Batch processing state (optional for backward compatibility)
+  batchResults?: BatchResultsStore;
+  batchParameterHashes?: BatchParameterHashes;
+  batchSelectedScanUris?: string[];
 }
 
 /**
