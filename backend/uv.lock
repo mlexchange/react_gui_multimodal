@@ -2135,6 +2135,7 @@ name = "xscattering-backend"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "fabio" },
     { name = "fastapi", extra = ["standard"] },
     { name = "msgpack" },
     { name = "numpy" },
@@ -2145,6 +2146,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "fabio", specifier = ">=2025.10.0" },
     { name = "fastapi", extras = ["standard"], specifier = ">=0.124.0" },
     { name = "msgpack", specifier = ">=1.1.2" },
     { name = "numpy", specifier = ">=2.3.5" },
