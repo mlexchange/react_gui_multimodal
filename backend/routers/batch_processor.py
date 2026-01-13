@@ -96,6 +96,7 @@ class BatchAllRequest(BaseModel):
     vertical_linecuts: list[VerticalLinecutParams] = []
     inclined_linecuts: list[InclinedLinecutParams] = []
     azimuthal_integrations: list[AzimuthalParams] = []
+    mask_uri: Optional[str] = None  # Optional detector mask URI or mask_id
 
 
 # ============================================================================
@@ -111,6 +112,7 @@ def process_scan_all_linecuts(
     inclined_linecuts: list[dict],
     azimuthal_integrations: list[dict],
     bypass_cache: bool = False,
+    mask_uri: Optional[str] = None,
 ) -> dict:
     """
     Process a single scan for ALL linecut types and integrations.
@@ -126,6 +128,7 @@ def process_scan_all_linecuts(
         inclined_linecuts: List of inclined linecut params (with 'id' key)
         azimuthal_integrations: List of azimuthal params (with 'id' key)
         bypass_cache: If True, skip image cache (for large batch processing)
+        mask_uri: Optional detector mask URI or mask_id
 
     Returns:
         Dict with results organized by type and linecut ID
@@ -142,8 +145,10 @@ def process_scan_all_linecuts(
 
     try:
         # Fetch image (bypass cache for batch processing to avoid thrashing)
+        # Mask is applied during processing - masked pixels become NaN
         processed_image = get_cached_processed_image(
             scan_uri.lstrip("/"),
+            mask_uri=mask_uri,
             bypass_cache=bypass_cache,
         )
         image_array = processed_image.full.array
@@ -286,6 +291,7 @@ def process_scan_for_batch(
     inclined_linecuts: list[dict],
     azimuthal_integrations: list[dict],
     batch_id: str,
+    mask_uri: Optional[str] = None,
 ) -> dict:
     """
     Process a single scan for batch processing with cancellation support.
@@ -318,6 +324,7 @@ def process_scan_for_batch(
         inclined_linecuts,
         azimuthal_integrations,
         bypass_cache=True,  # Bypass cache for batch processing
+        mask_uri=mask_uri,
     )
     status = "OK" if result.get("success", False) else "FAILED"
     print(f"[BATCH {batch_id[:8]}] Completed {scan_name} - {status}")
@@ -425,6 +432,9 @@ async def batch_all(request: BatchAllRequest):
 
     max_workers = 16
 
+    # Get mask_uri from request
+    mask_uri = request.mask_uri
+
     try:
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
             # Submit all tasks - cache is bypassed for full parallelism
@@ -438,6 +448,7 @@ async def batch_all(request: BatchAllRequest):
                     inclined_linecuts,
                     azimuthal_integrations,
                     batch_id,
+                    mask_uri,
                 ): uri
                 for uri in request.scan_uris
             }

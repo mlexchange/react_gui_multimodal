@@ -760,6 +760,7 @@ interface H5WebScatterSubplotProps {
   leftHeader?: React.ReactNode;
   rightHeader?: React.ReactNode;
   comparisonHeader?: React.ReactNode;
+  maskUri?: string | null;
 }
 
 // Convert 2D number array to ndarray
@@ -842,6 +843,7 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
   leftHeader,
   rightHeader,
   comparisonHeader,
+  maskUri,
 }) => {
   // Raw data from fetch
   const [leftArray, setLeftArray] = useState<number[][]>([]);
@@ -900,8 +902,8 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
     setIsLoadingImages?.(true);
 
     Promise.all([
-      fetchWithCache(leftScanUri),
-      fetchWithCache(rightScanUri)
+      fetchWithCache(leftScanUri, maskUri),
+      fetchWithCache(rightScanUri, maskUri)
     ])
       .then(([leftProcessed, rightProcessed]) => {
         // Use full resolution data
@@ -941,6 +943,7 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
     setImageData1,
     setImageData2,
     setIsLoadingImages,
+    maskUri,
   ]);
 
   // Transform data based on settings

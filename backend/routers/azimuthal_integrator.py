@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Optional, Tuple
 
 import msgpack
 import numpy as np
@@ -69,8 +69,10 @@ async def azimuthal_integration(
         default=0.0, description="Rotation of tilt plane in degrees"
     ),
     # Other parameters
-    azimuth_range_deg: str | None = None,
-    q_range: str | None = None,
+    azimuth_range_deg: Optional[str] = None,
+    q_range: Optional[str] = None,
+    # Mask parameter
+    mask_uri: Optional[str] = Query(None, description="Optional mask URI or mask_id"),
 ):
     """
     Performs azimuthal integration on two scatter images to convert 2D detector images
@@ -82,8 +84,9 @@ async def azimuthal_integration(
 
     # Get images from cache (uses full resolution for integration accuracy)
     # This reuses cached images if the user previously viewed them in the scatter subplot
-    processed_1 = get_cached_processed_image(left_scan_uri.lstrip('/'))
-    processed_2 = get_cached_processed_image(right_scan_uri.lstrip('/'))
+    # Masked pixels are set to NaN, which pyFAI handles during integration
+    processed_1 = get_cached_processed_image(left_scan_uri.lstrip("/"), mask_uri=mask_uri)
+    processed_2 = get_cached_processed_image(right_scan_uri.lstrip("/"), mask_uri=mask_uri)
 
     scatter_image_array_1 = processed_1.full.array
     scatter_image_array_2 = processed_2.full.array

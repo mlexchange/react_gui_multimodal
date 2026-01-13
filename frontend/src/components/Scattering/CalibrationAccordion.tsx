@@ -28,6 +28,8 @@ interface CalibrationAccordionProps {
     calibrationParams: CalibrationParams | null;
     onCalibrationUpdate: (params: CalibrationParams) => void;
     experimentType: string;           // 'SAXS' or 'GISAXS'
+    maskUri: string | null;
+    onMaskUpdate: (maskUri: string | null) => void;
 }
 
 // Constants for energy-wavelength conversion
@@ -50,6 +52,8 @@ export default function CalibrationAccordion({
     calibrationParams,
     onCalibrationUpdate,
     experimentType,
+    maskUri,
+    onMaskUpdate,
 }: CalibrationAccordionProps) {
     const [isModified, setIsModified] = useState(false);
     const [localParams, setLocalParams] = useState<CalibrationParams>(() =>
@@ -58,6 +62,10 @@ export default function CalibrationAccordion({
     const [energy, setEnergy] = useState(() =>
         wavelengthToEnergy(calibrationParams?.wavelength ?? 0)
     );
+    const [maskStatus, setMaskStatus] = useState<string | null>(null);
+    const [pendingMaskUri, setPendingMaskUri] = useState<string | null>(null);
+    const [pendingMaskName, setPendingMaskName] = useState<string | null>(null);
+    const [showMaskDialog, setShowMaskDialog] = useState(false);
 
     useEffect(() => {
         setLocalParams(calibrationParams ?? {});
@@ -156,10 +164,92 @@ export default function CalibrationAccordion({
             setLocalParams(newParams);
             setEnergy(wavelengthToEnergy(metadata.wavelength));
             setIsModified(true);
+
+            // Try to resolve mask from PONI file
+            try {
+                const maskResponse = await fetch(
+                    `/api/resolve-mask?poni_uri=${encodeURIComponent(containerPath)}`
+                );
+                if (maskResponse.ok) {
+                    const maskData = await maskResponse.json();
+                    if (maskData.found && maskData.mask_uri) {
+                        // Ask user if they want to load the mask
+                        setPendingMaskUri(maskData.mask_uri);
+                        setPendingMaskName(maskData.mask_name);
+                        setShowMaskDialog(true);
+                    } else {
+                        console.log('Mask not found:', maskData.message);
+                    }
+                }
+            } catch (maskError) {
+                console.warn('Could not resolve mask:', maskError);
+            }
         } catch (error) {
             console.error('Error fetching calibration data:', error);
         }
     }, []);
+
+    // Handle loading the resolved mask
+    const handleLoadResolvedMask = useCallback(async () => {
+        if (!pendingMaskUri) return;
+
+        try {
+            const response = await fetch(
+                `/api/load-mask-from-tiled?mask_uri=${encodeURIComponent(pendingMaskUri)}`
+            );
+            if (response.ok) {
+                const data = await response.json();
+                onMaskUpdate(data.mask_uri);
+                setMaskStatus(`Loaded: ${pendingMaskName} (${data.shape[0]}x${data.shape[1]})`);
+            } else {
+                console.error('Failed to load mask');
+            }
+        } catch (error) {
+            console.error('Error loading mask:', error);
+        } finally {
+            setShowMaskDialog(false);
+            setPendingMaskUri(null);
+            setPendingMaskName(null);
+        }
+    }, [pendingMaskUri, pendingMaskName, onMaskUpdate]);
+
+    // Handle uploading a mask file
+    const handleMaskFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await fetch('/api/upload-mask', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                onMaskUpdate(data.mask_id);
+                setMaskStatus(`Uploaded: ${file.name} (${data.shape[0]}x${data.shape[1]})`);
+            } else {
+                const error = await response.json();
+                console.error('Failed to upload mask:', error.detail);
+                setMaskStatus(`Error: ${error.detail}`);
+            }
+        } catch (error) {
+            console.error('Error uploading mask:', error);
+            setMaskStatus('Upload failed');
+        }
+
+        // Reset the file input
+        event.target.value = '';
+    }, [onMaskUpdate]);
+
+    // Clear mask
+    const handleClearMask = useCallback(() => {
+        onMaskUpdate(null);
+        setMaskStatus(null);
+    }, [onMaskUpdate]);
 
     const handleSubmit = () => {
         if (isCalibrationComplete(localParams)) {
@@ -337,6 +427,76 @@ export default function CalibrationAccordion({
                             max={5}
                             size="sm"
                         />
+                    </div>
+                </div>
+            )}
+
+            {/* Row 7: Detector Mask */}
+            <div className="border-t border-slate-200 pt-4 mt-2">
+                <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-slate-700">Detector Mask</span>
+                    {maskUri && (
+                        <Button
+                            text="Clear"
+                            size="small"
+                            cb={handleClearMask}
+                            bgColor="bg-red-500"
+                        />
+                    )}
+                </div>
+                {maskStatus ? (
+                    <div className="text-sm text-green-600 bg-green-50 px-3 py-2 rounded-lg mb-2">
+                        {maskStatus}
+                    </div>
+                ) : (
+                    <div className="text-sm text-slate-500 mb-2">
+                        No mask loaded (pixels with value -1 are automatically masked)
+                    </div>
+                )}
+                <label className="block">
+                    <span className="sr-only">Upload mask file</span>
+                    <input
+                        type="file"
+                        accept=".npy,.tiff,.tif,.edf,.cbf,.csv"
+                        onChange={handleMaskFileUpload}
+                        className="block w-full text-sm text-slate-500
+                            file:mr-4 file:py-2 file:px-4
+                            file:rounded-lg file:border-0
+                            file:text-sm file:font-medium
+                            file:bg-sky-50 file:text-sky-700
+                            hover:file:bg-sky-100
+                            cursor-pointer"
+                    />
+                </label>
+            </div>
+
+            {/* Mask Confirmation Dialog */}
+            {showMaskDialog && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-xl p-6 max-w-md mx-4 shadow-xl">
+                        <h3 className="text-lg font-semibold mb-2">Load Mask?</h3>
+                        <p className="text-sm text-slate-600 mb-4">
+                            Found mask &quot;{pendingMaskName}&quot; associated with this calibration.
+                            Would you like to load it?
+                        </p>
+                        <div className="flex gap-3 justify-end">
+                            <Button
+                                text="Skip"
+                                size="small"
+                                cb={() => {
+                                    setShowMaskDialog(false);
+                                    setPendingMaskUri(null);
+                                    setPendingMaskName(null);
+                                }}
+                                isSecondary
+                            />
+                            <Button
+                                text="Load Mask"
+                                size="small"
+                                cb={handleLoadResolvedMask}
+                                bgColor="bg-sky-500"
+                            />
+                        </div>
                     </div>
                 </div>
             )}

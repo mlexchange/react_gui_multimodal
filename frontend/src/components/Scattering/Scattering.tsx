@@ -94,6 +94,8 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     isCalibrationSet,
     qXMatrix,
     qYMatrix,
+    maskUri,
+    setMaskUri,
     restoreState: restoreScatteringState,
   } = useScattering();
 
@@ -744,6 +746,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                         </IconButton>
                       </div>
                     }
+                    maskUri={maskUri}
                   />
                 ) : (
                   <ScatterSubplot
@@ -783,6 +786,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                     isLoadingImages={isLoadingImages}
                     setIsLoadingImages={setIsLoadingImages}
                     isAzimuthalProcessing={isProcessing}
+                    maskUri={maskUri}
                   />
                 )}
               </div>
@@ -991,6 +995,8 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
           onCalibrationUpdate={handleCalibrationUpdate}
           calibrationParams={calibrationParams}
           experimentType={experimentType}
+          maskUri={maskUri}
+          onMaskUpdate={setMaskUri}
         />
       </Modal>
 

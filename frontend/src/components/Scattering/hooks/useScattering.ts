@@ -9,6 +9,7 @@ interface RestorableScatteringState {
   experimentType?: string;
   selectedLinecuts?: string[];
   calibrationParams?: CalibrationParams;
+  maskUri?: string | null;
 }
 
 // Define the response interface for q-matrices
@@ -44,6 +45,9 @@ export default function useScattering() {
 
   // Calibration parameters
   const [calibrationParams, setCalibrationParams] = useState<CalibrationParams | null>(null);
+
+  // Mask state
+  const [maskUri, setMaskUri] = useState<string | null>(null);
 
   // Check if calibration is complete
   const isCalibrationSet = useMemo(
@@ -135,6 +139,9 @@ export default function useScattering() {
     if (state.calibrationParams !== undefined) {
       setCalibrationParams(state.calibrationParams);
     }
+    if (state.maskUri !== undefined) {
+      setMaskUri(state.maskUri);
+    }
   }, []);
 
   // Fetch q-matrices when calibration is set and image dimensions are available
@@ -174,6 +181,10 @@ export default function useScattering() {
     // Q-matrices instead of Q-vectors
     qXMatrix,
     qYMatrix,
+
+    // Mask
+    maskUri,
+    setMaskUri,
 
     // Session restoration
     restoreState,

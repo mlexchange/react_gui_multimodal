@@ -1,5 +1,7 @@
+from typing import Optional
+
 import msgpack
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
 
 from utils.image_cache import get_cached_processed_image
@@ -8,12 +10,16 @@ router = APIRouter()
 
 
 @router.get("/fetch-scan-image")
-async def fetch_scan_image(scan_uri: str):
+async def fetch_scan_image(
+    scan_uri: str,
+    mask_uri: Optional[str] = Query(None, description="Optional mask URI or mask_id"),
+):
     """
     Get the processed image with all resolution levels for a single scan.
 
     Args:
         scan_uri: The scan URI like "rawdata/NaCl_small/NaCl_1_10_sample_2_2m"
+        mask_uri: Optional mask URI or mask_id for detector mask
 
     Returns:
         msgpack binary containing all resolution levels:
@@ -22,12 +28,13 @@ async def fetch_scan_image(scan_uri: str):
         - full: {image: bytes, shape: [h, w], factor: int, dtype: str}
         - original_shape: [height, width]
         - scan_uri: string
+        - mask_uri: string | null
     """
-    scan_uri = scan_uri.lstrip('/')
+    scan_uri = scan_uri.lstrip("/")
 
     try:
         # Get from cache (will fetch from Tiled and process if not cached)
-        processed = get_cached_processed_image(scan_uri)
+        processed = get_cached_processed_image(scan_uri, mask_uri=mask_uri)
 
         # Serialize each resolution level
         def serialize_level(level):
@@ -45,6 +52,7 @@ async def fetch_scan_image(scan_uri: str):
             "full": serialize_level(processed.full),
             "original_shape": list(processed.original_shape),
             "scan_uri": scan_uri,
+            "mask_uri": mask_uri,
         })
 
         return Response(content=packed_data, media_type="application/octet-stream")

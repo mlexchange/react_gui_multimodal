@@ -6,12 +6,13 @@ This module provides a centralized cache that:
 2. Allows azimuthal integration to reuse cached images instead of re-fetching
 3. Uses functools.lru_cache for simple, efficient in-memory caching
 4. Thread-safe for concurrent access from batch processing
+5. Supports optional mask application (mask_uri parameter)
 """
 
 import threading
 import urllib.parse as urlparse
 from dataclasses import dataclass
-from typing import Tuple
+from typing import Optional, Tuple
 
 import numpy as np
 
@@ -86,13 +87,44 @@ def compute_resolution_levels(image_array: np.ndarray) -> ProcessedImageData:
     )
 
 
-def _fetch_and_process_image(scan_uri: str) -> ProcessedImageData:
+def _load_mask_array(mask_uri: str) -> Optional[np.ndarray]:
+    """
+    Load a mask array from cache or Tiled.
+
+    Args:
+        mask_uri: Mask URI or mask_id
+
+    Returns:
+        Mask array or None if not found
+    """
+    # Import here to avoid circular imports
+    from utils.mask_manager import get_cached_mask, load_mask_from_tiled
+
+    # Check if it's already cached (uploaded or previously loaded)
+    mask = get_cached_mask(mask_uri)
+    if mask is not None:
+        return mask
+
+    # Try loading from Tiled
+    try:
+        tiled_base_uri = get_tiled_base_uri()
+        return load_mask_from_tiled(mask_uri, tiled_base_uri)
+    except Exception as e:
+        print(f"[WARN] Could not load mask '{mask_uri}': {e}")
+        return None
+
+
+def _fetch_and_process_image(
+    scan_uri: str,
+    mask_uri: Optional[str] = None,
+) -> ProcessedImageData:
     """
     Fetch an image from Tiled and process it into resolution levels.
     This is the internal function that does the actual work.
 
     Args:
         scan_uri: Scan URI like "rawdata/NaCl_small/NaCl_1_10_sample_2_2m"
+        mask_uri: Optional mask URI or mask_id for detector mask
 
     Returns:
         ProcessedImageData with all resolution levels
@@ -106,8 +138,19 @@ def _fetch_and_process_image(scan_uri: str) -> ProcessedImageData:
     image_client = get_tiled_client_for_uri(full_uri)
     image_array = image_client.read()
 
-    # Apply processing (converts to float32, handles masks if any)
-    processed_image = get_processed_image(image_array, mask_detector=None)
+    # Load mask if provided
+    mask_array = None
+    if mask_uri:
+        mask_array = _load_mask_array(mask_uri)
+        if mask_array is not None:
+            # Validate mask shape matches image shape
+            img_shape = np.squeeze(image_array).shape
+            if mask_array.shape != img_shape:
+                print(f"[WARN] Mask shape {mask_array.shape} doesn't match image shape {img_shape}")
+                mask_array = None
+
+    # Apply processing (converts to float32, masks negatives/NaN, applies detector mask)
+    processed_image = get_processed_image(image_array, mask_detector=mask_array)
 
     # Ensure float32
     processed_image = np.array(processed_image, dtype=np.float32)
@@ -127,6 +170,7 @@ _cache_lock = threading.Lock()  # Thread safety for concurrent access
 
 def get_cached_processed_image(
     scan_uri: str,
+    mask_uri: Optional[str] = None,
     bypass_cache: bool = False,
 ) -> ProcessedImageData:
     """
@@ -136,6 +180,7 @@ def get_cached_processed_image(
 
     Args:
         scan_uri: Scan URI like "rawdata/NaCl_small/NaCl_1_10_sample_2_2m"
+        mask_uri: Optional mask URI or mask_id for detector mask
         bypass_cache: If True, skip cache entirely (useful for batch processing
                       large datasets where cache thrashing would occur)
 
@@ -145,40 +190,43 @@ def get_cached_processed_image(
     global _image_cache, _cache_order
 
     # Normalize the scan_uri
-    scan_uri = scan_uri.lstrip('/')
+    scan_uri = scan_uri.lstrip("/")
+
+    # Create cache key that includes mask (different mask = different result)
+    cache_key = f"{scan_uri}|mask={mask_uri or 'none'}"
 
     # If bypassing cache, just fetch and return without caching
     if bypass_cache:
-        return _fetch_and_process_image(scan_uri)
+        return _fetch_and_process_image(scan_uri, mask_uri)
 
     # Check cache with lock
     with _cache_lock:
-        if scan_uri in _image_cache:
+        if cache_key in _image_cache:
             # Move to end of order list (most recently used)
-            if scan_uri in _cache_order:
-                _cache_order.remove(scan_uri)
-            _cache_order.append(scan_uri)
-            print(f"[CACHE HIT] {scan_uri}")
-            return _image_cache[scan_uri]
+            if cache_key in _cache_order:
+                _cache_order.remove(cache_key)
+            _cache_order.append(cache_key)
+            print(f"[CACHE HIT] {cache_key}")
+            return _image_cache[cache_key]
 
-    print(f"[CACHE MISS] {scan_uri}")
+    print(f"[CACHE MISS] {cache_key}")
 
     # Cache miss - fetch and process (outside lock to allow concurrent fetches)
-    processed = _fetch_and_process_image(scan_uri)
+    processed = _fetch_and_process_image(scan_uri, mask_uri)
 
     # Add to cache with lock
     with _cache_lock:
         # Check again in case another thread added it while we were fetching
-        if scan_uri not in _image_cache:
-            _image_cache[scan_uri] = processed
-            _cache_order.append(scan_uri)
+        if cache_key not in _image_cache:
+            _image_cache[cache_key] = processed
+            _cache_order.append(cache_key)
 
             # Enforce cache size limit (LRU eviction)
             while len(_cache_order) > _max_cache_size:
-                oldest_uri = _cache_order.pop(0)
-                if oldest_uri in _image_cache:
-                    del _image_cache[oldest_uri]
-                print(f"[CACHE EVICT] {oldest_uri}")
+                oldest_key = _cache_order.pop(0)
+                if oldest_key in _image_cache:
+                    del _image_cache[oldest_key]
+                print(f"[CACHE EVICT] {oldest_key}")
 
     return processed
 

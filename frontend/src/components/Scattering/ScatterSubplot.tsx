@@ -64,6 +64,7 @@ interface ScatterSubplotProps {
   isLoadingImages?: boolean;
   setIsLoadingImages?: (isLoading: boolean) => void;
   isAzimuthalProcessing?: boolean;
+  maskUri?: string | null;
 }
 
 
@@ -103,6 +104,7 @@ const ScatterSubplot: React.FC<ScatterSubplotProps> = React.memo(({
   isLoadingImages,
   setIsLoadingImages,
   isAzimuthalProcessing = false,
+  maskUri,
 }) => {
   const [plotData, setPlotData] = useState<any>(null);
   const plotContainer = useRef<HTMLDivElement>(null);
@@ -489,8 +491,8 @@ const ScatterSubplot: React.FC<ScatterSubplotProps> = React.memo(({
 
     // Fetch both images in parallel
     Promise.all([
-      fetchWithCache(leftScanUri),
-      fetchWithCache(rightScanUri)
+      fetchWithCache(leftScanUri, maskUri),
+      fetchWithCache(rightScanUri, maskUri)
     ])
       .then(([leftProcessed, rightProcessed]) => {
         // Use pre-processed resolution data from cache
@@ -664,6 +666,7 @@ const ScatterSubplot: React.FC<ScatterSubplotProps> = React.memo(({
     setImageData2,
     setIsLoadingImages,
     buildResolutionData,
+    maskUri,
   ]);
 
 

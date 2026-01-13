@@ -332,10 +332,19 @@ function deserializeBackendResponse(buffer: ArrayBuffer): ProcessedImageData {
  * Fetch and cache an image with all resolution levels from backend.
  * Backend handles all resolution processing.
  * Returns processed resolution data ready for display.
+ *
+ * @param scanUri - The scan URI to fetch
+ * @param maskUri - Optional mask URI to apply (masked pixels become NaN)
  */
-export async function fetchWithCache(scanUri: string): Promise<ProcessedImageData> {
+export async function fetchWithCache(
+  scanUri: string,
+  maskUri?: string | null
+): Promise<ProcessedImageData> {
+  // Create cache key that includes mask (different mask = different cached image)
+  const cacheKey = maskUri ? `${scanUri}|mask=${maskUri}` : scanUri;
+
   // Try to get from cache first
-  const cached = await getCachedImage(scanUri);
+  const cached = await getCachedImage(cacheKey);
   if (cached) {
     return cached.resolutions;
   }
@@ -343,6 +352,9 @@ export async function fetchWithCache(scanUri: string): Promise<ProcessedImageDat
   // Cache miss - fetch from server
   const url = new URL('/api/fetch-scan-image', window.location.origin);
   url.searchParams.append('scan_uri', scanUri);
+  if (maskUri) {
+    url.searchParams.append('mask_uri', maskUri);
+  }
 
   const response = await fetch(url.toString());
   if (!response.ok) {
@@ -355,7 +367,7 @@ export async function fetchWithCache(scanUri: string): Promise<ProcessedImageDat
   const resolutions = deserializeBackendResponse(buffer);
 
   // Cache the processed result asynchronously (don't block return)
-  cacheProcessedImage(scanUri, resolutions).catch((error) => {
+  cacheProcessedImage(cacheKey, resolutions).catch((error) => {
     console.error('Failed to cache image:', error);
   });
 
