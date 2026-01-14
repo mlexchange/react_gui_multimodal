@@ -29,3 +29,8 @@ packages = ["routers", "utils"]
 
 [tool.hatch.build.targets.sdist]
 include = ["main.py", "routers/", "utils/"]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.5.1",
+]
