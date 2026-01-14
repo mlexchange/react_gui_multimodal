@@ -30,7 +30,13 @@ interface CalibrationAccordionProps {
     experimentType: string;           // 'SAXS' or 'GISAXS'
     maskUri: string | null;
     onMaskUpdate: (maskUri: string | null) => void;
+    /** Expected image width for mask validation */
+    expectedImageWidth?: number;
+    /** Expected image height for mask validation */
+    expectedImageHeight?: number;
 }
+
+type MaskStatusType = 'success' | 'warning' | 'error';
 
 // Constants for energy-wavelength conversion
 // E (eV) = hc / λ (Å) where hc = 12398.419 eV·Å
@@ -54,6 +60,8 @@ export default function CalibrationAccordion({
     experimentType,
     maskUri,
     onMaskUpdate,
+    expectedImageWidth,
+    expectedImageHeight,
 }: CalibrationAccordionProps) {
     const [isModified, setIsModified] = useState(false);
     const [localParams, setLocalParams] = useState<CalibrationParams>(() =>
@@ -62,7 +70,8 @@ export default function CalibrationAccordion({
     const [energy, setEnergy] = useState(() =>
         wavelengthToEnergy(calibrationParams?.wavelength ?? 0)
     );
-    const [maskStatus, setMaskStatus] = useState<string | null>(null);
+    const [maskStatus, setMaskStatus] = useState<{ message: string; type: MaskStatusType } | null>(null);
+    const [calibrationStatus, setCalibrationStatus] = useState<{ message: string; type: MaskStatusType } | null>(null);
     const [pendingMaskUri, setPendingMaskUri] = useState<string | null>(null);
     const [pendingMaskName, setPendingMaskName] = useState<string | null>(null);
     const [showMaskDialog, setShowMaskDialog] = useState(false);
@@ -117,6 +126,7 @@ export default function CalibrationAccordion({
 
     const handleTiledCalibrationSelection = useCallback(async (links: TiledItemLinks) => {
         const containerPath = extractContainerPath(links.self);
+        const calibrationName = containerPath.split('/').pop() || 'calibration';
         console.log('Calibration item selected:', containerPath);
 
         try {
@@ -127,7 +137,11 @@ export default function CalibrationAccordion({
             });
 
             if (!response.ok) {
-                throw new Error(`Failed to fetch: ${response.statusText}`);
+                setCalibrationStatus({
+                    message: `Failed to fetch calibration: ${response.statusText}`,
+                    type: 'error',
+                });
+                return;
             }
 
             const data = await response.json();
@@ -138,14 +152,20 @@ export default function CalibrationAccordion({
             const isPoni = specs.some((spec: { name: string }) => spec.name === 'poni');
 
             if (!isPoni) {
-                console.warn('Selected item is not a poni calibration file');
+                setCalibrationStatus({
+                    message: 'Selected item is not a PONI calibration file',
+                    type: 'warning',
+                });
                 return;
             }
 
             // Extract calibration parameters from metadata
             const metadata = data?.data?.attributes?.metadata;
             if (!metadata) {
-                console.warn('No metadata found in calibration file');
+                setCalibrationStatus({
+                    message: 'No metadata found in calibration file',
+                    type: 'warning',
+                });
                 return;
             }
 
@@ -164,6 +184,10 @@ export default function CalibrationAccordion({
             setLocalParams(newParams);
             setEnergy(wavelengthToEnergy(metadata.wavelength));
             setIsModified(true);
+            setCalibrationStatus({
+                message: `Loaded: ${calibrationName}`,
+                type: 'success',
+            });
 
             // Try to resolve mask from PONI file
             try {
@@ -186,6 +210,10 @@ export default function CalibrationAccordion({
             }
         } catch (error) {
             console.error('Error fetching calibration data:', error);
+            setCalibrationStatus({
+                message: 'Error loading calibration file',
+                type: 'error',
+            });
         }
     }, []);
 
@@ -193,25 +221,46 @@ export default function CalibrationAccordion({
     const handleLoadResolvedMask = useCallback(async () => {
         if (!pendingMaskUri) return;
 
+        // Build URL with optional dimension parameters
+        const params = new URLSearchParams();
+        params.set('mask_uri', pendingMaskUri);
+        if (expectedImageWidth) params.set('expected_width', String(expectedImageWidth));
+        if (expectedImageHeight) params.set('expected_height', String(expectedImageHeight));
+
         try {
-            const response = await fetch(
-                `/api/load-mask-from-tiled?mask_uri=${encodeURIComponent(pendingMaskUri)}`
-            );
+            const response = await fetch(`/api/load-mask-from-tiled?${params}`);
             if (response.ok) {
                 const data = await response.json();
-                onMaskUpdate(data.mask_uri);
-                setMaskStatus(`Loaded: ${pendingMaskName} (${data.shape[0]}x${data.shape[1]})`);
+
+                // Use status and message from backend response
+                setMaskStatus({
+                    message: data.message,
+                    type: data.status as MaskStatusType,
+                });
+
+                // Only set the mask if status is success
+                if (data.status === 'success') {
+                    onMaskUpdate(data.mask_uri);
+                }
             } else {
                 console.error('Failed to load mask');
+                setMaskStatus({
+                    message: 'Failed to load mask from server',
+                    type: 'error',
+                });
             }
         } catch (error) {
             console.error('Error loading mask:', error);
+            setMaskStatus({
+                message: 'Error loading mask',
+                type: 'error',
+            });
         } finally {
             setShowMaskDialog(false);
             setPendingMaskUri(null);
             setPendingMaskName(null);
         }
-    }, [pendingMaskUri, pendingMaskName, onMaskUpdate]);
+    }, [pendingMaskUri, onMaskUpdate, expectedImageWidth, expectedImageHeight]);
 
     // Handle uploading a mask file
     const handleMaskFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -221,29 +270,50 @@ export default function CalibrationAccordion({
         const formData = new FormData();
         formData.append('file', file);
 
+        // Build URL with optional dimension parameters
+        const params = new URLSearchParams();
+        if (expectedImageWidth) params.set('expected_width', String(expectedImageWidth));
+        if (expectedImageHeight) params.set('expected_height', String(expectedImageHeight));
+        const url = `/api/upload-mask${params.toString() ? `?${params}` : ''}`;
+
         try {
-            const response = await fetch('/api/upload-mask', {
+            const response = await fetch(url, {
                 method: 'POST',
                 body: formData,
             });
 
             if (response.ok) {
                 const data = await response.json();
-                onMaskUpdate(data.mask_id);
-                setMaskStatus(`Uploaded: ${file.name} (${data.shape[0]}x${data.shape[1]})`);
+
+                // Use status from backend response
+                setMaskStatus({
+                    message: data.message,
+                    type: data.status as MaskStatusType,
+                });
+
+                // Only set the mask if status is success
+                if (data.status === 'success') {
+                    onMaskUpdate(data.mask_id);
+                }
             } else {
                 const error = await response.json();
                 console.error('Failed to upload mask:', error.detail);
-                setMaskStatus(`Error: ${error.detail}`);
+                setMaskStatus({
+                    message: `Error: ${error.detail}`,
+                    type: 'error',
+                });
             }
         } catch (error) {
             console.error('Error uploading mask:', error);
-            setMaskStatus('Upload failed');
+            setMaskStatus({
+                message: 'Upload failed',
+                type: 'error',
+            });
         }
 
         // Reset the file input
         event.target.value = '';
-    }, [onMaskUpdate]);
+    }, [onMaskUpdate, expectedImageWidth, expectedImageHeight]);
 
     // Clear mask
     const handleClearMask = useCallback(() => {
@@ -272,7 +342,22 @@ export default function CalibrationAccordion({
                 buttonModeText="Load calibration parameters"
                 onSelectCallback={handleTiledCalibrationSelection}
             />
+
+            {/* Calibration Status */}
+            {calibrationStatus && (
+                <div className={`text-sm px-3 py-2 rounded-lg mb-2 ${
+                    calibrationStatus.type === 'success'
+                        ? 'text-green-600 bg-green-50'
+                        : calibrationStatus.type === 'warning'
+                        ? 'text-amber-600 bg-amber-50'
+                        : 'text-red-600 bg-red-50'
+                }`}>
+                    {calibrationStatus.message}
+                </div>
+            )}
+            
             </div>
+
 
             {/* Row 1: Sample-to-detector distance */}
             <div className="flex items-center gap-4">
@@ -431,10 +516,20 @@ export default function CalibrationAccordion({
                 </div>
             )}
 
+            {/* Update Button */}
+            <Button
+                size="medium"
+                styles="w-full"
+                bgColor={canSubmit ? "bg-sky-500" : "bg-gray-400"}
+                cb={handleSubmit}
+                disabled={!canSubmit}
+                text="Update Calibration"
+            />
+
             {/* Row 7: Detector Mask */}
             <div className="border-t border-slate-200 pt-4 mt-2">
                 <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-slate-700">Detector Mask</span>
+                    <span className="text-md font-medium text-sky-950">Detector Mask</span>
                     {maskUri && (
                         <Button
                             text="Clear"
@@ -445,27 +540,27 @@ export default function CalibrationAccordion({
                     )}
                 </div>
                 {maskStatus ? (
-                    <div className="text-sm text-green-600 bg-green-50 px-3 py-2 rounded-lg mb-2">
-                        {maskStatus}
+                    <div className={`text-sm px-3 py-2 rounded-lg mb-2 ${
+                        maskStatus.type === 'success'
+                            ? 'text-green-600 bg-green-50'
+                            : maskStatus.type === 'warning'
+                            ? 'text-amber-600 bg-amber-50'
+                            : 'text-red-600 bg-red-50'
+                    }`}>
+                        {maskStatus.message}
                     </div>
                 ) : (
                     <div className="text-sm text-slate-500 mb-2">
                         No mask loaded (pixels with value -1 are automatically masked)
                     </div>
                 )}
-                <label className="block">
-                    <span className="sr-only">Upload mask file</span>
+                <label className="inline-flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-sky-500 text-white text-sm font-medium hover:bg-sky-600 cursor-pointer transition-colors">
+                    <span>Upload mask file</span>
                     <input
                         type="file"
                         accept=".npy,.tiff,.tif,.edf,.cbf,.csv"
                         onChange={handleMaskFileUpload}
-                        className="block w-full text-sm text-slate-500
-                            file:mr-4 file:py-2 file:px-4
-                            file:rounded-lg file:border-0
-                            file:text-sm file:font-medium
-                            file:bg-sky-50 file:text-sky-700
-                            hover:file:bg-sky-100
-                            cursor-pointer"
+                        className="sr-only"
                     />
                 </label>
             </div>
@@ -500,16 +595,6 @@ export default function CalibrationAccordion({
                     </div>
                 </div>
             )}
-
-            {/* Update Button */}
-            <Button
-                size="medium"
-                styles="w-full"
-                bgColor={canSubmit ? "bg-sky-500" : "bg-gray-400"}
-                cb={handleSubmit}
-                disabled={!canSubmit}
-                text="Update Calibration"
-            />
         </div>
     );
 }

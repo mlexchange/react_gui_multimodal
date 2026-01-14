@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Select, Menu, Popover, IconButton, notifications } from '@/components/ui';
 import { PrevNextSelect, ContentCard, LoadingOverlay, Modal } from '@/components/shared';
-import { CircleHalfTiltIcon, GearIcon, GitDiffIcon, InfoIcon, ListIcon, StackIcon, TreeStructureIcon, WarningIcon, WrenchIcon } from '@phosphor-icons/react';
+import { CircleHalfTiltIcon, GearIcon, GitDiffIcon, InfoIcon, ListIcon, TreeStructureIcon, WarningIcon, WrenchIcon } from '@phosphor-icons/react';
 import { CalibrationParams, OperationType } from './types';
 
 import { Button, ButtonWithIcon } from '@blueskyproject/finch';
@@ -617,6 +617,25 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
 
             {/* Render all selected LinecutSections */}
             <div className="w-full pl-3 mt-3">
+
+              {/* Batch Processing Button */}
+              <div className="my-3">
+                <Button
+                  text="Batch Processing"
+                  cb={() => setIsBatchOverlayOpen(true)}
+                  size="small"
+                  disabled={
+                    !numOfFiles ||
+                    !isCalibrationSet ||
+                    (horizontalLinecuts.length === 0 &&
+                      verticalLinecuts.length === 0 &&
+                      inclinedLinecuts.length === 0 &&
+                      azimuthalIntegrations.length === 0)
+                  }
+                  styles="w-full disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed disabled:opacity-60"
+                />
+              </div>
+              
               {linecutOrder.filter((linecut) => selectedLinecuts.includes(linecut)).map((linecutType) => {
                 if (linecutType === 'Horizontal' && horizontalLinecuts.length > 0) {
                   return (
@@ -686,18 +705,6 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
 
                 return null;
               })}
-
-              {/* Batch Processing Button */}
-              <div className="my-3">
-                <ButtonWithIcon
-                  icon={<StackIcon size={18} />}
-                  text="Batch Processing"
-                  cb={() => setIsBatchOverlayOpen(true)}
-                  size="small"
-                  disabled={!isCalibrationSet || !numOfFiles}
-                  styles="w-full"
-                />
-              </div>
 
             </div>
           </div>
@@ -1067,6 +1074,8 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
           experimentType={experimentType}
           maskUri={maskUri}
           onMaskUpdate={setMaskUri}
+          expectedImageWidth={imageWidth}
+          expectedImageHeight={imageHeight}
         />
       </Modal>
 
