@@ -615,8 +615,3 @@ export const AzimuthalSectorOverlay: React.FC<AzimuthalSectorOverlayProps> = ({
   );
 };
 
-// ============================================================================
-// Utility Exports
-// ============================================================================
-
-export { findRadiusForQValue, generateArcPoints, generateRadialLinePoints, generateRingSectorPoints };
