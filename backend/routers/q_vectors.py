@@ -59,11 +59,10 @@ def q_vectors(
     }
 
     # Compute Q matrices using shared utility
-    # negate_qy_saxs=False preserves original API behavior
     q_x, q_y = compute_q_matrices(
         image_shape=(image_height, image_width),
         calibration=calibration,
-        invert_qy=False,
+        invert_qy=True,
     )
 
     # Package the results for frontend using msgpack
