@@ -2,7 +2,7 @@ default_language_version:
     python: python3
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v6.0.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
@@ -13,7 +13,7 @@ repos:
       - id: check-yaml
       - id: debug-statements
   - repo: https://github.com/gitguardian/ggshield
-    rev: v1.25.0
+    rev: v1.46.0
     hooks:
       - id: ggshield
         language_version: python3
@@ -28,7 +28,19 @@ repos:
     hooks:
       - id: flake8
   - repo: https://github.com/pycqa/isort
-    rev: 5.13.2
+    rev: 7.0.0
     hooks:
       - id: isort
         args: ["--profile", "black"]
+  - repo: local
+    hooks:
+      - id: prettier
+        name: prettier
+        entry: npx --prefix frontend prettier --write
+        language: system
+        files: ^frontend/.*\.(js|jsx|ts|tsx|css|scss|json)$
+      - id: eslint
+        name: eslint
+        entry: npx --prefix frontend eslint --fix --config frontend/eslint.config.js
+        language: system
+        files: ^frontend/.*\.(js|jsx|ts|tsx)$
