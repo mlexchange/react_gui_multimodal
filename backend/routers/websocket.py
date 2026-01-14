@@ -18,7 +18,13 @@ async def websocket_endpoint(websocket: WebSocket):
             if data == "ping":
                 await websocket.send_text("pong")
     except WebSocketDisconnect:
-        active_connections.remove(websocket)
+        pass  # Connection closed normally
+    except Exception:
+        pass  # Handle any other exceptions gracefully
+    finally:
+        # Safely remove connection if it exists
+        if websocket in active_connections:
+            active_connections.remove(websocket)
 
 
 async def send_progress_update(
