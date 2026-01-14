@@ -1,6 +1,6 @@
 /**
  * This module handles the generation of visual overlays for azimuthal integration analysis.
- * It creates visual representations of Q-value circles and azimuthal angle ranges.
+ * It creates visual representations of Q-value arcs and azimuthal angle ranges.
  */
 
 import { AzimuthalIntegration, AzimuthalData } from '../types';
@@ -18,127 +18,282 @@ interface GenerateAzimuthalOverlayParams {
 }
 
 /**
- * Defines the structure for circular point visualization.
- * Used to create scatter plots showing Q-value circles.
+ * Defines the structure for line-based visualization.
+ * Used to create smooth arcs and radial lines.
  */
-interface PointTrace {
-    type: 'scatter';                     // Plotly scatter plot type
-    x: number[];                         // X-coordinates of points
-    y: number[];                         // Y-coordinates of points
-    mode: 'markers';                     // Display as markers/points
-    marker: {
-        color: string;                   // Color of the markers
-        size: number;                    // Size of the markers
-    };
-    opacity: number;                     // Transparency of the markers
-    xaxis: string;                       // Which x-axis to use
-    yaxis: string;                       // Which y-axis to use
-    showlegend: boolean;                 // Whether to show in legend
-}
-
-/**
- * Defines the structure for vector-based markers.
- * Used to show directional markers for azimuthal angles.
- */
-interface VectorMarkerTrace extends Omit<PointTrace, 'marker'> {
-    marker: {
+interface LineTrace {
+    type: 'scatter';
+    x: number[];
+    y: number[];
+    mode: 'lines';
+    line: {
         color: string;
-        size: number;
-        symbol: string;                  // Shape of the marker
-        angle: number;                   // Rotation angle of the marker
+        width: number;
     };
+    opacity: number;
+    xaxis: string;
+    yaxis: string;
+    showlegend: boolean;
+    hoverinfo: string;
 }
 
-// Union type for all possible trace types
-type PlotTrace = PointTrace | VectorMarkerTrace;
+type PlotTrace = LineTrace;
 
 /**
- * Calculates the intersection point between a circle and a line at a given angle.
- * This function uses parametric circle equations to find points in a 2D detector space.
+ * Calculates a point on a circle at a given angle.
+ * Uses screen coordinates where y increases downward.
  *
- * Mathematical background:
- * - Uses parametric form of a circle: x = h + r*cos(θ), y = k + r*sin(θ)
- * - Converts between screen coordinates (origin at top-left) and mathematical coordinates
- * - Handles two coordinate systems:
- *   1. Screen coords: (0,0) at top-left, y increases downward
- *   2. Math coords: origin at beam center, y increases upward
- *
- * The function applies these transformations:
- * 1. Converts input angle from degrees to radians
- * 2. Uses negative angle in cos() to make angles go clockwise
- * 3. Negates sin() term to flip y-coordinate for screen space
- * 4. Translates coordinates relative to beam center
- *
- * In X-ray diffraction context:
- * - Beam center = point where X-ray beam hits detector
- * - Radius = corresponds to specific Q-value (momentum transfer)
- * - Angle = azimuthal angle around beam center
- *
- * @param angle - Azimuthal angle in degrees (clockwise from top)
- * @param radius - Distance from beam center in detector pixels
- * @param beamCenter - Coordinates of the beam center in detector space
- * @returns Point of intersection in detector coordinates
+ * @param angle - Azimuthal angle in degrees (clockwise from top, 0° = up)
+ * @param radius - Distance from beam center in pixels
+ * @param beamCenter - Coordinates of the beam center
+ * @returns Point coordinates in screen space
  */
-function findIntersectionPoint(angle: number, radius: number, beamCenter: {x: number, y: number}): {x: number, y: number} {
-    // Convert angle to radians for Math functions
+function getPointOnCircle(
+    angle: number,
+    radius: number,
+    beamCenter: { x: number; y: number }
+): { x: number; y: number } {
     const radians = (angle * Math.PI) / 180;
-    // Calculate intersection using parametric circle equations
     return {
         x: beamCenter.x + radius * Math.cos(-radians),
-        y: beamCenter.y - radius * Math.sin(-radians)  // Negative sine for screen coordinates
+        y: beamCenter.y - radius * Math.sin(-radians)
     };
 }
 
 /**
- * Calculates the distance between a point and the beam center.
- * Used to determine radii for Q-value circles.
+ * Estimates the pixel radius for a given Q-value by sampling the qArray.
+ * This is much faster than searching the entire array.
+ *
+ * Strategy: Sample along radial lines from beam center and interpolate.
+ *
+ * @param targetQ - The Q-value to find the radius for
+ * @param qArray - 2D array of Q-values
+ * @param beamCenter - Beam center coordinates
+ * @param imageWidth - Width of the image
+ * @param imageHeight - Height of the image
+ * @returns Estimated radius in pixels, or null if not found
  */
-function calculateRadius(point: {x: number, y: number}, beamCenter: {x: number, y: number}): number {
-    const dx = point.x - beamCenter.x;
-    const dy = point.y - beamCenter.y;
-    return Math.sqrt(dx * dx + dy * dy);  // Pythagorean theorem
-}
+function estimateRadiusForQValue(
+    targetQ: number,
+    qArray: number[][],
+    beamCenter: { x: number; y: number },
+    imageWidth: number,
+    imageHeight: number
+): number | null {
+    if (!qArray.length || !qArray[0]?.length) return null;
 
-/**
- * Searches a 2D array for values matching a condition.
- * Returns arrays of matching x and y indices.
- * Used to find points that match specific Q-values.
- */
-function findWhere(array2D: number[][], condition: (val: number) => boolean): [number[], number[]] {
-    const xIndices = [];
-    const yIndices = [];
+    // Sample along 8 radial directions (every 45 degrees)
+    const sampleAngles = [0, 45, 90, 135, 180, 225, 270, 315];
+    const radiiFound: number[] = [];
 
-    // Iterate through the 2D array
-    for (let i = 0; i < array2D.length; i++) {
-        for (let j = 0; j < array2D[i].length; j++) {
-            if (condition(array2D[i][j])) {
-                yIndices.push(i);
-                xIndices.push(j);
+    for (const angle of sampleAngles) {
+        const radians = (angle * Math.PI) / 180;
+        const dx = Math.cos(-radians);
+        const dy = -Math.sin(-radians);
+
+        // Calculate maximum radius we can sample in this direction
+        const maxRadius = Math.max(imageWidth, imageHeight);
+
+        // Sample along this radial line
+        let prevQ = qArray[Math.round(beamCenter.y)]?.[Math.round(beamCenter.x)] ?? 0;
+        let prevRadius = 0;
+
+        for (let r = 1; r < maxRadius; r += 2) {
+            const x = Math.round(beamCenter.x + r * dx);
+            const y = Math.round(beamCenter.y + r * dy);
+
+            // Check bounds
+            if (x < 0 || x >= imageWidth || y < 0 || y >= imageHeight) break;
+
+            const currentQ = qArray[y]?.[x];
+            if (currentQ === undefined || isNaN(currentQ)) continue;
+
+            // Check if we crossed the target Q value
+            if ((prevQ <= targetQ && currentQ >= targetQ) ||
+                (prevQ >= targetQ && currentQ <= targetQ)) {
+                // Linear interpolation to estimate the exact radius
+                const t = (targetQ - prevQ) / (currentQ - prevQ);
+                const estimatedRadius = prevRadius + t * (r - prevRadius);
+                radiiFound.push(estimatedRadius);
+                break;
             }
+
+            prevQ = currentQ;
+            prevRadius = r;
         }
     }
 
-    return [yIndices, xIndices];
+    if (radiiFound.length === 0) return null;
+
+    // Return the average of found radii
+    return radiiFound.reduce((a, b) => a + b, 0) / radiiFound.length;
 }
 
 /**
- * Creates an array of evenly spaced numbers.
- * Used to generate points along azimuthal lines.
+ * Generates points along an arc, clipped to image boundaries.
+ *
+ * @param radius - Radius of the arc
+ * @param startAngle - Start angle in degrees
+ * @param endAngle - End angle in degrees
+ * @param beamCenter - Beam center coordinates
+ * @param imageWidth - Image width for clipping
+ * @param imageHeight - Image height for clipping
+ * @param factor - Scaling factor
+ * @param numPoints - Number of points to generate
+ * @returns Arrays of x and y coordinates
  */
-function generatePoints(start: number, end: number, count: number): number[] {
-    const points = [];
-    const step = (end - start) / (count - 1);
-    for (let i = 0; i < count; i++) {
-        points.push(start + step * i);
+function generateArcPoints(
+    radius: number,
+    startAngle: number,
+    endAngle: number,
+    beamCenter: { x: number; y: number },
+    imageWidth: number,
+    imageHeight: number,
+    factor: number,
+    numPoints: number = 100
+): { x: number[]; y: number[] } {
+    const xPoints: number[] = [];
+    const yPoints: number[] = [];
+
+    // Handle angle wrapping (e.g., -180 to 180)
+    let angleDiff = endAngle - startAngle;
+    if (angleDiff < 0) angleDiff += 360;
+    if (angleDiff > 360) angleDiff = 360;
+
+    const angleStep = angleDiff / (numPoints - 1);
+
+    for (let i = 0; i < numPoints; i++) {
+        const angle = startAngle + i * angleStep;
+        const point = getPointOnCircle(angle, radius, beamCenter);
+
+        // Scale and check bounds
+        const scaledX = point.x / factor;
+        const scaledY = point.y / factor;
+
+        // Clip to image boundaries - use NaN for out-of-bounds to create gaps
+        if (scaledX >= 0 && scaledX <= imageWidth / factor &&
+            scaledY >= 0 && scaledY <= imageHeight / factor) {
+            xPoints.push(scaledX);
+            yPoints.push(scaledY);
+        } else {
+            // Add NaN to create a gap in the line
+            xPoints.push(NaN);
+            yPoints.push(NaN);
+        }
     }
-    return points;
+
+    return { x: xPoints, y: yPoints };
+}
+
+/**
+ * Generates points along a radial line from inner to outer radius.
+ *
+ * @param angle - Angle of the radial line in degrees
+ * @param innerRadius - Inner radius
+ * @param outerRadius - Outer radius
+ * @param beamCenter - Beam center coordinates
+ * @param imageWidth - Image width for clipping
+ * @param imageHeight - Image height for clipping
+ * @param factor - Scaling factor
+ * @returns Arrays of x and y coordinates
+ */
+function generateRadialLinePoints(
+    angle: number,
+    innerRadius: number,
+    outerRadius: number,
+    beamCenter: { x: number; y: number },
+    imageWidth: number,
+    imageHeight: number,
+    factor: number
+): { x: number[]; y: number[] } {
+    const innerPoint = getPointOnCircle(angle, innerRadius, beamCenter);
+    const outerPoint = getPointOnCircle(angle, outerRadius, beamCenter);
+
+    // Scale points
+    const x1 = innerPoint.x / factor;
+    const y1 = innerPoint.y / factor;
+    const x2 = outerPoint.x / factor;
+    const y2 = outerPoint.y / factor;
+
+    // Clip line to image boundaries
+    const clipped = clipLineToRect(
+        x1, y1, x2, y2,
+        0, 0, imageWidth / factor, imageHeight / factor
+    );
+
+    if (!clipped) {
+        return { x: [], y: [] };
+    }
+
+    return {
+        x: [clipped.x1, clipped.x2],
+        y: [clipped.y1, clipped.y2]
+    };
+}
+
+/**
+ * Clips a line segment to a rectangle using Cohen-Sutherland algorithm.
+ */
+function clipLineToRect(
+    x1: number, y1: number, x2: number, y2: number,
+    xmin: number, ymin: number, xmax: number, ymax: number
+): { x1: number; y1: number; x2: number; y2: number } | null {
+    const INSIDE = 0, LEFT = 1, RIGHT = 2, BOTTOM = 4, TOP = 8;
+
+    function computeCode(x: number, y: number): number {
+        let code = INSIDE;
+        if (x < xmin) code |= LEFT;
+        else if (x > xmax) code |= RIGHT;
+        if (y < ymin) code |= TOP;
+        else if (y > ymax) code |= BOTTOM;
+        return code;
+    }
+
+    let code1 = computeCode(x1, y1);
+    let code2 = computeCode(x2, y2);
+
+    while (true) {
+        if (!(code1 | code2)) {
+            // Both inside
+            return { x1, y1, x2, y2 };
+        }
+        if (code1 & code2) {
+            // Both outside same region
+            return null;
+        }
+
+        const codeOut = code1 ? code1 : code2;
+        let x = 0, y = 0;
+
+        if (codeOut & BOTTOM) {
+            x = x1 + (x2 - x1) * (ymax - y1) / (y2 - y1);
+            y = ymax;
+        } else if (codeOut & TOP) {
+            x = x1 + (x2 - x1) * (ymin - y1) / (y2 - y1);
+            y = ymin;
+        } else if (codeOut & RIGHT) {
+            y = y1 + (y2 - y1) * (xmax - x1) / (x2 - x1);
+            x = xmax;
+        } else if (codeOut & LEFT) {
+            y = y1 + (y2 - y1) * (xmin - x1) / (x2 - x1);
+            x = xmin;
+        }
+
+        if (codeOut === code1) {
+            x1 = x;
+            y1 = y;
+            code1 = computeCode(x1, y1);
+        } else {
+            x2 = x;
+            y2 = y;
+            code2 = computeCode(x2, y2);
+        }
+    }
 }
 
 /**
  * Main function that generates the visual overlay for azimuthal integration.
- * Creates a series of traces that can be plotted to show:
- * 1. Inner and outer Q-value circles
- * 2. Azimuthal angle range indicators
+ * Creates smooth arcs for Q-value boundaries and radial lines for azimuth limits.
  */
 export function generateAzimuthalOverlay({
     integration,
@@ -151,146 +306,149 @@ export function generateAzimuthalOverlay({
     beamCenterY = 0,
 }: GenerateAzimuthalOverlayParams): PlotTrace[] {
     // Return empty array if no data is available
-    if (!currentArray.length || !azimuthalData) return [];
+    if (!currentArray.length || !azimuthalData?.qArray) return [];
 
+    const imageHeight = currentArray.length;
+    const imageWidth = currentArray[0]?.length || 0;
 
+    const beamCenter = {
+        x: beamCenterX ?? 0,
+        y: beamCenterY ?? 0
+    };
 
-    // Set up Q-value parameters for finding circle points
-    const qArray = azimuthalData.qArray;
-    const tolerance = 0.1;  // Tolerance for Q-value matching
+    // Get Q-range
     const innerQ = integration.qRange ? integration.qRange[0] : 0;
     const outerQ = integration.qRange ? integration.qRange[1] : maxQValue;
 
-    // Find points that match inner and outer Q-values
-    const [innerY, innerX] = findWhere(qArray, val => Math.abs(val - innerQ) < tolerance);
-    const [outerY, outerX] = findWhere(qArray, val => Math.abs(val - outerQ) < tolerance);
+    // Estimate radii for inner and outer Q-values (optimized - no full array scan)
+    const innerRadius = estimateRadiusForQValue(
+        innerQ, azimuthalData.qArray, beamCenter, imageWidth, imageHeight
+    ) ?? 0;
+    const outerRadius = estimateRadiusForQValue(
+        outerQ, azimuthalData.qArray, beamCenter, imageWidth, imageHeight
+    ) ?? Math.max(imageWidth, imageHeight);
 
-    // Calculate the actual radii from the beam center
-    // Using non-null beam center coordinates with defaults
-    const beamCenter = {
-        x: beamCenterX ?? 0,  // Use nullish coalescing to provide fallback
-        y: beamCenterY ?? 0
-    };
-    let innerRadius = Infinity;
-    let outerRadius = 0;
-
-    // Find minimum radius for inner circle
-    for (let i = 0; i < innerX.length; i++) {
-        const radius = calculateRadius({x: innerX[i], y: innerY[i]}, beamCenter);
-        innerRadius = Math.min(innerRadius, radius);
-    }
-
-    // Find maximum radius for outer circle
-    for (let i = 0; i < outerX.length; i++) {
-        const radius = calculateRadius({x: outerX[i], y: outerY[i]}, beamCenter);
-        outerRadius = Math.max(outerRadius, radius);
-    }
-
-    // Get angular range and determine if it's a full circle
+    // Get angular range
     const [startAngle, endAngle] = integration.azimuthRange;
     const isFullCircle = Math.abs(endAngle - startAngle) >= 360;
     const color = axisNumber === 1 ? integration.leftColor : integration.rightColor;
 
-    // Create base traces for Q-value circles
-    const traces: PlotTrace[] = [
-        // Inner circle points trace
-        {
-            type: 'scatter',
-            x: innerX.map(x => x / factor),  // Scale coordinates by factor
-            y: innerY.map(y => y / factor),
-            mode: 'markers',
-            marker: { color, size: 2 },
-            opacity: 0.75,
-            xaxis: `x${axisNumber}`,
-            yaxis: `y${axisNumber}`,
-            showlegend: false,
-        },
-        // Outer circle points trace
-        {
-            type: 'scatter',
-            x: outerX.map(x => x / factor),
-            y: outerY.map(y => y / factor),
-            mode: 'markers',
-            marker: { color, size: 2 },
-            opacity: 0.75,
-            xaxis: `x${axisNumber}`,
-            yaxis: `y${axisNumber}`,
-            showlegend: false,
+    const traces: PlotTrace[] = [];
+
+    // Number of points for smooth arcs (more points = smoother but more expensive)
+    const arcPoints = isFullCircle ? 360 : Math.max(50, Math.abs(endAngle - startAngle));
+
+    // Generate inner arc (only if innerRadius > 0)
+    if (innerRadius > 0) {
+        const innerArc = generateArcPoints(
+            innerRadius,
+            isFullCircle ? 0 : startAngle,
+            isFullCircle ? 360 : endAngle,
+            beamCenter,
+            imageWidth,
+            imageHeight,
+            factor,
+            arcPoints
+        );
+
+        if (innerArc.x.length > 0) {
+            traces.push({
+                type: 'scatter',
+                x: innerArc.x,
+                y: innerArc.y,
+                mode: 'lines',
+                line: { color, width: 2 },
+                opacity: 0.75,
+                xaxis: `x${axisNumber}`,
+                yaxis: `y${axisNumber}`,
+                showlegend: false,
+                hoverinfo: 'skip'
+            });
         }
-    ];
+    }
 
-    // Add azimuthal lines if not a full circle
-    if (!isFullCircle) {
-        const numPoints = 100;  // Number of points along each azimuthal line
+    // Generate outer arc
+    if (outerRadius > 0) {
+        const outerArc = generateArcPoints(
+            outerRadius,
+            isFullCircle ? 0 : startAngle,
+            isFullCircle ? 360 : endAngle,
+            beamCenter,
+            imageWidth,
+            imageHeight,
+            factor,
+            arcPoints
+        );
 
-        // Generate evenly spaced radii
-        const radii = generatePoints(innerRadius, outerRadius, numPoints);
+        if (outerArc.x.length > 0) {
+            traces.push({
+                type: 'scatter',
+                x: outerArc.x,
+                y: outerArc.y,
+                mode: 'lines',
+                line: { color, width: 2 },
+                opacity: 0.75,
+                xaxis: `x${axisNumber}`,
+                yaxis: `y${axisNumber}`,
+                showlegend: false,
+                hoverinfo: 'skip'
+            });
+        }
+    }
 
-        // Calculate points for start angle line
-        const startPoints = radii.map(radius => {
-            const point = findIntersectionPoint(startAngle, radius, beamCenter);
-            // Ensure points are within array bounds
-            return {
-                x: point.x / factor < 0 ? NaN :
-                   point.x / factor > currentArray[0].length ? NaN :
-                   point.x / factor,
-                y: point.y / factor < 0 ? NaN :
-                   point.y / factor > currentArray.length ? NaN :
-                   point.y / factor
-            };
-        });
+    // Add radial lines if not a full circle
+    if (!isFullCircle && innerRadius >= 0 && outerRadius > 0) {
+        // Start angle radial line
+        const startLine = generateRadialLinePoints(
+            startAngle,
+            innerRadius,
+            outerRadius,
+            beamCenter,
+            imageWidth,
+            imageHeight,
+            factor
+        );
 
-        // Calculate points for end angle line
-        const endPoints = radii.map(radius => {
-            const point = findIntersectionPoint(endAngle, radius, beamCenter);
-            // Ensure points are within array bounds
-            return {
-                x: point.x / factor < 0 ? NaN :
-                   point.x / factor > currentArray[0].length ? NaN :
-                   point.x / factor,
-                y: point.y / factor < 0 ? NaN :
-                   point.y / factor > currentArray.length ? NaN :
-                   point.y / factor
-            };
-        });
+        if (startLine.x.length > 0) {
+            traces.push({
+                type: 'scatter',
+                x: startLine.x,
+                y: startLine.y,
+                mode: 'lines',
+                line: { color, width: 2 },
+                opacity: 0.75,
+                xaxis: `x${axisNumber}`,
+                yaxis: `y${axisNumber}`,
+                showlegend: false,
+                hoverinfo: 'skip'
+            });
+        }
 
-        // Create traces for start and end angle lines
-        const startLineMarkers: VectorMarkerTrace = {
-            type: 'scatter',
-            x: startPoints.map(p => p.x),
-            y: startPoints.map(p => p.y),
-            mode: 'markers',
-            marker: {
-                color,
-                size: 4,
-                symbol: 'circle',
-                angle: startAngle
-            },
-            opacity: 0.75,
-            xaxis: `x${axisNumber}`,
-            yaxis: `y${axisNumber}`,
-            showlegend: false
-        };
+        // End angle radial line
+        const endLine = generateRadialLinePoints(
+            endAngle,
+            innerRadius,
+            outerRadius,
+            beamCenter,
+            imageWidth,
+            imageHeight,
+            factor
+        );
 
-        const endLineMarkers: VectorMarkerTrace = {
-            type: 'scatter',
-            x: endPoints.map(p => p.x),
-            y: endPoints.map(p => p.y),
-            mode: 'markers',
-            marker: {
-                color,
-                size: 4,
-                symbol: 'circle',
-                angle: endAngle
-            },
-            opacity: 0.75,
-            xaxis: `x${axisNumber}`,
-            yaxis: `y${axisNumber}`,
-            showlegend: false
-        };
-
-        // Add azimuthal line markers to traces
-        traces.push(startLineMarkers, endLineMarkers);
+        if (endLine.x.length > 0) {
+            traces.push({
+                type: 'scatter',
+                x: endLine.x,
+                y: endLine.y,
+                mode: 'lines',
+                line: { color, width: 2 },
+                opacity: 0.75,
+                xaxis: `x${axisNumber}`,
+                yaxis: `y${axisNumber}`,
+                showlegend: false,
+                hoverinfo: 'skip'
+            });
+        }
     }
 
     return traces;

@@ -49,7 +49,5 @@ def integrate_1d(
         radial_range=q_range,
     )
 
-    engine = ai.engines[result.method].engine
-    result = engine.integrate_ng(image_array)
-
-    return result.position, result.intensity
+    # Return the result directly from integrate1d which respects the radial_range
+    return result.radial, result.intensity

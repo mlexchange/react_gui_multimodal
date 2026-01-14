@@ -1,432 +1,271 @@
 import { useState, useCallback, useEffect } from 'react';
 import { leftImageColorPalette, rightImageColorPalette } from '../utils/constants';
 import { throttle } from 'lodash';
-import { InclinedLinecut } from '../types';
-import { calculateInclinedQSpaceToPixelWidth } from '../utils/calculateQSpaceToPixelWidthInclinedLinecut';
+import { InclinedLinecut, CalibrationParams, isCalibrationComplete } from '../types';
+import {
+  fetchInclinedLinecut,
+  LinecutResult,
+  cancelLinecutRequest,
+} from '../services/linecutApi';
 
 /**
- * Custom hook for managing inclined linecuts in q-space
- *
- * This hook provides functionality to create, manipulate, and visualize inclined linecuts
- * on scattering images working exclusively in q-space (reciprocal space).
- *
- * @param imageData1 - 2D array of intensity values for first image
- * @param imageData2 - 2D array of intensity values for second image
- * @param qXVector - Array of q-values for X axis
- * @param qYVector - Array of q-values for Y axis
- * @param units - Units for q-values (e.g., "nm⁻¹", "Å⁻¹")
- * @returns Object with linecut data and management functions
+ * Linecut data for plotting inclined linecuts.
+ * Uses path_distances (pixel distance along the linecut) as x-axis.
  */
-export default function useInclinedLinecut(
-  imageData1: number[][],
-  imageData2: number[][],
-  qXVector: number[],
-  qYVector: number[],
-  zoomedXPixelRange: [number, number] | null, // Add these parameters
-  zoomedYPixelRange: [number, number] | null, // to take the pixel ranges
-) {
-  // State for storing linecut definitions in q-space
+export interface InclinedLinecutData {
+  pathDistances: number[];  // Distance along the linecut path
+  intensities: number[];
+}
+
+/**
+ * Props for the useInclinedLinecut hook.
+ */
+export interface UseInclinedLinecutProps {
+  qXVector: number[];
+  qYVector: number[];
+  zoomedXPixelRange: [number, number] | null;
+  zoomedYPixelRange: [number, number] | null;
+  leftScanUri: string | null;
+  rightScanUri: string | null;
+  calibrationParams: CalibrationParams | null;
+  experimentType: string;
+  maskUri?: string | null;
+}
+
+/**
+ * Custom hook for managing inclined linecuts in q-space.
+ * Fetches linecut data from the backend API with debouncing.
+ */
+export default function useInclinedLinecut({
+  qXVector,
+  qYVector,
+  zoomedXPixelRange,
+  zoomedYPixelRange,
+  leftScanUri,
+  rightScanUri,
+  calibrationParams,
+  experimentType,
+  maskUri,
+}: UseInclinedLinecutProps) {
+  // State for linecut definitions
   const [inclinedLinecuts, setInclinedLinecuts] = useState<InclinedLinecut[]>([]);
 
-  // State for storing intensity data extracted for each linecut
+  // Legacy format: intensity-only data (used by InclinedLinecutFig)
   const [inclinedLinecutData1, setInclinedLinecutData1] = useState<{ id: number; data: number[] }[]>([]);
   const [inclinedLinecutData2, setInclinedLinecutData2] = useState<{ id: number; data: number[] }[]>([]);
 
-  // Add state for Q-space zoom ranges
+  // API-fetched data with full path distance and intensity arrays
+  const [leftLinecutData, setLeftLinecutData] = useState<Map<number, InclinedLinecutData>>(new Map());
+  const [rightLinecutData, setRightLinecutData] = useState<Map<number, InclinedLinecutData>>(new Map());
+
+  // Loading state per linecut
+  const [loadingInclinedLinecuts, setLoadingInclinedLinecuts] = useState<Set<number>>(new Set());
+
+  // Q-space zoom ranges
   const [zoomedXQRange, setZoomedXQRange] = useState<[number, number] | null>(null);
-  // const [zoomedYQRange, setZoomedYQRange] = useState<[number, number] | null>(null);
 
-    // Convert pixel ranges to Q ranges
-    useEffect(() => {
-        // Convert X pixel range to Q range
-        const xQRange = zoomedXPixelRange
-            ? [
-                qXVector[Math.min(zoomedXPixelRange[0], qXVector.length - 1)],
-                qXVector[Math.min(zoomedXPixelRange[1], qXVector.length - 1)]
-            ] as [number, number]
-            : null;
+  // Check if API can be used (calibration complete and scan URIs available)
+  const useApi = isCalibrationComplete(calibrationParams) && !!(leftScanUri || rightScanUri);
 
-        // // Convert Y pixel range to Q range
-        // const yQRange = zoomedYPixelRange
-        //     ? [
-        //         qYVector[Math.min(zoomedYPixelRange[0], qYVector.length - 1)],
-        //         qYVector[Math.min(zoomedYPixelRange[1], qYVector.length - 1)]
-        //     ] as [number, number]
-        //     : null;
-
-        setZoomedXQRange(xQRange);
-        // setZoomedYQRange(yQRange);
-        }, [zoomedXPixelRange, zoomedYPixelRange, qXVector, qYVector]);
-
-
-  // Image dimensions in pixels
-  const imageHeight = imageData1.length;
-  const imageWidth = imageData1[0]?.length || 0;
+  // Convert pixel ranges to Q ranges
+  useEffect(() => {
+    const xQRange = zoomedXPixelRange
+      ? [
+          qXVector[Math.min(zoomedXPixelRange[0], qXVector.length - 1)],
+          qXVector[Math.min(zoomedXPixelRange[1], qXVector.length - 1)]
+        ] as [number, number]
+      : null;
+    setZoomedXQRange(xQRange);
+  }, [zoomedXPixelRange, zoomedYPixelRange, qXVector, qYVector]);
 
   /**
-   * Convert q-space coordinates to pixel coordinates
-   *
-   * @param qX - X position in q-space
-   * @param qY - Y position in q-space
-   * @returns Pixel coordinates [x, y]
+   * Fetch linecut data from API for both scans.
    */
-  const qToPixel = useCallback((qX: number, qY: number): [number, number] => {
-    // Find index of closest q-value in qXVector
-    let xPixel = 0;
-    let minDiffX = Math.abs(qXVector[0] - qX);
+  const fetchLinecutData = useCallback((linecut: InclinedLinecut) => {
+    if (!useApi || !calibrationParams) return;
 
-    for (let i = 1; i < qXVector.length; i++) {
-      const diff = Math.abs(qXVector[i] - qX);
-      if (diff < minDiffX) {
-        minDiffX = diff;
-        xPixel = i;
-      }
+    setLoadingInclinedLinecuts(prev => new Set(prev).add(linecut.id));
+
+    const commonParams = {
+      calibration: calibrationParams,
+      experimentType,
+      qXPosition: linecut.qXPosition,
+      qYPosition: linecut.qYPosition,
+      angle: linecut.angle,
+      qWidth: linecut.qWidth,
+      maskUri,
+    };
+
+    // Fetch for left scan
+    if (leftScanUri) {
+      fetchInclinedLinecut(
+        linecut.id,
+        'left',
+        { ...commonParams, scanUri: leftScanUri },
+        {
+          onSuccess: (result: LinecutResult) => {
+            if (result.success) {
+              setLeftLinecutData(prev => {
+                const updated = new Map(prev);
+                updated.set(linecut.id, {
+                  pathDistances: result.q_values,  // For inclined, these are path distances
+                  intensities: result.intensities,
+                });
+                return updated;
+              });
+              // Also update legacy format for compatibility
+              setInclinedLinecutData1(prev => {
+                const existing = prev.filter(d => d.id !== linecut.id);
+                return [...existing, { id: linecut.id, data: result.intensities }];
+              });
+            }
+            setLoadingInclinedLinecuts(prev => {
+              const updated = new Set(prev);
+              if (!rightScanUri) {
+                updated.delete(linecut.id);
+              }
+              return updated;
+            });
+          },
+          onError: (error) => {
+            console.error(`[Inclined ${linecut.id}] Left fetch error:`, error);
+            setLoadingInclinedLinecuts(prev => {
+              const updated = new Set(prev);
+              updated.delete(linecut.id);
+              return updated;
+            });
+          },
+        }
+      );
     }
 
-    // Find index of closest q-value in qYVector
-    let yPixel = 0;
-    let minDiffY = Math.abs(qYVector[0] - qY);
-
-    for (let i = 1; i < qYVector.length; i++) {
-      const diff = Math.abs(qYVector[i] - qY);
-      if (diff < minDiffY) {
-        minDiffY = diff;
-        yPixel = i;
-      }
+    // Fetch for right scan
+    if (rightScanUri) {
+      fetchInclinedLinecut(
+        linecut.id,
+        'right',
+        { ...commonParams, scanUri: rightScanUri },
+        {
+          onSuccess: (result: LinecutResult) => {
+            if (result.success) {
+              setRightLinecutData(prev => {
+                const updated = new Map(prev);
+                updated.set(linecut.id, {
+                  pathDistances: result.q_values,
+                  intensities: result.intensities,
+                });
+                return updated;
+              });
+              // Also update legacy format for compatibility
+              setInclinedLinecutData2(prev => {
+                const existing = prev.filter(d => d.id !== linecut.id);
+                return [...existing, { id: linecut.id, data: result.intensities }];
+              });
+            }
+            setLoadingInclinedLinecuts(prev => {
+              const updated = new Set(prev);
+              updated.delete(linecut.id);
+              return updated;
+            });
+          },
+          onError: (error) => {
+            console.error(`[Inclined ${linecut.id}] Right fetch error:`, error);
+            setLoadingInclinedLinecuts(prev => {
+              const updated = new Set(prev);
+              updated.delete(linecut.id);
+              return updated;
+            });
+          },
+        }
+      );
     }
-
-    return [xPixel, yPixel];
-  }, [qXVector, qYVector]);
+  }, [useApi, calibrationParams, experimentType, leftScanUri, rightScanUri, maskUri]);
 
   /**
-   * Calculate endpoints of an inclined line in pixel space
-   *
-   * @param qXPosition - Center X position in q-space
-   * @param qYPosition - Center Y position in q-space
-   * @param angle - Angle in degrees
-   * @returns Object with endpoints coordinates or null if invalid
+   * Create a new inclined linecut at the center of the available q-range.
    */
-  const calculateLinecutEndpoints = useCallback((
-    qXPosition: number,
-    qYPosition: number,
-    angle: number
-  ) => {
-    // Convert center position from q-space to pixel space
-    const [centerX, centerY] = qToPixel(qXPosition, qYPosition);
-
-    // Calculate direction vector based on angle
-    const angleRad = (angle * Math.PI) / 180;
-    const dirX = Math.cos(angleRad);
-    const dirY = -Math.sin(angleRad); // Y-axis points downward in image coordinates
-
-    // Extend the line to the image boundaries
-    // Calculate intersection with image boundaries
-    let tMin = -Infinity;
-    let tMax = Infinity;
-
-    // Intersection with x=0 boundary
-    if (dirX !== 0) {
-      const t = -centerX / dirX;
-      if (dirX > 0) tMin = Math.max(tMin, t);
-      else tMax = Math.min(tMax, t);
-    }
-
-    // Intersection with x=width-1 boundary
-    if (dirX !== 0) {
-      const t = (imageWidth - 1 - centerX) / dirX;
-      if (dirX > 0) tMax = Math.min(tMax, t);
-      else tMin = Math.max(tMin, t);
-    }
-
-    // Intersection with y=0 boundary
-    if (dirY !== 0) {
-      const t = -centerY / dirY;
-      if (dirY > 0) tMin = Math.max(tMin, t);
-      else tMax = Math.min(tMax, t);
-    }
-
-    // Intersection with y=height-1 boundary
-    if (dirY !== 0) {
-      const t = (imageHeight - 1 - centerY) / dirY;
-      if (dirY > 0) tMax = Math.min(tMax, t);
-      else tMin = Math.max(tMin, t);
-    }
-
-    // Check if line intersects the image
-    if (tMin > tMax) return null;
-
-    // Calculate endpoints
-    const x0 = centerX + tMin * dirX;
-    const y0 = centerY + tMin * dirY;
-    const x1 = centerX + tMax * dirX;
-    const y1 = centerY + tMax * dirY;
-
-    return { x0, y0, x1, y1 };
-  }, [qToPixel, imageWidth, imageHeight]);
-
-
-
-
-/**
- * Compute intensity data along an inclined linecut
- */
-const computeInclinedLinecutData = useCallback((
-  imageData: number[][],
-  qXPosition: number,
-  qYPosition: number,
-  angle: number,
-  qWidth: number
-): number[] => {
-  // Calculate endpoints in pixel space
-  const endpoints = calculateLinecutEndpoints(qXPosition, qYPosition, angle);
-  if (!endpoints) return [];
-
-  const { x0, y0, x1, y1 } = endpoints;
-
-  // Calculate direction vectors
-  const angleRad = (angle * Math.PI) / 180;
-  const dirX = Math.cos(angleRad);
-  const dirY = -Math.sin(angleRad);
-
-  // Perpendicular vector for width calculations
-  const perpX = -dirY;
-  const perpY = dirX;
-
-  // Calculate total line length in pixel space
-  const dx = x1 - x0;
-  const dy = y1 - y0;
-  const length = Math.sqrt(dx * dx + dy * dy);
-
-  if (length === 0) return [];
-
-  // Use the centralized function to calculate pixel width
-  const pixelWidth = calculateInclinedQSpaceToPixelWidth(
-    qXPosition,
-    qYPosition,
-    angle,
-    qWidth,
-    qXVector,
-    qYVector,
-  );
-
-  // Sample points along the line
-  const numPoints = Math.ceil(length);
-  const intensities = new Array(numPoints).fill(0);
-  const halfWidth = pixelWidth / 2;
-
-  // For each point along the line
-  for (let i = 0; i < numPoints; i++) {
-    let sum = 0;
-    let count = 0;
-
-    // Base position along the line
-    const baseX = x0 + (i / numPoints) * dx;
-    const baseY = y0 + (i / numPoints) * dy;
-
-    // Sample perpendicular to the line for width averaging
-    for (let w = -halfWidth; w <= halfWidth; w += 0.5) {
-      const x = Math.round(baseX + w * perpX);
-      const y = Math.round(baseY + w * perpY);
-
-      // Check if point is within bounds
-      if (x >= 0 && x < imageData[0].length && y >= 0 && y < imageData.length) {
-        // If value is NaN, treat it as 0
-        const value = Number.isNaN(imageData[y][x]) ? 0 : imageData[y][x];
-        sum += value;
-        count++;
-      }
-    }
-
-    intensities[i] = count > 0 ? sum / count : 0;
-  }
-
-  return intensities;
-}, [calculateLinecutEndpoints, qXVector, qYVector]);
-
-
-  /**
-   * Create a new inclined linecut at the center of the available q-range
-   */
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const addInclinedLinecut = useCallback(throttle(() => {
-    // Find the next available ID for the new linecut
     const existingIds = inclinedLinecuts.map((linecut) => linecut.id);
     const newId = Math.max(0, ...existingIds) + 1;
 
-    const defaultQX = 0;
-    const defaultQY = 0;
-
-    // Create the new linecut object with default properties
     const newLinecut: InclinedLinecut = {
       id: newId,
-      qXPosition: defaultQX,
-      qYPosition: defaultQY,
-      angle: 45,  // Default 45-degree angle
-      qWidth: 0,  // Start with zero width
-      width: 0,   // Width in pixels
-      // Assign colors from palette, cycling through available colors
+      qXPosition: 0,
+      qYPosition: 0,
+      angle: 45,
+      qWidth: 0,
+      width: 0,
       leftColor: leftImageColorPalette[(newId - 1) % leftImageColorPalette.length],
       rightColor: rightImageColorPalette[(newId - 1) % rightImageColorPalette.length],
       hidden: false,
       type: 'inclined'
     };
 
-    // Add the new linecut to the state
     setInclinedLinecuts((prev) => [...prev, newLinecut]);
 
-    // Extract and store intensity data for the new linecut from both images
-    if (imageData1 && imageData1.length > 0 && imageData2 && imageData2.length > 0) {
-      const data1 = computeInclinedLinecutData(
-        imageData1,
-        defaultQX,
-        defaultQY,
-        45, // Default angle
-        0   // Default width
-      );
-
-      const data2 = computeInclinedLinecutData(
-        imageData2,
-        defaultQX,
-        defaultQY,
-        45, // Default angle
-        0   // Default width
-      );
-
-      setInclinedLinecutData1((prev) => [...prev, { id: newId, data: data1 }]);
-      setInclinedLinecutData2((prev) => [...prev, { id: newId, data: data2 }]);
-    }
-  }, 200), [
-    inclinedLinecuts,
-    computeInclinedLinecutData,
-    qXVector,
-    qYVector,
-    imageData1,
-    imageData2
-  ]);
+    // Trigger API fetch for the new linecut
+    setTimeout(() => {
+      if (useApi) {
+        fetchLinecutData(newLinecut);
+      }
+    }, 0);
+  }, 200), [inclinedLinecuts, useApi, fetchLinecutData]);
 
   /**
-   * Updates the angle of an inclined linecut
-   *
-   * @param id - ID of the linecut to update
-   * @param angle - New angle in degrees
+   * Updates the angle of an inclined linecut.
    */
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const updateInclinedLinecutAngle = useCallback(throttle((
     id: number,
     angle: number
   ) => {
-    // Normalize angle to -180 to 180 range
     const normalizedAngle = ((angle % 360 + 540) % 360) - 180;
 
-    // Update the linecut with the new angle
-    setInclinedLinecuts(prev =>
-      prev.map(linecut =>
+    setInclinedLinecuts(prev => {
+      const updated = prev.map(linecut =>
         linecut.id === id ? { ...linecut, angle: normalizedAngle } : linecut
-      )
-    );
-
-    // Get the updated linecut to recompute the data
-    const updatedLinecut = inclinedLinecuts.find(l => l.id === id);
-    if (!updatedLinecut) return;
-
-    // Recompute intensity data with the new angle
-    if (imageData1.length > 0 && imageData2.length > 0) {
-      const newData1 = computeInclinedLinecutData(
-        imageData1,
-        updatedLinecut.qXPosition,
-        updatedLinecut.qYPosition,
-        normalizedAngle,
-        updatedLinecut.qWidth
       );
 
-      const newData2 = computeInclinedLinecutData(
-        imageData2,
-        updatedLinecut.qXPosition,
-        updatedLinecut.qYPosition,
-        normalizedAngle,
-        updatedLinecut.qWidth
-      );
+      const updatedLinecut = updated.find(l => l.id === id);
+      if (updatedLinecut && useApi) {
+        fetchLinecutData(updatedLinecut);
+      }
 
-      // Update intensity data in both datasets
-      setInclinedLinecutData1(prev =>
-        prev.map(data =>
-          data.id === id ? { ...data, data: newData1 } : data
-        )
-      );
-
-      setInclinedLinecutData2(prev =>
-        prev.map(data =>
-          data.id === id ? { ...data, data: newData2 } : data
-        )
-      );
-    }
-  }, 200), [inclinedLinecuts, computeInclinedLinecutData, imageData1, imageData2]);
+      return updated;
+    });
+  }, 200), [useApi, fetchLinecutData]);
 
   /**
-   * Updates the width of an inclined linecut in q-space
-   *
-   * @param id - ID of the linecut to update
-   * @param qWidth - New width in q-space units
+   * Updates the width of an inclined linecut in q-space.
    */
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const updateInclinedLinecutWidth = useCallback(throttle((
     id: number,
     qWidth: number
   ) => {
-    // Update the linecut with the new width
-    setInclinedLinecuts(prev =>
-      prev.map(linecut =>
+    setInclinedLinecuts(prev => {
+      const updated = prev.map(linecut =>
         linecut.id === id ? { ...linecut, qWidth } : linecut
-      )
-    );
-
-    // Get the updated linecut to recompute the data
-    const updatedLinecut = inclinedLinecuts.find(l => l.id === id);
-    if (!updatedLinecut) return;
-
-    // Recompute intensity data with the new width
-    if (imageData1.length > 0 && imageData2.length > 0) {
-      const newData1 = computeInclinedLinecutData(
-        imageData1,
-        updatedLinecut.qXPosition,
-        updatedLinecut.qYPosition,
-        updatedLinecut.angle,
-        qWidth
       );
 
-      const newData2 = computeInclinedLinecutData(
-        imageData2,
-        updatedLinecut.qXPosition,
-        updatedLinecut.qYPosition,
-        updatedLinecut.angle,
-        qWidth
-      );
+      const updatedLinecut = updated.find(l => l.id === id);
+      if (updatedLinecut && useApi) {
+        fetchLinecutData(updatedLinecut);
+      }
 
-      // Update intensity data in both datasets
-      setInclinedLinecutData1(prev =>
-        prev.map(data =>
-          data.id === id ? { ...data, data: newData1 } : data
-        )
-      );
-
-      setInclinedLinecutData2(prev =>
-        prev.map(data =>
-          data.id === id ? { ...data, data: newData2 } : data
-        )
-      );
-    }
-  }, 200), [inclinedLinecuts, computeInclinedLinecutData, imageData1, imageData2]);
+      return updated;
+    });
+  }, 200), [useApi, fetchLinecutData]);
 
   /**
-   * Updates the color of a linecut (left or right side)
-   *
-   * @param id - ID of the linecut to update
-   * @param side - Which side to update ('left' or 'right')
-   * @param color - New color in CSS format
+   * Updates the color of a linecut.
    */
   const updateInclinedLinecutColor = useCallback((
     id: number,
     side: 'left' | 'right',
     color: string
   ) => {
-    // Update the color property for the specified side of the linecut
     setInclinedLinecuts((prev) =>
       prev.map((linecut) =>
         linecut.id === id
@@ -437,22 +276,21 @@ const computeInclinedLinecutData = useCallback((
   }, []);
 
   /**
-   * Removes a linecut and renumbers the remaining ones
-   *
-   * @param id - ID of the linecut to delete
+   * Removes a linecut and renumbers the remaining ones.
    */
   const deleteInclinedLinecut = useCallback((id: number) => {
-    // Remove the linecut from the list and renumber remaining linecuts
+    // Cancel any pending requests for this linecut
+    cancelLinecutRequest('inclined', id, 'left');
+    cancelLinecutRequest('inclined', id, 'right');
+
     setInclinedLinecuts((prev) => {
       const updatedLinecuts = prev.filter((linecut) => linecut.id !== id);
-      // Renumber the remaining linecuts to maintain sequential IDs
       return updatedLinecuts.map((linecut, index) => ({
         ...linecut,
         id: index + 1,
       }));
     });
 
-    // Similarly update the intensity data arrays for both images
     setInclinedLinecutData1((prev) =>
       prev.filter((data) => data.id !== id).map((data, index) => ({
         ...data,
@@ -466,12 +304,28 @@ const computeInclinedLinecutData = useCallback((
         id: index + 1,
       }))
     );
+
+    setLeftLinecutData(prev => {
+      const updated = new Map(prev);
+      updated.delete(id);
+      return updated;
+    });
+
+    setRightLinecutData(prev => {
+      const updated = new Map(prev);
+      updated.delete(id);
+      return updated;
+    });
+
+    setLoadingInclinedLinecuts(prev => {
+      const updated = new Set(prev);
+      updated.delete(id);
+      return updated;
+    });
   }, []);
 
   /**
-   * Toggles the visibility of a linecut
-   *
-   * @param id - ID of the linecut to toggle
+   * Toggles the visibility of a linecut.
    */
   const toggleInclinedLinecutVisibility = useCallback((id: number) => {
     setInclinedLinecuts((prev) =>
@@ -482,76 +336,46 @@ const computeInclinedLinecutData = useCallback((
   }, []);
 
   /**
-   * Restore linecuts from a saved session
-   * The intensity data will be recomputed when image data is available
+   * Restore linecuts from a saved session.
    */
   const restoreLinecuts = useCallback((linecuts: InclinedLinecut[]) => {
     setInclinedLinecuts(linecuts);
-    // Clear old intensity data - it will be recomputed by the effect below
     setInclinedLinecutData1([]);
     setInclinedLinecutData2([]);
+    setLeftLinecutData(new Map());
+    setRightLinecutData(new Map());
   }, []);
 
   /**
-   * Effect to update all linecut data when qXVector or qYVector changes
-   *
-   * This ensures that if the q-space mapping changes, all linecuts maintain
-   * their positions in q-space but update their visualizations correctly.
+   * Refetch all linecut data when context changes.
+   * Note: Intentionally excludes fetchLinecutData, inclinedLinecuts, and useApi
+   * from deps to prevent infinite loops.
    */
   useEffect(() => {
-    // Skip if vectors are empty or no linecuts exist
-    if (!qXVector?.length || !qYVector?.length || !inclinedLinecuts.length) return;
+    if (!useApi || inclinedLinecuts.length === 0) return;
 
-    // Recompute all linecut data with current q-vectors
+    // Refetch data for all linecuts when scan URIs or calibration changes
     inclinedLinecuts.forEach(linecut => {
-      if (imageData1.length > 0 && imageData2.length > 0) {
-        const newData1 = computeInclinedLinecutData(
-          imageData1,
-          linecut.qXPosition,
-          linecut.qYPosition,
-          linecut.angle,
-          linecut.qWidth
-        );
-
-        const newData2 = computeInclinedLinecutData(
-          imageData2,
-          linecut.qXPosition,
-          linecut.qYPosition,
-          linecut.angle,
-          linecut.qWidth
-        );
-
-        setInclinedLinecutData1(prev =>
-          prev.map(data =>
-            data.id === linecut.id ? { ...data, data: newData1 } : data
-          )
-        );
-
-        setInclinedLinecutData2(prev =>
-          prev.map(data =>
-            data.id === linecut.id ? { ...data, data: newData2 } : data
-          )
-        );
-      }
+      fetchLinecutData(linecut);
     });
-  }, [qXVector, qYVector, inclinedLinecuts, computeInclinedLinecutData, imageData1, imageData2]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leftScanUri, rightScanUri, calibrationParams, experimentType, maskUri]);
 
-  // Return all the state and functions needed to use and manage linecuts in q-space
   return {
     inclinedLinecuts,
     inclinedLinecutData1,
     inclinedLinecutData2,
+    leftLinecutData,
+    rightLinecutData,
+    loadingInclinedLinecuts,
+    useApi,
     addInclinedLinecut,
-    // updateInclinedLinecutXPosition,
-    // updateInclinedLinecutYPosition,
     updateInclinedLinecutAngle,
     updateInclinedLinecutWidth,
     updateInclinedLinecutColor,
     deleteInclinedLinecut,
     toggleInclinedLinecutVisibility,
     restoreLinecuts,
-    // calculateQPathDistance,
     zoomedXQRange,
-    // zoomedYQRange,
   };
 }

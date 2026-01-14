@@ -1,70 +1,28 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { debounce } from 'lodash';
-import { unpack } from 'msgpackr';
-import { AzimuthalData, AzimuthalIntegration, CalibrationParams } from '../types';
+import { useState, useCallback, useEffect } from 'react';
+import { AzimuthalData, AzimuthalIntegration, CalibrationParams, isCalibrationComplete } from '../types';
 import { leftImageColorPalette, rightImageColorPalette } from '../utils/constants';
+import {
+    fetchAzimuthalIntegration,
+    cancelAzimuthalRequest,
+    AzimuthalIntegrationResult,
+} from '../services/linecutApi';
 
 /**
- * Response type for azimuthal integration data
- * This contains the core integration results
- */
-interface AzimuthalIntegratorResponse {
-    q_max: number;         // Maximum q-value
-    q_1: number[];         // q-values for first integration
-    q_2: number[];         // q-values for second integration
-    intensity_1: number[]; // Intensity values for first integration
-    intensity_2: number[]; // Intensity values for second integration
-    q_array_filtered_1: number[][]; // 2D array of filtered q-values for visualization (img 1)
-    q_array_filtered_2: number[][]; // 2D array of filtered q-values for visualization (img 2)
-}
-
-/**
- * Our cache structure to prevent unnecessary API calls
- * Note: This is separate from what the server sends
- */
-interface CachedMatrixData {
-    qArray1: number[][];       // 2D array for image 1 visualization
-    qArray2: number[][];       // 2D array for image 2 visualization
-    calibrationHash: string;   // Hash of calibration + azimuth for cache validation
-    azimuthRange: [number, number]; // Current azimuth range
-    intensityData1: number[];  // Intensity values for first integration
-    intensityData2: number[];  // Intensity values for second integration
-    qValues1: number[];        // q-values for first integration
-    qValues2: number[];        // q-values for second integration
-}
-
-/**
- * Type guard to validate azimuthal integration response
- * Ensures the response has the expected structure
- */
-function isAzimuthalIntegratorResponse(value: unknown): value is AzimuthalIntegratorResponse {
-    const response = value as AzimuthalIntegratorResponse;
-    return (
-        typeof response === 'object' &&
-        response !== null &&
-        typeof response.q_max === 'number' &&
-        Array.isArray(response.q_1) &&
-        Array.isArray(response.q_2) &&
-        Array.isArray(response.intensity_1) &&
-        Array.isArray(response.intensity_2) &&
-        Array.isArray(response.q_array_filtered_1) &&
-        Array.isArray(response.q_array_filtered_2)
-    );
-}
-
-/**
- * Custom hook for managing azimuthal integration data
- * Now accepts calibration parameters and scan URIs from parent
+ * Custom hook for managing azimuthal integration data.
+ *
+ * Uses shared debounce infrastructure from linecutApi.ts.
  *
  * @param calibrationParams - Calibration parameters from parent component
  * @param leftScanUri - Tiled URI for the first/left scan
  * @param rightScanUri - Tiled URI for the second/right scan
+ * @param maskUri - Optional mask URI
  * @returns Functions and state for azimuthal integration
  */
 export default function useAzimuthalIntegration(
     calibrationParams: CalibrationParams | null,
     leftScanUri: string | null,
-    rightScanUri: string | null
+    rightScanUri: string | null,
+    maskUri?: string | null
 ) {
     // ======== STATE MANAGEMENT ========
 
@@ -73,29 +31,21 @@ export default function useAzimuthalIntegration(
     const [azimuthalData1, setAzimuthalData1] = useState<AzimuthalData[]>([]);
     const [azimuthalData2, setAzimuthalData2] = useState<AzimuthalData[]>([]);
 
-    // Q-range, azimuth range, and max Q value
+    // Q-range and max Q value
     const [maxQValue, setMaxQValue] = useState<number>(2);
     const [globalQRange, setGlobalQRange] = useState<[number, number] | null>(null);
 
-    // Cache for repeated API calls
-    const [cachedMatrixData, setCachedMatrixData] = useState<CachedMatrixData | null>(null);
+    // Loading state per integration
+    const [loadingAzimuthalIntegrations, setLoadingAzimuthalIntegrations] = useState<Set<number>>(new Set());
 
-    const [isProcessing, setIsProcessing] = useState<boolean>(false);
-
+    // Track whether we should use API
+    const useApi = isCalibrationComplete(calibrationParams) && !!(leftScanUri && rightScanUri);
 
     // ======== UTILITY FUNCTIONS ========
 
     /**
-     * Creates a cache key from calibration params and azimuth range
-     * Used to determine if we need to fetch new data
-     */
-    const createCacheKey = useCallback((params: CalibrationParams, azimuthRange: [number, number]): string => {
-        return JSON.stringify({ calibration: params, azimuth: azimuthRange });
-    }, []);
-
-    /**
-     * Filters q-arrays by the specified q-range
-     * Sets values outside the range to NaN for visualization
+     * Filters q-arrays by the specified q-range.
+     * Sets values outside the range to NaN for visualization.
      */
     const filterByQRange = useCallback((
         qArray: number[][],
@@ -110,8 +60,7 @@ export default function useAzimuthalIntegration(
     }, []);
 
     /**
-     * Updates azimuthal integration data for both images
-     * Handles adding or replacing data by ID
+     * Updates azimuthal integration data for both images.
      */
     const updateIntegrationData = useCallback((
         id: number,
@@ -126,228 +75,96 @@ export default function useAzimuthalIntegration(
     ) => {
         const { q1, q2, intensity1, intensity2, qArray1, qArray2 } = data;
 
-        // Update data for image 1
         setAzimuthalData1(prev => {
             const filtered = prev.filter(d => d.id !== id);
-            return [...filtered, {
-                id,
-                q: q1,
-                intensity: intensity1,
-                qArray: qArray1
-            }];
+            return [...filtered, { id, q: q1, intensity: intensity1, qArray: qArray1 }];
         });
 
-        // Update data for image 2
         setAzimuthalData2(prev => {
             const filtered = prev.filter(d => d.id !== id);
-            return [...filtered, {
-                id,
-                q: q2,
-                intensity: intensity2,
-                qArray: qArray2
-            }];
+            return [...filtered, { id, q: q2, intensity: intensity2, qArray: qArray2 }];
         });
     }, []);
 
     /**
-     * Main data fetching function
-     * Fetches azimuthal integration data
+     * Fetch azimuthal integration data using shared API service.
      */
-    const fetchAzimuthalData = useCallback(async (
+    const fetchAzimuthalData = useCallback((
         id: number,
         qRange: [number, number] | null,
         azimuthRange: [number, number]
     ) => {
-
-        // Validate that scan URIs are available
-        if (!leftScanUri || !rightScanUri) {
-            console.warn('Cannot fetch azimuthal data: scan URIs not available');
-            setIsProcessing(false);
-            return;
-        }
-
-        // Validate that calibration parameters are set
-        if (!calibrationParams) {
-            console.warn('Cannot fetch azimuthal data: calibration not configured');
-            setIsProcessing(false);
+        if (!useApi || !calibrationParams || !leftScanUri || !rightScanUri) {
             return;
         }
 
         // Set loading state
-        setIsProcessing(true);
+        setLoadingAzimuthalIntegrations(prev => new Set(prev).add(id));
 
-        // Generate a unique key for caching based on current parameters
-        const currentCacheKey = createCacheKey(calibrationParams, azimuthRange);
+        fetchAzimuthalIntegration(
+            id,
+            {
+                leftScanUri,
+                rightScanUri,
+                calibration: calibrationParams,
+                azimuthStart: azimuthRange[0],
+                azimuthEnd: azimuthRange[1],
+                qRangeStart: qRange ? qRange[0] : null,
+                qRangeEnd: qRange ? qRange[1] : null,
+                maskUri,
+            },
+            {
+                onSuccess: (result: AzimuthalIntegrationResult) => {
+                    if (result.success) {
+                        // Update max Q value if needed (first fetch only)
+                        if (maxQValue === 2 && result.q_max > 0) {
+                            setMaxQValue(result.q_max);
+                            setGlobalQRange([0, result.q_max]);
+                        }
 
-        try {
-            // Determine if we need new data by checking cache validity
-            const needsNewData = !cachedMatrixData ||
-                               currentCacheKey !== cachedMatrixData.calibrationHash ||
-                               azimuthRange !== cachedMatrixData.azimuthRange;
+                        // Update integration data with filtered values
+                        updateIntegrationData(id, {
+                            q1: result.q_1,
+                            q2: result.q_2,
+                            intensity1: result.intensity_1,
+                            intensity2: result.intensity_2,
+                            qArray1: filterByQRange(result.q_array_filtered_1, qRange),
+                            qArray2: filterByQRange(result.q_array_filtered_2, qRange)
+                        });
+                    } else {
+                        console.error(`Azimuthal integration ${id} failed:`, result.error_message);
+                    }
 
-            console.log('Need to fetch new data:', needsNewData);
-
-            if (needsNewData) {
-                // Create a URL for the azimuthal integrator endpoint
-                const url = new URL('/api/azimuthal-integrator', window.location.origin);
-
-                // Add scan URIs (required parameters)
-                url.searchParams.set('left_scan_uri', leftScanUri);
-                url.searchParams.set('right_scan_uri', rightScanUri);
-
-                // Add all calibration parameters to the URL
-                Object.entries(calibrationParams).forEach(([key, value]) => {
-                    url.searchParams.set(key, value.toString());
-                });
-
-                // Add azimuth range to the parameters
-                url.searchParams.set('azimuth_range_deg', `${azimuthRange[0]},${azimuthRange[1]}`);
-
-                // Fetch azimuthal integration data
-                const response = await fetch(url.toString());
-
-                // Check for HTTP errors
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch azimuthal integration data: ${await response.text()}`);
-                }
-
-                // Decode the binary msgpack response
-                const decodedData = unpack(new Uint8Array(await response.arrayBuffer()));
-
-                // Validate the response format
-                if (!isAzimuthalIntegratorResponse(decodedData)) {
-                    throw new Error('Invalid azimuthal integrator response format from server');
-                }
-
-                // Store fetched data in cache
-                setCachedMatrixData({
-                    qArray1: decodedData.q_array_filtered_1,
-                    qArray2: decodedData.q_array_filtered_2,
-                    calibrationHash: currentCacheKey,
-                    azimuthRange,
-                    intensityData1: decodedData.intensity_1,
-                    intensityData2: decodedData.intensity_2,
-                    qValues1: decodedData.q_1,
-                    qValues2: decodedData.q_2
-                });
-
-                // Update max Q value if needed (first fetch only)
-                if (maxQValue === 2) {
-                    setMaxQValue(decodedData.q_max);
-                    setGlobalQRange([0, decodedData.q_max]);
-                }
-
-                // Update integration data with filtered values
-                updateIntegrationData(id, {
-                    q1: decodedData.q_1,
-                    q2: decodedData.q_2,
-                    intensity1: decodedData.intensity_1,
-                    intensity2: decodedData.intensity_2,
-                    qArray1: filterByQRange(decodedData.q_array_filtered_1, qRange),
-                    qArray2: filterByQRange(decodedData.q_array_filtered_2, qRange)
-                });
-            } else {
-                // Use cached data if available
-                updateIntegrationData(id, {
-                    q1: cachedMatrixData.qValues1,
-                    q2: cachedMatrixData.qValues2,
-                    intensity1: cachedMatrixData.intensityData1,
-                    intensity2: cachedMatrixData.intensityData2,
-                    qArray1: filterByQRange(cachedMatrixData.qArray1, qRange),
-                    qArray2: filterByQRange(cachedMatrixData.qArray2, qRange)
-                });
+                    // Clear loading state
+                    setLoadingAzimuthalIntegrations(prev => {
+                        const updated = new Set(prev);
+                        updated.delete(id);
+                        return updated;
+                    });
+                },
+                onError: (error) => {
+                    console.error(`Azimuthal integration ${id} error:`, error);
+                    setLoadingAzimuthalIntegrations(prev => {
+                        const updated = new Set(prev);
+                        updated.delete(id);
+                        return updated;
+                    });
+                },
             }
-        } catch (error) {
-            console.error('Error in azimuthal integration:', error);
-            throw error;
-        } finally {
-            // Reset loading state
-            setIsProcessing(false);
-        }
-    }, [
-        calibrationParams,
-        cachedMatrixData,
-        createCacheKey,
-        filterByQRange,
-        maxQValue,
-        updateIntegrationData,
-        leftScanUri,
-        rightScanUri
-    ]);
-
-    // ======== DEBOUNCED FUNCTIONS ========
-
-    /**
-     * Debounced version of Q-range update
-     * Prevents excessive API calls during slider movement
-     */
-    const debouncedQRangeUpdate = useRef(
-        debounce((params: {
-            id: number,
-            qRange: [number, number],
-            azimuthRange: [number, number],
-            setGlobalQRange: typeof setGlobalQRange,
-            setAzimuthalIntegrations: typeof setAzimuthalIntegrations,
-            fetchAzimuthalData: typeof fetchAzimuthalData
-        }) => {
-            const { id, qRange, azimuthRange, setGlobalQRange, setAzimuthalIntegrations, fetchAzimuthalData } = params;
-            setGlobalQRange(qRange);
-            setAzimuthalIntegrations(prev =>
-                prev.map(integration =>
-                    integration.id === id ? { ...integration, qRange } : integration
-                )
-            );
-            fetchAzimuthalData(id, qRange, azimuthRange);
-        }, 100) // 100ms debounce time
-    ).current;
-
-    /**
-     * Debounced version of azimuth range update
-     * Prevents excessive API calls during slider movement
-     */
-    const debouncedAzimuthRangeUpdate = useRef(
-        debounce((params: {
-            id: number,
-            qRange: [number, number] | null,
-            azimuthRange: [number, number],
-            // setGlobalAzimuthRange: typeof setGlobalAzimuthRange,
-            setAzimuthalIntegrations: typeof setAzimuthalIntegrations,
-            fetchAzimuthalData: typeof fetchAzimuthalData
-        }) => {
-            const { id, qRange, azimuthRange, setAzimuthalIntegrations, fetchAzimuthalData } = params;
-
-
-            // setGlobalAzimuthRange(azimuthRange);
-            setAzimuthalIntegrations(prev =>
-                prev.map(integration =>
-                    integration.id === id ? { ...integration, azimuthRange } : integration
-                )
-            );
-            fetchAzimuthalData(id, qRange, azimuthRange);
-        }, 500) // 500ms debounce time (longer for azimuth since it triggers API calls)
-    ).current;
-
-    // Cleanup debounced functions on unmount
-    useEffect(() => {
-        return () => {
-            debouncedQRangeUpdate.cancel();
-            debouncedAzimuthRangeUpdate.cancel();
-        };
-    }, [debouncedQRangeUpdate, debouncedAzimuthRangeUpdate]);
+        );
+    }, [useApi, calibrationParams, leftScanUri, rightScanUri, maskUri, maxQValue, filterByQRange, updateIntegrationData]);
 
     // ======== INTEGRATION MANAGEMENT FUNCTIONS ========
 
     /**
-     * Creates a new azimuthal integration with default parameters
+     * Creates a new azimuthal integration with default parameters.
      */
     const addAzimuthalIntegration = useCallback(() => {
         const DEFAULT_AZIMUTH_RANGE: [number, number] = [-180, 180];
 
-        // Get next available ID
         const existingIds = azimuthalIntegrations.map(integration => integration.id);
         const newId = Math.max(0, ...existingIds) + 1;
 
-        // Create new integration object
         const newIntegration: AzimuthalIntegration = {
             id: newId,
             qRange: null,
@@ -357,47 +174,49 @@ export default function useAzimuthalIntegration(
             hidden: false
         };
 
-        // Add to state and trigger data fetch
         setAzimuthalIntegrations(prev => [...prev, newIntegration]);
-        fetchAzimuthalData(newId, globalQRange, DEFAULT_AZIMUTH_RANGE);
-    }, [fetchAzimuthalData, azimuthalIntegrations, globalQRange]);
+        // Trigger data fetch (debounced via linecutApi)
+        // New integrations start with null (full range), not globalQRange
+        setTimeout(() => fetchAzimuthalData(newId, null, DEFAULT_AZIMUTH_RANGE), 0);
+    }, [fetchAzimuthalData, azimuthalIntegrations]);
 
     /**
-     * Updates the Q-range for a specific integration
+     * Updates the Q-range for a specific integration.
+     * The fetch is debounced via linecutApi.
+     * Note: Does not update globalQRange - each integration has its own qRange.
      */
     const updateAzimuthalQRange = useCallback((id: number, qRange: [number, number]) => {
+        setAzimuthalIntegrations(prev =>
+            prev.map(integration =>
+                integration.id === id ? { ...integration, qRange } : integration
+            )
+        );
+
         const currentIntegration = azimuthalIntegrations.find(i => i.id === id);
         if (currentIntegration) {
-            debouncedQRangeUpdate({
-                id,
-                qRange,
-                azimuthRange: currentIntegration.azimuthRange || [-180, 180],
-                setGlobalQRange,
-                setAzimuthalIntegrations,
-                fetchAzimuthalData
-            });
+            fetchAzimuthalData(id, qRange, currentIntegration.azimuthRange || [-180, 180]);
         }
-    }, [azimuthalIntegrations, fetchAzimuthalData, debouncedQRangeUpdate]);
+    }, [azimuthalIntegrations, fetchAzimuthalData]);
 
     /**
-     * Updates the azimuth range for a specific integration
+     * Updates the azimuth range for a specific integration.
+     * The fetch is debounced via linecutApi.
      */
     const updateAzimuthalRange = useCallback((id: number, azimuthRange: [number, number]) => {
+        setAzimuthalIntegrations(prev =>
+            prev.map(integration =>
+                integration.id === id ? { ...integration, azimuthRange } : integration
+            )
+        );
+
         const currentIntegration = azimuthalIntegrations.find(i => i.id === id);
         if (currentIntegration) {
-            debouncedAzimuthRangeUpdate({
-                id,
-                qRange: currentIntegration.qRange,
-                azimuthRange,
-                // setGlobalAzimuthRange,
-                setAzimuthalIntegrations,
-                fetchAzimuthalData
-            });
+            fetchAzimuthalData(id, currentIntegration.qRange, azimuthRange);
         }
-    }, [azimuthalIntegrations, fetchAzimuthalData, debouncedAzimuthRangeUpdate]);
+    }, [azimuthalIntegrations, fetchAzimuthalData]);
 
     /**
-     * Updates the color of an integration line
+     * Updates the color of an integration line.
      */
     const updateAzimuthalColor = useCallback((id: number, side: 'left' | 'right', color: string) => {
         setAzimuthalIntegrations(prev =>
@@ -410,17 +229,17 @@ export default function useAzimuthalIntegration(
     }, []);
 
     /**
-     * Deletes an integration and its associated data
+     * Deletes an integration and its associated data.
      */
     const deleteAzimuthalIntegration = useCallback((id: number) => {
-        // Clear the cached matrix data to ensure fresh fetch for next integration
-        setCachedMatrixData(null);
+        // Cancel any pending requests for this integration
+        cancelAzimuthalRequest(id);
 
         // Remove the integration's data from image 1
         setAzimuthalData1(prev =>
             prev.filter(data => data.id !== id).map((data, index) => ({
                 ...data,
-                id: index + 1, // Reindex remaining integrations
+                id: index + 1,
             }))
         );
 
@@ -428,7 +247,7 @@ export default function useAzimuthalIntegration(
         setAzimuthalData2(prev =>
             prev.filter(data => data.id !== id).map((data, index) => ({
                 ...data,
-                id: index + 1, // Reindex remaining integrations
+                id: index + 1,
             }))
         );
 
@@ -437,13 +256,20 @@ export default function useAzimuthalIntegration(
             const updatedIntegrations = prev.filter(integration => integration.id !== id);
             return updatedIntegrations.map((integration, index) => ({
                 ...integration,
-                id: index + 1, // Reindex remaining integrations
+                id: index + 1,
             }));
+        });
+
+        // Clear loading state
+        setLoadingAzimuthalIntegrations(prev => {
+            const updated = new Set(prev);
+            updated.delete(id);
+            return updated;
         });
     }, []);
 
     /**
-     * Toggles visibility of an integration
+     * Toggles visibility of an integration.
      */
     const toggleAzimuthalVisibility = useCallback((id: number) => {
         setAzimuthalIntegrations(prev =>
@@ -454,17 +280,29 @@ export default function useAzimuthalIntegration(
     }, []);
 
     /**
-     * Restore integrations from a saved session
-     * The actual data will be recomputed when images are loaded
+     * Restore integrations from a saved session.
      */
     const restoreIntegrations = useCallback((integrations: AzimuthalIntegration[]) => {
         setAzimuthalIntegrations(integrations);
-        // Clear cached data and computed results - they will be refetched
-        setCachedMatrixData(null);
         setAzimuthalData1([]);
         setAzimuthalData2([]);
     }, []);
 
+    /**
+     * Refetch all integration data when context changes.
+     * Note: Intentionally excludes fetchAzimuthalData, azimuthalIntegrations, and useApi
+     * from deps to prevent infinite loops - we only want to refetch when external
+     * context (URIs, calibration) changes, not when callbacks or integrations change.
+     */
+    useEffect(() => {
+        if (!useApi || azimuthalIntegrations.length === 0) return;
+
+        // Refetch data for all integrations when scan URIs or calibration changes
+        azimuthalIntegrations.forEach(integration => {
+            fetchAzimuthalData(integration.id, integration.qRange, integration.azimuthRange);
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [leftScanUri, rightScanUri, calibrationParams, maskUri]);
 
     return {
         // State
@@ -473,7 +311,7 @@ export default function useAzimuthalIntegration(
         azimuthalData2,
         maxQValue,
         globalQRange,
-        isProcessing,
+        loadingAzimuthalIntegrations,
 
         // Functions
         addAzimuthalIntegration,

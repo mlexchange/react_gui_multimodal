@@ -21,6 +21,7 @@ import {
   type CustomDomain,
 } from '@h5web/lib';
 import { Vector3 } from 'three';
+import { AzimuthalSectorOverlay } from './utils/generateOverlays';
 import ndarray, { NdArray } from 'ndarray';
 import {
   ArrowsHorizontalIcon,
@@ -351,208 +352,6 @@ const InclinedLinecutOverlay: React.FC<InclinedLinecutOverlayProps> = ({
   );
 };
 
-// Azimuthal integration overlay component
-// Matches Plotly behavior: draws scatter points at matching Q-values
-interface AzimuthalOverlayProps {
-  integrations: Array<{
-    qRange: [number, number] | null;
-    azimuthRange: [number, number];
-    color: string;
-    hidden?: boolean;
-    qArray?: number[][];
-  }>;
-  beamCenterX: number;
-  beamCenterY: number;
-  maxQValue: number;
-  imageWidth: number;
-  imageHeight: number;
-}
-
-const AzimuthalOverlay: React.FC<AzimuthalOverlayProps> = ({
-  integrations,
-  beamCenterX,
-  beamCenterY,
-  maxQValue,
-  imageWidth,
-  imageHeight,
-}) => {
-  const visibleIntegrations = integrations.filter(int => !int.hidden && int.qArray);
-
-  if (visibleIntegrations.length === 0) return null;
-
-  return (
-    <>
-      {visibleIntegrations.map((integration, index) => {
-        const { qRange, azimuthRange, color, qArray } = integration;
-        if (!qArray || qArray.length === 0) return null;
-
-        const innerQ = qRange ? qRange[0] : 0;
-        const outerQ = qRange ? qRange[1] : maxQValue;
-        const tolerance = 0.1;
-
-        // Find points matching inner and outer Q-values (same as Plotly)
-        const innerPoints: Vector3[] = [];
-        const outerPoints: Vector3[] = [];
-
-        for (let y = 0; y < qArray.length; y++) {
-          for (let x = 0; x < qArray[y].length; x++) {
-            const qVal = qArray[y][x];
-            if (Math.abs(qVal - innerQ) < tolerance) {
-              innerPoints.push(new Vector3(x, y));
-            }
-            if (Math.abs(qVal - outerQ) < tolerance) {
-              outerPoints.push(new Vector3(x, y));
-            }
-          }
-        }
-
-        // Calculate radii from beam center for radial lines
-        let innerRadius = Infinity;
-        let outerRadius = 0;
-
-        innerPoints.forEach(p => {
-          const r = Math.sqrt(Math.pow(p.x - beamCenterX, 2) + Math.pow(p.y - beamCenterY, 2));
-          innerRadius = Math.min(innerRadius, r);
-        });
-
-        outerPoints.forEach(p => {
-          const r = Math.sqrt(Math.pow(p.x - beamCenterX, 2) + Math.pow(p.y - beamCenterY, 2));
-          outerRadius = Math.max(outerRadius, r);
-        });
-
-        if (innerRadius === Infinity) innerRadius = 0;
-
-        const [startAngle, endAngle] = azimuthRange;
-        const isFullCircle = Math.abs(endAngle - startAngle) >= 360;
-
-        // Generate radial line scatter points if not full circle (same as Plotly)
-        const startLinePoints: Vector3[] = [];
-        const endLinePoints: Vector3[] = [];
-
-        if (!isFullCircle) {
-          const numPoints = 100;
-          const radii: number[] = [];
-          const step = (outerRadius - innerRadius) / (numPoints - 1);
-          for (let i = 0; i < numPoints; i++) {
-            radii.push(innerRadius + step * i);
-          }
-
-          const startRad = (startAngle * Math.PI) / 180;
-          const endRad = (endAngle * Math.PI) / 180;
-
-          radii.forEach(radius => {
-            // Start angle line point
-            const sx = beamCenterX + radius * Math.cos(-startRad);
-            const sy = beamCenterY - radius * Math.sin(-startRad);
-            if (sx >= 0 && sx <= imageWidth && sy >= 0 && sy <= imageHeight) {
-              startLinePoints.push(new Vector3(sx, sy));
-            }
-
-            // End angle line point
-            const ex = beamCenterX + radius * Math.cos(-endRad);
-            const ey = beamCenterY - radius * Math.sin(-endRad);
-            if (ex >= 0 && ex <= imageWidth && ey >= 0 && ey <= imageHeight) {
-              endLinePoints.push(new Vector3(ex, ey));
-            }
-          });
-        }
-
-        // Sample points evenly if there are too many (to avoid performance issues)
-        // Unlike simple slice, this preserves the shape by sampling at regular intervals
-        const maxPoints = 2000;
-        const samplePoints = (points: Vector3[], max: number): Vector3[] => {
-          if (points.length <= max) return points;
-          const step = Math.ceil(points.length / max);
-          return points.filter((_, i) => i % step === 0);
-        };
-
-        const sampledInnerPoints = samplePoints(innerPoints, maxPoints);
-        const sampledOuterPoints = samplePoints(outerPoints, maxPoints);
-
-        return (
-          <React.Fragment key={`azimuthal-${index}`}>
-            {/* Inner Q-value circle as scatter points - size 2, opacity 0.75 matching Plotly */}
-            {sampledInnerPoints.length > 0 && (
-              <DataToHtml points={sampledInnerPoints}>
-                {(...htmlPoints) => (
-                  <SvgElement>
-                    {htmlPoints.map((p, i) => (
-                      <circle
-                        key={`inner-${i}`}
-                        cx={p.x}
-                        cy={p.y}
-                        r={1}
-                        fill={color}
-                        fillOpacity={0.75}
-                      />
-                    ))}
-                  </SvgElement>
-                )}
-              </DataToHtml>
-            )}
-            {/* Outer Q-value circle as scatter points - size 2, opacity 0.75 matching Plotly */}
-            {sampledOuterPoints.length > 0 && (
-              <DataToHtml points={sampledOuterPoints}>
-                {(...htmlPoints) => (
-                  <SvgElement>
-                    {htmlPoints.map((p, i) => (
-                      <circle
-                        key={`outer-${i}`}
-                        cx={p.x}
-                        cy={p.y}
-                        r={1}
-                        fill={color}
-                        fillOpacity={0.75}
-                      />
-                    ))}
-                  </SvgElement>
-                )}
-              </DataToHtml>
-            )}
-            {/* Radial lines as scatter points - size 4, opacity 0.75 matching Plotly */}
-            {!isFullCircle && startLinePoints.length > 0 && (
-              <DataToHtml points={startLinePoints}>
-                {(...htmlPoints) => (
-                  <SvgElement>
-                    {htmlPoints.map((p, i) => (
-                      <circle
-                        key={`start-${i}`}
-                        cx={p.x}
-                        cy={p.y}
-                        r={2}
-                        fill={color}
-                        fillOpacity={0.75}
-                      />
-                    ))}
-                  </SvgElement>
-                )}
-              </DataToHtml>
-            )}
-            {!isFullCircle && endLinePoints.length > 0 && (
-              <DataToHtml points={endLinePoints}>
-                {(...htmlPoints) => (
-                  <SvgElement>
-                    {htmlPoints.map((p, i) => (
-                      <circle
-                        key={`end-${i}`}
-                        cx={p.x}
-                        cy={p.y}
-                        r={2}
-                        fill={color}
-                        fillOpacity={0.75}
-                      />
-                    ))}
-                  </SvgElement>
-                )}
-              </DataToHtml>
-            )}
-          </React.Fragment>
-        );
-      })}
-    </>
-  );
-};
-
 // Loading overlay component
 const LoadingOverlay: React.FC<{ message?: string }> = ({ message = 'Loading...' }) => (
   <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">
@@ -579,7 +378,13 @@ interface HeatmapPanelProps {
   linecuts?: LinecutOverlayProps['linecuts'];
   inclinedLinecuts?: InclinedLinecutOverlayProps['linecuts'];
   inclinedPixelWidthCalculator?: (qWidth: number) => number;
-  azimuthalIntegrations?: AzimuthalOverlayProps['integrations'];
+  azimuthalIntegrations?: Array<{
+    qRange: [number, number] | null;
+    azimuthRange: [number, number];
+    color: string;
+    hidden?: boolean;
+  }>;
+  qMagnitudeMatrix?: number[][] | null;
   beamCenterX?: number;
   beamCenterY?: number;
   maxQValue?: number;
@@ -603,6 +408,7 @@ const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
   inclinedLinecuts = [],
   inclinedPixelWidthCalculator,
   azimuthalIntegrations = [],
+  qMagnitudeMatrix = null,
   beamCenterX = 0,
   beamCenterY = 0,
   maxQValue = 1,
@@ -676,8 +482,9 @@ const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
             pixelWidthCalculator={inclinedPixelWidthCalculator}
           />
         )}
-        <AzimuthalOverlay
+        <AzimuthalSectorOverlay
           integrations={azimuthalIntegrations}
+          qMagnitudeMatrix={qMagnitudeMatrix}
           beamCenterX={beamCenterX}
           beamCenterY={beamCenterY}
           maxQValue={maxQValue}
@@ -743,8 +550,9 @@ interface H5WebScatterSubplotProps {
   differenceColormap: string;
   normalizationMode: string;
   azimuthalIntegrations: AzimuthalIntegration[];
-  azimuthalData1: AzimuthalData[];
-  azimuthalData2: AzimuthalData[];
+  azimuthalData1: AzimuthalData[];  // Kept for backward compatibility
+  azimuthalData2: AzimuthalData[];  // Kept for backward compatibility
+  qMagnitudeMatrix?: number[][] | null;  // Cached Q-magnitude matrix for overlay rendering
   maxQValue: number;
   calibrationParams: CalibrationParams | null;
   qYMatrix: number[][];
@@ -821,8 +629,7 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
   verticalLinecuts,
   inclinedLinecuts,
   azimuthalIntegrations,
-  azimuthalData1,
-  azimuthalData2,
+  qMagnitudeMatrix,
   calibrationParams,
   maxQValue,
   qYMatrix,
@@ -1167,34 +974,24 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
   }, [inclinedLinecuts]);
 
   // Transform azimuthal integrations to overlay format for left image
-  // Use ID-based matching like the old Plotly implementation
   const leftAzimuthalIntegrations = useMemo(() => {
-    return azimuthalIntegrations.map((int) => {
-      const data = azimuthalData1.find(d => d.id === int.id);
-      return {
-        qRange: int.qRange,
-        azimuthRange: int.azimuthRange,
-        color: int.leftColor,
-        hidden: int.hidden,
-        qArray: data?.qArray,
-      };
-    });
-  }, [azimuthalIntegrations, azimuthalData1]);
+    return azimuthalIntegrations.map((int) => ({
+      qRange: int.qRange,
+      azimuthRange: int.azimuthRange,
+      color: int.leftColor,
+      hidden: int.hidden,
+    }));
+  }, [azimuthalIntegrations]);
 
   // Transform azimuthal integrations to overlay format for right image
-  // Use ID-based matching like the old Plotly implementation
   const rightAzimuthalIntegrations = useMemo(() => {
-    return azimuthalIntegrations.map((int) => {
-      const data = azimuthalData2.find(d => d.id === int.id);
-      return {
-        qRange: int.qRange,
-        azimuthRange: int.azimuthRange,
-        color: int.rightColor,
-        hidden: int.hidden,
-        qArray: data?.qArray,
-      };
-    });
-  }, [azimuthalIntegrations, azimuthalData2]);
+    return azimuthalIntegrations.map((int) => ({
+      qRange: int.qRange,
+      azimuthRange: int.azimuthRange,
+      color: int.rightColor,
+      hidden: int.hidden,
+    }));
+  }, [azimuthalIntegrations]);
 
   // No data selected state - show message like ScatterSubplot
   const hasValidIndices = typeof leftImageIndex === 'number' && typeof rightImageIndex === 'number';
@@ -1321,6 +1118,7 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
           inclinedLinecuts={showOverlays ? leftInclinedLinecuts : []}
           inclinedPixelWidthCalculator={calculateInclinedPixelWidth}
           azimuthalIntegrations={showOverlays ? leftAzimuthalIntegrations : []}
+          qMagnitudeMatrix={qMagnitudeMatrix}
           beamCenterX={calibrationParams?.beam_center_x}
           beamCenterY={calibrationParams?.beam_center_y}
           maxQValue={maxQValue}
@@ -1343,6 +1141,7 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
           inclinedLinecuts={showOverlays ? rightInclinedLinecuts : []}
           inclinedPixelWidthCalculator={calculateInclinedPixelWidth}
           azimuthalIntegrations={showOverlays ? rightAzimuthalIntegrations : []}
+          qMagnitudeMatrix={qMagnitudeMatrix}
           beamCenterX={calibrationParams?.beam_center_x}
           beamCenterY={calibrationParams?.beam_center_y}
           maxQValue={maxQValue}

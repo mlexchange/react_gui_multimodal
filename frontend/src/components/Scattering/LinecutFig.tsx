@@ -1,20 +1,21 @@
-import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import Plot from "@/components/ui/Plot";
 import { Linecut } from './types';
-import { calculateQSpaceToPixelWidth } from './utils/calculateQSpaceToPixelWidth';
+import { LinecutData } from './hooks/useHorizontalLinecut';
 
 type LinecutDirection = 'horizontal' | 'vertical';
 
 interface LinecutFigProps {
   direction: LinecutDirection;
   linecuts: Linecut[];
-  imageData1: number[][];
-  imageData2: number[][];
   zoomedXPixelRange: [number, number] | null;
   zoomedYPixelRange: [number, number] | null;
   qXMatrix: number[][];
   qYMatrix: number[][];
   units?: string;
+  // API data for linecuts
+  leftLinecutData?: Map<number, LinecutData>;
+  rightLinecutData?: Map<number, LinecutData>;
 }
 
 interface Dimensions {
@@ -142,13 +143,13 @@ const directionConfig: Record<LinecutDirection, DirectionConfig> = {
 const LinecutFig: React.FC<LinecutFigProps> = ({
   direction,
   linecuts,
-  imageData1,
-  imageData2,
   zoomedXPixelRange,
   zoomedYPixelRange,
   qXMatrix,
   qYMatrix,
   units = "nm⁻¹",
+  leftLinecutData,
+  rightLinecutData,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState<Dimensions>({
@@ -158,19 +159,8 @@ const LinecutFig: React.FC<LinecutFigProps> = ({
 
   const config = directionConfig[direction];
 
-  // Extract vectors from matrices for plotting
-  const plotVector = useMemo(
-    () => config.extractPlotVector({ qXMatrix, qYMatrix }),
-    [qXMatrix, qYMatrix, config]
-  );
-
   const zoomVector = useMemo(
     () => config.extractZoomVector({ qXMatrix, qYMatrix }),
-    [qXMatrix, qYMatrix, config]
-  );
-
-  const widthMatrix = useMemo(
-    () => config.getWidthMatrix({ qXMatrix, qYMatrix }),
     [qXMatrix, qYMatrix, config]
   );
 
@@ -193,36 +183,26 @@ const LinecutFig: React.FC<LinecutFigProps> = ({
     return () => resizeObserver.disconnect();
   }, []);
 
-  // Calculate pixel width from q-space width
-  const calculatePixelWidth = useCallback((position: number, width: number) => {
-    return calculateQSpaceToPixelWidth(position, width, widthMatrix, config.qSpaceToPixelDirection);
-  }, [widthMatrix, config.qSpaceToPixelDirection]);
-
   // Memoize the plot data
   const plotData = useMemo(() => {
     const visibleLinecuts = linecuts.filter(linecut => !linecut.hidden);
 
     return visibleLinecuts.flatMap(linecut => {
-      const pixelWidth = calculatePixelWidth(linecut.position, linecut.width);
-
-      const averagedDataLeft = config.computeAveragedIntensity(
-        imageData1,
-        linecut.pixelPosition,
-        pixelWidth
-      );
-
-      const averagedDataRight = config.computeAveragedIntensity(
-        imageData2,
-        linecut.pixelPosition,
-        pixelWidth
-      );
-
       const positionLabel = config.positionLabel(linecut.position, units);
+
+      // Get linecut data from API
+      const leftApiData = leftLinecutData?.get(linecut.id);
+      const rightApiData = rightLinecutData?.get(linecut.id);
+
+      const leftX = leftApiData?.qValues ?? [];
+      const leftY = leftApiData?.intensities ?? [];
+      const rightX = rightApiData?.qValues ?? [];
+      const rightY = rightApiData?.intensities ?? [];
 
       return [
         {
-          x: plotVector,
-          y: averagedDataLeft,
+          x: leftX,
+          y: leftY,
           type: "scatter" as const,
           mode: "lines" as const,
           name: `Left #${linecut.id} ${positionLabel}`,
@@ -232,8 +212,8 @@ const LinecutFig: React.FC<LinecutFigProps> = ({
           },
         },
         {
-          x: plotVector,
-          y: averagedDataRight,
+          x: rightX,
+          y: rightY,
           type: "scatter" as const,
           mode: "lines" as const,
           name: `Right #${linecut.id} ${positionLabel}`,
@@ -244,7 +224,7 @@ const LinecutFig: React.FC<LinecutFigProps> = ({
         },
       ];
     });
-  }, [linecuts, imageData1, imageData2, plotVector, units, config, calculatePixelWidth]);
+  }, [linecuts, units, config, leftLinecutData, rightLinecutData]);
 
   // Update layout
   const layout = useMemo(() => {

@@ -11,37 +11,8 @@ from utils.image_cache import get_cached_processed_image
 router = APIRouter()
 
 
-def parse_range_parameter(
-    param: str | None | Tuple[float, float], default: Tuple[float, float]
-) -> Tuple[float, float]:
-    """
-    Parse a range parameter that can be either a string "min,max" or a tuple (min, max).
-
-    Args:
-        param: Either a string "min,max" or a tuple (min, max) or None
-        default: Default tuple to return if param is None
-
-    Returns:
-        Tuple of (min, max) as floats
-    """
-    if param is None:
-        return default
-
-    if isinstance(param, tuple):
-        return (float(param[0]), float(param[1]))
-
-    try:
-        min_val, max_val = map(float, param.split(","))
-        return (min_val, max_val)
-    except (ValueError, TypeError, AttributeError) as e:
-        raise ValueError(
-            f"Invalid range parameter format. Expected 'min,max' or (min,max), got {param}. Error: {e}"
-        )
-
-
 @router.get("/azimuthal-integrator")
 async def azimuthal_integration(
-    # Image selection parameters - now using URIs directly
     left_scan_uri: str = Query(..., description="Tiled URI for the first scan (e.g., 'rawdata/scan_1')"),
     right_scan_uri: str = Query(..., description="Tiled URI for the second scan (e.g., 'rawdata/scan_2')"),
     # Calibration parameters
@@ -68,10 +39,18 @@ async def azimuthal_integration(
     tilt_plan_rotation: float = Query(
         default=0.0, description="Rotation of tilt plane in degrees"
     ),
-    # Other parameters
-    azimuth_range_deg: Optional[str] = None,
-    q_range: Optional[str] = None,
-    # Mask parameter
+    azimuth_start_deg: float = Query(
+        default=-180.0, description="Start of azimuthal range in degrees"
+    ),
+    azimuth_end_deg: float = Query(
+        default=180.0, description="End of azimuthal range in degrees"
+    ),
+    q_range_start: Optional[float] = Query(
+        None, description="Start of Q-range (nm^-1). If None, uses 0."
+    ),
+    q_range_end: Optional[float] = Query(
+        None, description="End of Q-range (nm^-1). If None, uses max Q."
+    ),
     mask_uri: Optional[str] = Query(None, description="Optional mask URI or mask_id"),
 ):
     """
@@ -91,11 +70,11 @@ async def azimuthal_integration(
     scatter_image_array_1 = processed_1.full.array
     scatter_image_array_2 = processed_2.full.array
 
-    # Parse the range parameters
-    azimuth_range = parse_range_parameter(azimuth_range_deg, None)
-    q_range_tuple = parse_range_parameter(q_range, None)
-
-    # Images from cache are already numpy arrays (float32)
+    # Build range tuples from individual parameters
+    azimuth_range: Tuple[float, float] = (azimuth_start_deg, azimuth_end_deg)
+    q_range_tuple: Optional[Tuple[float, float]] = None
+    if q_range_start is not None and q_range_end is not None:
+        q_range_tuple = (q_range_start, q_range_end)
 
     ai = create_azimuthal_integrator(
         sample_detector_distance=sample_detector_distance,
@@ -117,22 +96,19 @@ async def azimuthal_integration(
 
     q_max = max(q_1.max(), q_2.max())
 
-    # Generate 2D arrays of q and chi values for visualization and masking
-    # Process first image
     q_array_initial_1 = ai.qArray(scatter_image_array_1.shape)
-    chi_array_1 = ai.chiArray(scatter_image_array_1.shape)
+    chi_array_1 = ai.center_array(scatter_image_array_1.shape, unit="chi_rad")
 
-    # Process second image
     q_array_initial_2 = ai.qArray(scatter_image_array_2.shape)
-    chi_array_2 = ai.chiArray(scatter_image_array_2.shape)
+    chi_array_2 = ai.center_array(scatter_image_array_2.shape, unit="chi_rad")
 
     # Convert azimuthal range to radians for the chi array calculations
     azimuth_range_rad = np.radians(azimuth_range)
 
     # Create masks for both images based on the azimuthal range
     # Create a boolean mask that selects only the pixels within our desired azimuthal range
-    # True values in the mask indicate pixels we want to keep
-    # False values indicate pixels outside our angular region of interest
+    # True values in the mask indicate pixels to keep
+    # False values indicate pixels outside the angular region of interest
     mask_1 = (chi_array_1 >= azimuth_range_rad[0]) & (
         chi_array_1 <= azimuth_range_rad[1]
     )

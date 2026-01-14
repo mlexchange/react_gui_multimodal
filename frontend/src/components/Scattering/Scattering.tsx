@@ -40,6 +40,7 @@ import { BatchProcessingOverlay } from './BatchProcessingOverlay';
 // Import utilities
 import { handleExperimentTypeChange, addLinecut } from './utils/linecutHandlers';
 import { leftImageColorPalette, rightImageColorPalette } from './utils/constants';
+import { fetchQVectors } from './services/linecutApi';
 
 // Import assets
 import alsLogo from '@/assets/als-logo.png';
@@ -106,53 +107,6 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
 
 
   const {
-    horizontalLinecuts,
-    addHorizontalLinecut,
-    updateHorizontalLinecutPosition,
-    updateHorizontalLinecutWidth,
-    updateHorizontalLinecutColor,
-    deleteHorizontalLinecut,
-    toggleHorizontalLinecutVisibility,
-    restoreLinecuts: restoreHorizontalLinecuts,
-  } = useHorizontalLinecut(qYMatrix);
-
-
-  const {
-    verticalLinecuts,
-    addVerticalLinecut,
-    updateVerticalLinecutPosition,
-    updateVerticalLinecutWidth,
-    updateVerticalLinecutColor,
-    deleteVerticalLinecut,
-    toggleVerticalLinecutVisibility,
-    restoreLinecuts: restoreVerticalLinecuts,
-  } = useVerticalLinecut(qXMatrix);
-
-
-
-  const {
-    inclinedLinecuts,
-    inclinedLinecutData1,
-    inclinedLinecutData2,
-    addInclinedLinecut,
-    updateInclinedLinecutAngle,
-    updateInclinedLinecutWidth,
-    updateInclinedLinecutColor,
-    deleteInclinedLinecut,
-    toggleInclinedLinecutVisibility,
-    restoreLinecuts: restoreInclinedLinecuts,
-    zoomedXQRange,
-  } = useInclinedLinecut(
-    imageData1,
-    imageData2,
-    qXVector,
-    qYVector,
-    zoomedXPixelRange,
-    zoomedYPixelRange,
-  );
-
-
-  const {
     isLogScale,
     setIsLogScale,
     lowerPercentile,
@@ -206,13 +160,80 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
   const leftScanUri = (leftImageIndex !== "" && scanUris.length > 0) ? scanUris[leftImageIndex] : null;
   const rightScanUri = (rightImageIndex !== "" && scanUris.length > 0) ? scanUris[rightImageIndex] : null;
 
+  // Linecut hooks - fetch data from backend API with debouncing
+  const {
+    horizontalLinecuts,
+    leftLinecutData: horizontalLeftData,
+    rightLinecutData: horizontalRightData,
+    loadingHorizontalLinecuts,
+    addHorizontalLinecut,
+    updateHorizontalLinecutPosition,
+    updateHorizontalLinecutWidth,
+    updateHorizontalLinecutColor,
+    deleteHorizontalLinecut,
+    toggleHorizontalLinecutVisibility,
+    restoreLinecuts: restoreHorizontalLinecuts,
+  } = useHorizontalLinecut({
+    qYMatrix,
+    leftScanUri,
+    rightScanUri,
+    calibrationParams,
+    experimentType,
+    maskUri,
+  });
+
+  const {
+    verticalLinecuts,
+    leftLinecutData: verticalLeftData,
+    rightLinecutData: verticalRightData,
+    loadingVerticalLinecuts,
+    addVerticalLinecut,
+    updateVerticalLinecutPosition,
+    updateVerticalLinecutWidth,
+    updateVerticalLinecutColor,
+    deleteVerticalLinecut,
+    toggleVerticalLinecutVisibility,
+    restoreLinecuts: restoreVerticalLinecuts,
+  } = useVerticalLinecut({
+    qXMatrix,
+    leftScanUri,
+    rightScanUri,
+    calibrationParams,
+    experimentType,
+    maskUri,
+  });
+
+  const {
+    inclinedLinecuts,
+    inclinedLinecutData1,
+    inclinedLinecutData2,
+    loadingInclinedLinecuts,
+    addInclinedLinecut,
+    updateInclinedLinecutAngle,
+    updateInclinedLinecutWidth,
+    updateInclinedLinecutColor,
+    deleteInclinedLinecut,
+    toggleInclinedLinecutVisibility,
+    restoreLinecuts: restoreInclinedLinecuts,
+    zoomedXQRange,
+  } = useInclinedLinecut({
+    qXVector,
+    qYVector,
+    zoomedXPixelRange,
+    zoomedYPixelRange,
+    leftScanUri,
+    rightScanUri,
+    calibrationParams,
+    experimentType,
+    maskUri,
+  });
+
   const {
       azimuthalIntegrations,
       azimuthalData1,
       azimuthalData2,
       maxQValue,
-      globalQRange,
-      isProcessing,
+      loadingAzimuthalIntegrations,
       addAzimuthalIntegration,
       updateAzimuthalQRange,
       updateAzimuthalRange,
@@ -220,7 +241,54 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
       deleteAzimuthalIntegration,
       toggleAzimuthalVisibility,
       restoreIntegrations: restoreAzimuthalIntegrations,
-  } = useAzimuthalIntegration(calibrationParams, leftScanUri, rightScanUri);
+  } = useAzimuthalIntegration(calibrationParams, leftScanUri, rightScanUri, maskUri);
+
+  // Q-magnitude matrix for azimuthal overlay rendering
+  // This is cached and only refetched when calibration or image dimensions change
+  const [qMagnitudeMatrix, setQMagnitudeMatrix] = useState<number[][] | null>(null);
+  const [qMagnitudeCacheKey, setQMagnitudeCacheKey] = useState<string>('');
+
+  // Get image dimensions from imageData1 (assumes both images have same dimensions)
+  const imageHeight = imageData1.length;
+  const imageWidth = imageData1[0]?.length || 0;
+
+  // Fetch Q-magnitude matrix when calibration or dimensions change
+  useEffect(() => {
+    if (!calibrationParams || imageWidth === 0 || imageHeight === 0) {
+      return;
+    }
+
+    // Generate cache key from calibration and dimensions
+    const cacheKey = JSON.stringify({
+      calibration: calibrationParams,
+      width: imageWidth,
+      height: imageHeight,
+    });
+
+    // Skip if we already have this cached
+    if (cacheKey === qMagnitudeCacheKey) {
+      return;
+    }
+
+    // Fetch Q-vectors and compute Q-magnitude
+    fetchQVectors({
+      calibration: calibrationParams,
+      experimentType,
+      imageWidth,
+      imageHeight,
+    })
+      .then(({ q_x, q_y }) => {
+        // Compute Q magnitude: sqrt(qX² + qY²)
+        const qMag = q_x.map((row, y) =>
+          row.map((qx, x) => Math.sqrt(qx * qx + q_y[y][x] * q_y[y][x]))
+        );
+        setQMagnitudeMatrix(qMag);
+        setQMagnitudeCacheKey(cacheKey);
+      })
+      .catch((error) => {
+        console.error('Failed to fetch Q-vectors for overlay:', error);
+      });
+  }, [calibrationParams, experimentType, imageWidth, imageHeight, qMagnitudeCacheKey]);
 
   // Batch processing hook
   const batchProcessing = useBatchProcessing({
@@ -703,6 +771,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                     azimuthalIntegrations={azimuthalIntegrations}
                     azimuthalData1={azimuthalData1}
                     azimuthalData2={azimuthalData2}
+                    qMagnitudeMatrix={qMagnitudeMatrix}
                     maxQValue={maxQValue}
                     calibrationParams={calibrationParams}
                     qYMatrix={qYMatrix}
@@ -785,7 +854,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                     scanUris={scanUris}
                     isLoadingImages={isLoadingImages}
                     setIsLoadingImages={setIsLoadingImages}
-                    isAzimuthalProcessing={isProcessing}
+                    isAzimuthalProcessing={loadingAzimuthalIntegrations.size > 0}
                     maskUri={maskUri}
                   />
                 )}
@@ -874,18 +943,19 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                 title="Horizontal Linecuts"
                 className="flex-1"
                 contentClassName="p-2 relative"
+                isLoading={loadingHorizontalLinecuts.size > 0}
               >
                 {isLoadingImages && <LoadingOverlay />}
                 <LinecutFig
                   direction="horizontal"
                   linecuts={horizontalLinecuts}
-                  imageData1={imageData1}
-                  imageData2={imageData2}
                   zoomedXPixelRange={zoomedXPixelRange}
                   zoomedYPixelRange={zoomedYPixelRange}
                   qXMatrix={qXMatrix}
                   qYMatrix={qYMatrix}
                   units="nm⁻¹"
+                  leftLinecutData={horizontalLeftData}
+                  rightLinecutData={horizontalRightData}
                 />
               </ContentCard>
             )}
@@ -896,18 +966,19 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                 title="Vertical Linecuts"
                 className="flex-1"
                 contentClassName="p-2 relative"
+                isLoading={loadingVerticalLinecuts.size > 0}
               >
                 {isLoadingImages && <LoadingOverlay />}
                 <LinecutFig
                   direction="vertical"
                   linecuts={verticalLinecuts}
-                  imageData1={imageData1}
-                  imageData2={imageData2}
                   zoomedXPixelRange={zoomedXPixelRange}
                   zoomedYPixelRange={zoomedYPixelRange}
                   qXMatrix={qXMatrix}
                   qYMatrix={qYMatrix}
                   units="nm⁻¹"
+                  leftLinecutData={verticalLeftData}
+                  rightLinecutData={verticalRightData}
                 />
               </ContentCard>
             )}
@@ -918,6 +989,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                 title="Inclined Linecuts"
                 className="flex-1"
                 contentClassName="p-2 relative"
+                isLoading={loadingInclinedLinecuts.size > 0}
               >
                 {isLoadingImages && <LoadingOverlay />}
                 <InclinedLinecutFig
@@ -942,15 +1014,13 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                 title="Azimuthal Integrations"
                 className="flex-1"
                 contentClassName="p-2 relative"
+                isLoading={loadingAzimuthalIntegrations.size > 0}
               >
-                {(isLoadingImages || isProcessing) && (
-                  <LoadingOverlay message={isProcessing ? 'Processing...' : 'Loading...'} />
-                )}
                 <AzimuthalIntegrationFig
                   integrations={azimuthalIntegrations}
                   azimuthalData1={azimuthalData1}
                   azimuthalData2={azimuthalData2}
-                  zoomedQRange={globalQRange}
+                  zoomedQRange={null}
                 />
               </ContentCard>
             )}

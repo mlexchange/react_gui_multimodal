@@ -1,35 +1,170 @@
-import { useCallback, useState, useEffect } from 'react';
-import { Linecut } from '../types';
+import { useCallback, useState, useEffect, useRef } from 'react';
+import { Linecut, CalibrationParams, isCalibrationComplete } from '../types';
 import { leftImageColorPalette, rightImageColorPalette } from '../utils/constants';
 import { throttle } from 'lodash';
 import { findPixelPositionForQValue } from '../utils/findPixelPositionForQValue';
+import {
+  fetchHorizontalLinecut,
+  LinecutResult,
+  cancelLinecutRequest,
+} from '../services/linecutApi';
 
 /**
- * Custom hook for managing horizontal linecuts based on q-values
- *
- * @param qYMatrix - 2D matrix of q-values along Y axis
- * @returns Object with linecut data and management functions
+ * Linecut data for plotting.
  */
-export default function useHorizontalLinecut(
-    qYMatrix: number[][]
-) {
-  // State for storing the linecut definitions
+export interface LinecutData {
+  qValues: number[];
+  intensities: number[];
+}
+
+/**
+ * Props for the useHorizontalLinecut hook.
+ */
+export interface UseHorizontalLinecutProps {
+  qYMatrix: number[][];
+  leftScanUri: string | null;
+  rightScanUri: string | null;
+  calibrationParams: CalibrationParams | null;
+  experimentType: string;
+  maskUri?: string | null;
+}
+
+/**
+ * Custom hook for managing horizontal linecuts.
+ * Fetches linecut data from the backend API with debouncing.
+ */
+export default function useHorizontalLinecut({
+  qYMatrix,
+  leftScanUri,
+  rightScanUri,
+  calibrationParams,
+  experimentType,
+  maskUri,
+}: UseHorizontalLinecutProps) {
+  // State for linecut definitions
   const [horizontalLinecuts, setHorizontalLinecuts] = useState<Linecut[]>([]);
 
+  // State for linecut data (fetched from API)
+  const [leftLinecutData, setLeftLinecutData] = useState<Map<number, LinecutData>>(new Map());
+  const [rightLinecutData, setRightLinecutData] = useState<Map<number, LinecutData>>(new Map());
+
+  // Loading state per linecut
+  const [loadingHorizontalLinecuts, setLoadingHorizontalLinecuts] = useState<Set<number>>(new Set());
+
+  // Check if API can be used (calibration complete and scan URIs available)
+  const useApi = isCalibrationComplete(calibrationParams) && !!(leftScanUri || rightScanUri);
+
+  // Ref to track latest linecuts for callbacks
+  const linecutsRef = useRef(horizontalLinecuts);
+  linecutsRef.current = horizontalLinecuts;
+
   /**
-   * Converts a q-value to the corresponding pixel row index
+   * Converts a q-value to the corresponding pixel row index.
+   * Used for overlay positioning on the scattering images.
    */
-  const findClosestPixelForQValue = useCallback((
-    targetQ: number
-  ): number => {
+  const findClosestPixelForQValue = useCallback((targetQ: number): number => {
     return findPixelPositionForQValue(targetQ, qYMatrix, 'horizontal');
   }, [qYMatrix]);
 
   /**
-   * Creates a new horizontal linecut at the center of the q-range
+   * Fetch linecut data from API for both scans.
    */
+  const fetchLinecutData = useCallback((linecut: Linecut) => {
+    if (!useApi || !calibrationParams) return;
+
+    // Set loading state
+    setLoadingHorizontalLinecuts(prev => new Set(prev).add(linecut.id));
+
+    const commonParams = {
+      calibration: calibrationParams,
+      experimentType,
+      position: linecut.position,
+      width: linecut.width,
+      maskUri,
+    };
+
+    // Fetch for left scan
+    if (leftScanUri) {
+      fetchHorizontalLinecut(
+        linecut.id,
+        'left',
+        { ...commonParams, scanUri: leftScanUri },
+        {
+          onSuccess: (result: LinecutResult) => {
+            if (result.success) {
+              setLeftLinecutData(prev => {
+                const updated = new Map(prev);
+                updated.set(linecut.id, {
+                  qValues: result.q_values,
+                  intensities: result.intensities,
+                });
+                return updated;
+              });
+            }
+            // Clear loading state (partially - wait for both)
+            setLoadingHorizontalLinecuts(prev => {
+              const updated = new Set(prev);
+              if (!rightScanUri) {
+                updated.delete(linecut.id);
+              }
+              return updated;
+            });
+          },
+          onError: (error) => {
+            console.error(`[Linecut ${linecut.id}] Left fetch error:`, error);
+            setLoadingHorizontalLinecuts(prev => {
+              const updated = new Set(prev);
+              updated.delete(linecut.id);
+              return updated;
+            });
+          },
+        }
+      );
+    }
+
+    // Fetch for right scan
+    if (rightScanUri) {
+      fetchHorizontalLinecut(
+        linecut.id,
+        'right',
+        { ...commonParams, scanUri: rightScanUri },
+        {
+          onSuccess: (result: LinecutResult) => {
+            if (result.success) {
+              setRightLinecutData(prev => {
+                const updated = new Map(prev);
+                updated.set(linecut.id, {
+                  qValues: result.q_values,
+                  intensities: result.intensities,
+                });
+                return updated;
+              });
+            }
+            // Clear loading state
+            setLoadingHorizontalLinecuts(prev => {
+              const updated = new Set(prev);
+              updated.delete(linecut.id);
+              return updated;
+            });
+          },
+          onError: (error) => {
+            console.error(`[Linecut ${linecut.id}] Right fetch error:`, error);
+            setLoadingHorizontalLinecuts(prev => {
+              const updated = new Set(prev);
+              updated.delete(linecut.id);
+              return updated;
+            });
+          },
+        }
+      );
+    }
+  }, [useApi, calibrationParams, experimentType, leftScanUri, rightScanUri, maskUri]);
+
+  /**
+   * Creates a new horizontal linecut at the center of the q-range.
+   */
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const addHorizontalLinecut = useCallback(throttle(() => {
-    // Find the next available ID for the new linecut
     const existingIds = horizontalLinecuts.map((linecut) => linecut.id);
     const newId = Math.max(0, ...existingIds) + 1;
 
@@ -37,7 +172,6 @@ export default function useHorizontalLinecut(
     let minQ = Infinity;
     let maxQ = -Infinity;
 
-    // Find min/max q-values in the matrix's first column
     if (qYMatrix && qYMatrix.length > 0) {
       for (let y = 0; y < qYMatrix.length; y++) {
         if (qYMatrix[y] && qYMatrix[y][0] !== undefined) {
@@ -47,70 +181,85 @@ export default function useHorizontalLinecut(
       }
     }
 
-    // Default to center of range, or 0 if matrix is empty
     const defaultQ = (minQ !== Infinity && maxQ !== -Infinity)
       ? (minQ + maxQ) / 2
       : 0;
 
-    // Convert the q-value to the corresponding pixel position
     const pixelPosition = findClosestPixelForQValue(defaultQ);
 
-    // Create the new linecut object with default properties
     const newLinecut: Linecut = {
       id: newId,
-      position: defaultQ,         // Store q-value as the position
-      pixelPosition: pixelPosition, // Also store the corresponding pixel position
-      // Assign colors from palette, cycling through available colors
+      position: defaultQ,
+      pixelPosition: pixelPosition,
       leftColor: leftImageColorPalette[(newId - 1) % leftImageColorPalette.length],
       rightColor: rightImageColorPalette[(newId - 1) % rightImageColorPalette.length],
-      hidden: false,              // Linecut is visible by default
-      width: 0.0,                 // Start with zero width (just a line)
-      type: 'horizontal'          // Identify this as a horizontal linecut
+      hidden: false,
+      width: 0.0,
+      type: 'horizontal'
     };
 
-    // Add the new linecut to the state
     setHorizontalLinecuts((prev) => [...prev, newLinecut]);
 
-  }, 200), [horizontalLinecuts, findClosestPixelForQValue, qYMatrix]);
+    // Trigger API fetch for the new linecut
+    // Use setTimeout to ensure state is updated first
+    setTimeout(() => fetchLinecutData(newLinecut), 0);
+
+  }, 200), [horizontalLinecuts, findClosestPixelForQValue, qYMatrix, fetchLinecutData]);
 
   /**
-   * Updates the position of an existing linecut
+   * Updates the position of an existing linecut.
    */
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const updateHorizontalLinecutPosition = useCallback(
     throttle((id: number, position: number) => {
-      // Convert the new q-value position to pixel position
       const pixelPosition = findClosestPixelForQValue(position);
 
-      // Update the linecut with both new q-value and corresponding pixel position
-      setHorizontalLinecuts(prev =>
-        prev.map(linecut =>
+      setHorizontalLinecuts(prev => {
+        const updated = prev.map(linecut =>
           linecut.id === id ? {
             ...linecut,
             position: position,
             pixelPosition: pixelPosition
           } : linecut
-        )
-      );
+        );
+
+        // Trigger API fetch for updated linecut
+        const updatedLinecut = updated.find(l => l.id === id);
+        if (updatedLinecut) {
+          fetchLinecutData(updatedLinecut);
+        }
+
+        return updated;
+      });
     }, 200),
-    [findClosestPixelForQValue]
+    [findClosestPixelForQValue, fetchLinecutData]
   );
 
   /**
-   * Updates the width of a linecut in q-space
+   * Updates the width of a linecut in q-space.
    */
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const updateHorizontalLinecutWidth = useCallback(
     throttle((id: number, width: number) => {
-      setHorizontalLinecuts((prev) =>
-        prev.map((linecut) =>
+      setHorizontalLinecuts((prev) => {
+        const updated = prev.map((linecut) =>
           linecut.id === id ? { ...linecut, width } : linecut
-        )
-      );
+        );
+
+        // Trigger API fetch for updated linecut
+        const updatedLinecut = updated.find(l => l.id === id);
+        if (updatedLinecut) {
+          fetchLinecutData(updatedLinecut);
+        }
+
+        return updated;
+      });
     }, 200),
-    []
+    [fetchLinecutData]
   );
 
   /**
-   * Updates the color of a linecut
+   * Updates the color of a linecut.
    */
   const updateHorizontalLinecutColor = useCallback((id: number, side: 'left' | 'right', color: string) => {
     setHorizontalLinecuts((prev) =>
@@ -123,9 +272,13 @@ export default function useHorizontalLinecut(
   }, []);
 
   /**
-   * Removes a linecut and renumbers the remaining ones
+   * Removes a linecut and renumbers the remaining ones.
    */
   const deleteHorizontalLinecut = useCallback((id: number) => {
+    // Cancel any pending requests for this linecut
+    cancelLinecutRequest('horizontal', id, 'left');
+    cancelLinecutRequest('horizontal', id, 'right');
+
     setHorizontalLinecuts((prev) => {
       const updatedLinecuts = prev.filter((linecut) => linecut.id !== id);
       return updatedLinecuts.map((linecut, index) => ({
@@ -133,10 +286,27 @@ export default function useHorizontalLinecut(
         id: index + 1,
       }));
     });
+
+    // Clean up data for deleted linecut
+    setLeftLinecutData(prev => {
+      const updated = new Map(prev);
+      updated.delete(id);
+      return updated;
+    });
+    setRightLinecutData(prev => {
+      const updated = new Map(prev);
+      updated.delete(id);
+      return updated;
+    });
+    setLoadingHorizontalLinecuts(prev => {
+      const updated = new Set(prev);
+      updated.delete(id);
+      return updated;
+    });
   }, []);
 
   /**
-   * Toggles the visibility of a linecut
+   * Toggles the visibility of a linecut.
    */
   const toggleHorizontalLinecutVisibility = useCallback((id: number) => {
     setHorizontalLinecuts((prev) =>
@@ -147,35 +317,53 @@ export default function useHorizontalLinecut(
   }, []);
 
   /**
-   * Restore linecuts from a saved session
-   * Pixel positions will be recalculated when qYMatrix is available
+   * Restore linecuts from a saved session.
    */
   const restoreLinecuts = useCallback((linecuts: Linecut[]) => {
     setHorizontalLinecuts(linecuts);
+    // Clear existing data - will be refetched by effect below
+    setLeftLinecutData(new Map());
+    setRightLinecutData(new Map());
   }, []);
 
   /**
-   * Synchronizes pixel positions when qYMatrix changes
+   * Synchronizes pixel positions when qYMatrix changes.
    */
   useEffect(() => {
-    // Skip if qYMatrix is empty
     if (!qYMatrix || !qYMatrix.length) return;
 
-    // Update all linecuts with new pixel positions based on their q-values
     setHorizontalLinecuts(prev => {
-      // Skip if no linecuts exist
       if (!prev.length) return prev;
 
       return prev.map(linecut => {
-        // Recalculate pixel position based on current q-value and new mapping
         const pixelPosition = findClosestPixelForQValue(linecut.position);
         return { ...linecut, pixelPosition };
       });
     });
   }, [qYMatrix, findClosestPixelForQValue]);
 
+  /**
+   * Refetch all linecut data when context changes.
+   * Note: Intentionally excludes fetchLinecutData, horizontalLinecuts, and useApi
+   * from deps to prevent infinite loops - we only want to refetch when external
+   * context (URIs, calibration) changes, not when callbacks or linecuts change.
+   */
+  useEffect(() => {
+    if (!useApi) return;
+
+    // Refetch data for all linecuts when scan URIs or calibration changes
+    horizontalLinecuts.forEach(linecut => {
+      fetchLinecutData(linecut);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leftScanUri, rightScanUri, calibrationParams, experimentType, maskUri]);
+
   return {
     horizontalLinecuts,
+    leftLinecutData,
+    rightLinecutData,
+    loadingHorizontalLinecuts,
+    useApi,
     addHorizontalLinecut,
     updateHorizontalLinecutPosition,
     updateHorizontalLinecutWidth,
