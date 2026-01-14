@@ -73,6 +73,9 @@ export interface SessionState {
   isSummaryCollapsed: boolean;
   operationType: 'subtract' | 'divide';
 
+  /** Mask URI for uploaded or resolved mask */
+  maskUri: string | null;
+
   /** Batch processing results (optional for backward compatibility) */
   batchResults?: BatchResultsStore;
   batchParameterHashes?: BatchParameterHashes;
@@ -115,6 +118,7 @@ export function createDefaultSessionState(): SessionState {
     isSidebarCollapsed: false,
     isSummaryCollapsed: false,
     operationType: 'subtract',
+    maskUri: null,
     savedAt: Date.now()
   };
 }
@@ -212,6 +216,7 @@ function isValidSessionState(state: unknown): state is SessionState {
   if (typeof s.isSidebarCollapsed !== 'boolean') return false;
   if (typeof s.isSummaryCollapsed !== 'boolean') return false;
   if (s.operationType !== 'subtract' && s.operationType !== 'divide') return false;
+  if (s.maskUri !== null && typeof s.maskUri !== 'string') return false;
   if (typeof s.savedAt !== 'number') return false;
 
   return true;

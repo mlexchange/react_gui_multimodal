@@ -318,11 +318,12 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     // 1. Restore display settings first (doesn't depend on data)
     restoreDisplaySettings(restoredSession.displaySettings);
 
-    // 2. Restore multimodal state (experiment type, calibration, selectedLinecuts)
+    // 2. Restore multimodal state (experiment type, calibration, selectedLinecuts, maskUri)
     restoreScatteringState({
       experimentType: restoredSession.experimentType,
       selectedLinecuts: restoredSession.selectedLinecuts,
       calibrationParams: restoredSession.calibrationParams,
+      maskUri: restoredSession.maskUri,
     });
 
     // 3. Restore linecut definitions
@@ -411,6 +412,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
       isSidebarCollapsed,
       isSummaryCollapsed,
       operationType,
+      maskUri,
       // Batch processing state
       batchResults: batchProcessing.results,
       batchParameterHashes: batchProcessing.parameterHashes,
@@ -440,6 +442,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     isSidebarCollapsed,
     isSummaryCollapsed,
     operationType,
+    maskUri,
     batchProcessing.results,
     batchProcessing.parameterHashes,
     batchProcessing.selectedScanUris,

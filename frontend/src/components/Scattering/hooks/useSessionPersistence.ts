@@ -47,6 +47,7 @@ export interface PersistableState {
   isSidebarCollapsed: boolean;
   isSummaryCollapsed: boolean;
   operationType: 'subtract' | 'divide';
+  maskUri: string | null;
   // Batch processing state (optional for backward compatibility)
   batchResults?: BatchResultsStore;
   batchParameterHashes?: BatchParameterHashes;
