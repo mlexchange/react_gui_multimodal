@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import Plot, { PlotMouseEvent } from "@/components/ui/Plot";
 import { DisplayOption } from "./types";
 import ProgressBar from "./SummaryProgressBar";
-import { Toggle } from "@/components/ui";
+import { ToggleGroup } from "@/components/ui";
 
 interface SummaryFigProps {
   maxIntensities: number[];
@@ -343,32 +343,16 @@ const SummaryFig: React.FC<SummaryFigProps> = ({
       {hasData && (
         <div className="flex items-center gap-2 px-2 shrink-0">
           <span className="text-sm text-gray-600">Display:</span>
-          <Toggle
-            pressed={displayOption === 'max' || displayOption === 'both'}
-            onPressedChange={(pressed) => {
-              const avgPressed = displayOption === 'avg' || displayOption === 'both';
-              if (pressed && avgPressed) setDisplayOption('both');
-              else if (pressed) setDisplayOption('max');
-              else if (avgPressed) setDisplayOption('avg');
-              else setDisplayOption('avg');
-            }}
+          <ToggleGroup
+            value={displayOption}
+            onValueChange={setDisplayOption}
+            options={[
+              { value: 'max', label: 'Max' },
+              { value: 'avg', label: 'Average' },
+              { value: 'both', label: 'Both' },
+            ]}
             size="sm"
-          >
-            Max
-          </Toggle>
-          <Toggle
-            pressed={displayOption === 'avg' || displayOption === 'both'}
-            onPressedChange={(pressed) => {
-              const maxPressed = displayOption === 'max' || displayOption === 'both';
-              if (pressed && maxPressed) setDisplayOption('both');
-              else if (pressed) setDisplayOption('avg');
-              else if (maxPressed) setDisplayOption('max');
-              else setDisplayOption('max');
-            }}
-            size="sm"
-          >
-            Average
-          </Toggle>
+          />
         </div>
       )}
 
