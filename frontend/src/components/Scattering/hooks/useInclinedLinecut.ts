@@ -1,10 +1,9 @@
 import { useState, useCallback, useEffect } from 'react';
 import { leftImageColorPalette, rightImageColorPalette } from '../utils/constants';
 import { throttle } from 'lodash';
-import { InclinedLinecut, CalibrationParams, isCalibrationComplete } from '../types';
+import { InclinedLinecut, CalibrationParams, isCalibrationComplete, LinecutResult } from '../types';
 import {
   fetchInclinedLinecut,
-  LinecutResult,
   cancelLinecutRequest,
 } from '../services/linecutApi';
 

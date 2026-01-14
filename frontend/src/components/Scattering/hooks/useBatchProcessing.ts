@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { notifications } from '@/components/ui';
 import { unpack } from 'msgpackr';
-import { CalibrationParams, Linecut, InclinedLinecut, AzimuthalIntegration } from '../types';
+import { CalibrationParams, Linecut, InclinedLinecut, AzimuthalIntegration, BatchLinecutResult } from '../types';
 import {
   hashHorizontalLinecut,
   hashVerticalLinecut,
@@ -16,18 +16,9 @@ import {
 export type BatchOperationType = 'horizontal' | 'vertical' | 'inclined' | 'azimuthal';
 export type BatchStatus = 'idle' | 'pending' | 'running' | 'completed' | 'failed';
 
-export interface LinecutResult {
-  scan_uri: string;
-  scan_name: string;
-  q_values: number[];
-  intensities: number[];
-  success: boolean;
-  error_message: string | null;
-}
-
 export interface BatchJobResult {
   id: string;
-  results: LinecutResult[];
+  results: BatchLinecutResult[];
   totalScans: number;
   successful: number;
   failed: number;
@@ -109,10 +100,10 @@ interface BatchAllResponse {
   successful_scans: number;
   failed_scans: number;
   results: {
-    horizontal: Record<string, LinecutResult[]>;
-    vertical: Record<string, LinecutResult[]>;
-    inclined: Record<string, LinecutResult[]>;
-    azimuthal: Record<string, LinecutResult[]>;
+    horizontal: Record<string, BatchLinecutResult[]>;
+    vertical: Record<string, BatchLinecutResult[]>;
+    inclined: Record<string, BatchLinecutResult[]>;
+    azimuthal: Record<string, BatchLinecutResult[]>;
   };
 }
 
@@ -536,7 +527,7 @@ export default function useBatchProcessing({
       const newHashes: BatchParameterHashes = createEmptyHashes();
 
       // Helper to count success/failed in single pass (optimized from double filter)
-      const countResults = (results: LinecutResult[]) => {
+      const countResults = (results: BatchLinecutResult[]) => {
         let successful = 0;
         for (const r of results) {
           if (r.success) successful++;

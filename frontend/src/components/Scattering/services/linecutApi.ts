@@ -10,18 +10,11 @@
 
 import { unpack } from 'msgpackr';
 import { debounce } from 'lodash';
-import { CalibrationParams } from '../types';
+import { CalibrationParams, LinecutResult } from '../types';
 
 // ============================================================================
 // Types - Linecuts
 // ============================================================================
-
-export interface LinecutResult {
-  q_values: number[];
-  intensities: number[];
-  success: boolean;
-  error_message: string | null;
-}
 
 export interface HorizontalLinecutParams {
   scanUri: string;

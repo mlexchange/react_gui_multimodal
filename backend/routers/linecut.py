@@ -16,6 +16,7 @@ from fastapi import APIRouter
 from fastapi.responses import Response
 from pydantic import BaseModel
 
+from models import CalibrationParams
 from utils.image_cache import get_cached_processed_image
 from utils.linecut_extraction import (
     extract_horizontal_linecut,
@@ -25,21 +26,6 @@ from utils.linecut_extraction import (
 from utils.q_matrix_cache import get_or_compute_q_matrices
 
 router = APIRouter()
-
-
-class CalibrationParams(BaseModel):
-    """Calibration parameters for q-space calculations."""
-
-    sample_detector_distance: float
-    beam_center_x: float
-    beam_center_y: float
-    pixel_size_x: float
-    pixel_size_y: float
-    wavelength: float
-    tilt: float = 0.0
-    tilt_plan_rotation: float = 0.0
-    experiment_type: str = "SAXS"
-    incident_angle: float = 0.0
 
 
 class SingleLinecutRequest(BaseModel):

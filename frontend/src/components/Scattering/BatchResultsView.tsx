@@ -42,7 +42,8 @@ import {
 } from '@phosphor-icons/react';
 import { ButtonWithIcon } from '@blueskyproject/finch';
 import { NumberInput } from '@/components/ui';
-import { LinecutResult, BatchOperationType } from './hooks/useBatchProcessing';
+import { BatchOperationType } from './hooks/useBatchProcessing';
+import { BatchLinecutResult } from './types';
 import { exportToCSV } from './utils/batchExport';
 import { SCALE_OPTIONS, type ColorScaleType } from './utils/constants';
 import type { Linecut, InclinedLinecut, AzimuthalIntegration } from './types';
@@ -108,7 +109,7 @@ function getLinecutTitle(operationType: BatchOperationType, linecut: LinecutInfo
 }
 
 interface BatchResultsViewProps {
-  results: LinecutResult[];
+  results: BatchLinecutResult[];
   operationType: BatchOperationType;
   totalScans: number;
   successful: number;

@@ -2,6 +2,8 @@
 
 export type DisplayOption = 'both' | 'max' | 'avg';
 
+export type OperationType = 'subtract' | 'divide';
+
 export interface Linecut {
   id: number;
   position: number;      // Q-value position (in q-space)
@@ -131,4 +133,26 @@ export interface ScatteringProps {
   isCollapsed: boolean;
   isThirdCollapsed: boolean;
   onToggleCollapse?: () => void;
+}
+
+// ============================================================================
+// API Response Types
+// ============================================================================
+
+/**
+ * Base result from linecut extraction API.
+ */
+export interface LinecutResult {
+  q_values: number[];
+  intensities: number[];
+  success: boolean;
+  error_message: string | null;
+}
+
+/**
+ * Extended linecut result for batch processing, includes scan identification.
+ */
+export interface BatchLinecutResult extends LinecutResult {
+  scan_uri: string;
+  scan_name: string;
 }

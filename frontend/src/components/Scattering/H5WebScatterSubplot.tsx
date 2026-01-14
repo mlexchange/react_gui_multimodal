@@ -516,10 +516,8 @@ import {
   InclinedLinecut,
   AzimuthalIntegration,
   AzimuthalData,
+  OperationType,
 } from './types';
-
-// Re-export OperationType for compatibility
-export type OperationType = 'subtract' | 'divide';
 import { getArrayMinMax } from './utils/getArrayMinAndMax';
 import { calculateDifferenceArray } from './utils/calculateDifferenceArray';
 import { calculateDivisionArray } from './utils/calculateDivisionArray';

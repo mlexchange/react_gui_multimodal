@@ -2,7 +2,7 @@
  * Batch export utilities for downloading batch processing results.
  */
 
-import { LinecutResult } from '../hooks/useBatchProcessing';
+import { BatchLinecutResult } from '../types';
 
 /**
  * Download a blob as a file
@@ -37,7 +37,7 @@ function getDateString(): string {
  * @param operationType - Type of operation (horizontal, vertical, etc.)
  */
 export function exportToCSV(
-  results: LinecutResult[],
+  results: BatchLinecutResult[],
   operationType: string
 ): void {
   const successfulResults = results.filter(r => r.success);

@@ -9,6 +9,7 @@ import {
   AzimuthalData,
   CalibrationParams,
   TransformDataFunction,
+  OperationType,
 } from './types';
 import { handleRelayout } from './utils/handleRelayout';
 import { generateHorizontalLinecutOverlay } from './utils/generateHorizontalLinecutOverlay';
@@ -21,9 +22,6 @@ import { calculateDifferenceArray } from './utils/calculateDifferenceArray';
 import AzimuthalLoadingSpinner from "./AzimuthalLoadingSpinner";
 import { calculateDivisionArray } from './utils/calculateDivisionArray';
 import { fetchWithCache, ProcessedImageData } from './services/scatteringImageCache';
-
-// Add a type for operation
-export type OperationType = 'subtract' | 'divide';
 
 interface ScatterSubplotProps {
   operationType: OperationType;

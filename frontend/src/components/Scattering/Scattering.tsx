@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Select, Menu, Popover, IconButton, notifications } from '@/components/ui';
 import { PrevNextSelect, ContentCard, LoadingOverlay, Modal } from '@/components/shared';
 import { CircleHalfTiltIcon, GearIcon, GitDiffIcon, InfoIcon, ListIcon, StackIcon, TreeStructureIcon, WarningIcon, WrenchIcon } from '@phosphor-icons/react';
-import { CalibrationParams } from './types';
+import { CalibrationParams, OperationType } from './types';
 
 import { Button, ButtonWithIcon } from '@blueskyproject/finch';
 import { Tiled } from '@blueskyproject/tiled';
@@ -21,7 +21,7 @@ import useSessionPersistence, { PersistableState } from './hooks/useSessionPersi
 import useBatchProcessing from './hooks/useBatchProcessing';
 
 // Import components
-import ScatterSubplot, { OperationType } from './ScatterSubplot';
+import ScatterSubplot from './ScatterSubplot';
 import H5WebScatterSubplot from './H5WebScatterSubplot';
 
 // Toggle between Plotly and H5Web implementations

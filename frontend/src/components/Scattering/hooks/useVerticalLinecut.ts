@@ -1,11 +1,10 @@
 import { useCallback, useState, useEffect, useRef } from 'react';
-import { Linecut, CalibrationParams, isCalibrationComplete } from '../types';
+import { Linecut, CalibrationParams, isCalibrationComplete, LinecutResult } from '../types';
 import { leftImageColorPalette, rightImageColorPalette } from '../utils/constants';
 import { throttle } from 'lodash';
 import { findPixelPositionForQValue } from '../utils/findPixelPositionForQValue';
 import {
   fetchVerticalLinecut,
-  LinecutResult,
   cancelLinecutRequest,
 } from '../services/linecutApi';
 

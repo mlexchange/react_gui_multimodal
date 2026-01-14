@@ -255,10 +255,3 @@ def _parse_csv(content: bytes) -> np.ndarray:
         return mask_array
     except Exception as e:
         raise ValueError(f"Could not parse CSV file: {e}")
-
-
-def clear_mask_cache():
-    """Clear all cached masks."""
-    with _mask_cache_lock:
-        _mask_cache.clear()
-        _uploaded_mask_cache.clear()

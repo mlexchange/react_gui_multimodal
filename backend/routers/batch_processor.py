@@ -15,6 +15,7 @@ from fastapi import APIRouter
 from fastapi.responses import Response
 from pydantic import BaseModel
 
+from models import CalibrationParams
 from routers.websocket import send_progress_update
 from utils.azimuthal_integration import create_azimuthal_integrator, integrate_1d
 from utils.image_cache import get_cached_processed_image
@@ -40,21 +41,6 @@ ACTIVE_BATCHES: dict[str, bool] = {}
 # ============================================================================
 # Pydantic Models
 # ============================================================================
-
-
-class CalibrationParams(BaseModel):
-    """Calibration parameters for q-space calculations."""
-
-    sample_detector_distance: float
-    beam_center_x: float
-    beam_center_y: float
-    pixel_size_x: float
-    pixel_size_y: float
-    wavelength: float
-    tilt: float = 0.0
-    tilt_plan_rotation: float = 0.0
-    experiment_type: str = "SAXS"
-    incident_angle: float = 0.0
 
 
 class HorizontalLinecutParams(BaseModel):

@@ -39,8 +39,3 @@ def get_tiled_client_for_uri(uri: str):
 def get_tiled_base_uri() -> str:
     """Get the base URI from the tiled client."""
     return get_tiled_client().uri
-
-
-def get_tiled_api_key() -> str:
-    """Get the tiled API key."""
-    return _load_config()["api_key"]

@@ -94,20 +94,3 @@ def get_or_compute_q_matrices(
             _q_matrix_cache[cache_key] = (q_x, q_y)
 
     return q_x, q_y
-
-
-def clear_q_matrix_cache():
-    """Clear the Q-matrix cache."""
-    with _q_matrix_lock:
-        _q_matrix_cache.clear()
-    print("[Q-MATRIX CACHE] Cleared")
-
-
-def get_q_matrix_cache_info() -> dict:
-    """Get Q-matrix cache statistics."""
-    with _q_matrix_lock:
-        return {
-            "size": len(_q_matrix_cache),
-            "max_size": _max_cache_size,
-            "cached_keys": list(_q_matrix_cache.keys()),
-        }

@@ -229,22 +229,3 @@ def get_cached_processed_image(
                 print(f"[CACHE EVICT] {oldest_key}")
 
     return processed
-
-
-def clear_image_cache():
-    """Clear the image cache. Useful for testing or memory management."""
-    global _image_cache, _cache_order
-    with _cache_lock:
-        _image_cache = {}
-        _cache_order = []
-    print("[CACHE] Cleared")
-
-
-def get_cache_info() -> dict:
-    """Get cache statistics."""
-    with _cache_lock:
-        return {
-            "size": len(_image_cache),
-            "max_size": _max_cache_size,
-            "cached_uris": list(_cache_order),
-        }
