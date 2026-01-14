@@ -36,11 +36,10 @@ import {
 import { Vector3 } from 'three';
 import ndarray from 'ndarray';
 import {
-  ChartLineIcon,
   GridFourIcon,
   DownloadSimpleIcon,
 } from '@phosphor-icons/react';
-import { ButtonWithIcon } from '@blueskyproject/finch';
+import { Button, ButtonWithIcon } from '@blueskyproject/finch';
 import { NumberInput } from '@/components/ui';
 import { BatchOperationType } from './hooks/useBatchProcessing';
 import { BatchLinecutResult } from './types';
@@ -283,29 +282,27 @@ export function BatchResultsView({
             </span>
 
             {/* View Toggle */}
-            <div className="flex rounded-md overflow-hidden border border-gray-300">
-              <button
-                className={`px-3 py-1.5 text-sm flex items-center gap-1.5 ${
+            <div className="flex gap-1">
+              <Button
+                text="Waterfall"
+                cb={() => setViewMode('waterfall')}
+                size="small"
+                styles={
                   viewMode === 'waterfall'
-                    ? 'bg-sky-100 text-sky-700'
-                    : 'bg-white text-gray-600 hover:bg-gray-50'
-                }`}
-                onClick={() => setViewMode('waterfall')}
-              >
-                <ChartLineIcon size={16} />
-                Waterfall
-              </button>
-              <button
-                className={`px-3 py-1.5 text-sm flex items-center gap-1.5 border-l border-gray-300 ${
+                    ? 'bg-sky-500 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }
+              />
+              <Button
+                text="Heatmap"
+                cb={() => setViewMode('heatmap')}
+                size="small"
+                styles={
                   viewMode === 'heatmap'
-                    ? 'bg-sky-100 text-sky-700'
-                    : 'bg-white text-gray-600 hover:bg-gray-50'
-                }`}
-                onClick={() => setViewMode('heatmap')}
-              >
-                <GridFourIcon size={16} />
-                Heatmap
-              </button>
+                    ? 'bg-sky-500 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }
+              />
             </div>
 
             {/* Waterfall offset control */}

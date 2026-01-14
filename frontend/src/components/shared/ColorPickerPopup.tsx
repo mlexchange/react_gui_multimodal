@@ -1,5 +1,6 @@
 import React from 'react';
 import { SketchPicker, ColorResult } from "react-color";
+import { Button } from '@blueskyproject/finch';
 
 interface ColorPickerPopupProps {
   colorPicker: {
@@ -35,18 +36,20 @@ const ColorPickerPopup = React.forwardRef<HTMLDivElement, Omit<ColorPickerPopupP
             }
           />
           <div className="flex justify-end gap-2 mt-2">
-            <button
-              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-              onClick={onAccept}
-            >
-              Accept
-            </button>
-            <button
-              className="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500"
-              onClick={onCancel}
-            >
-              Cancel
-            </button>
+            <Button
+              text="Accept"
+              cb={onAccept}
+              size="small"
+              bgColor="bg-green-600"
+              hoverBgColor="hover:bg-green-700"
+            />
+            <Button
+              text="Cancel"
+              cb={onCancel}
+              size="small"
+              bgColor="bg-gray-400"
+              hoverBgColor="hover:bg-gray-500"
+            />
           </div>
         </div>
       </div>

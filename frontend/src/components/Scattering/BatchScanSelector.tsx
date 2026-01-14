@@ -11,6 +11,7 @@
 
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { Modal } from '@/components/shared';
+import { ButtonWithIcon } from '@blueskyproject/finch';
 import { PlayIcon, StackIcon } from '@phosphor-icons/react';
 import { BatchOperationType } from './hooks/useBatchProcessing';
 import { OPERATION_LABELS_FULL } from './utils/constants';
@@ -192,18 +193,14 @@ export function BatchScanSelector({
           <span className="text-sm text-gray-600">
             {selectedIndices.size} of {scanUris.length} scans selected
           </span>
-          <button
-            onClick={handleStart}
+          <ButtonWithIcon
+            icon={<PlayIcon size={16} />}
+            text={isProcessing ? 'Processing...' : 'Start Processing'}
+            cb={handleStart}
             disabled={selectedIndices.size === 0 || isProcessing}
-            className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              selectedIndices.size === 0 || isProcessing
-                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                : 'bg-sky-600 text-white hover:bg-sky-700'
-            }`}
-          >
-            <PlayIcon size={16} />
-            {isProcessing ? 'Processing...' : 'Start Processing'}
-          </button>
+            size="small"
+            styles="disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed"
+          />
         </div>
       </div>
     </Modal>
