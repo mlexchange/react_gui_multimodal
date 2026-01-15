@@ -13,6 +13,7 @@ export default function useDataTransformation() {
     const [imageColormap, setImageColormap] = useState('Viridis');
     const [differenceColormap, setDifferenceColormap] = useState('RdBu');
     const [normalizationMode, setNormalizationMode] = useState('together');
+    const [showQSpaceAxes, setShowQSpaceAxes] = useState(false);
 
     /**
      * Restore all display settings from a saved session
@@ -25,6 +26,7 @@ export default function useDataTransformation() {
         setImageColormap(settings.imageColormap);
         setDifferenceColormap(settings.differenceColormap);
         setNormalizationMode(settings.normalizationMode);
+        setShowQSpaceAxes(settings.showQSpaceAxes ?? false);
     }, []);
 
 
@@ -310,6 +312,8 @@ export default function useDataTransformation() {
         setDifferenceColormap,
         normalizationMode,
         setNormalizationMode,
+        showQSpaceAxes,
+        setShowQSpaceAxes,
         mainTransformDataFunction,
         restoreSettings
     }

@@ -28,6 +28,7 @@ import {
   ArrowsVerticalIcon,
   GridFourIcon,
   StackIcon,
+  ChartLineIcon,
 } from '@phosphor-icons/react';
 
 // Domain type for heatmap visualization
@@ -59,7 +60,11 @@ interface LinecutOverlayProps {
   cols: number;
 }
 
-const LinecutOverlay: React.FC<LinecutOverlayProps> = ({ linecuts, rows, cols }) => {
+const LinecutOverlay: React.FC<LinecutOverlayProps> = ({
+  linecuts,
+  rows,
+  cols,
+}) => {
   const visibleLinecuts = linecuts.filter(lc => !lc.hidden);
 
   if (visibleLinecuts.length === 0) return null;
@@ -390,6 +395,10 @@ interface HeatmapPanelProps {
   maxQValue?: number;
   isLoading?: boolean;
   loadingMessage?: string;
+  showQSpaceAxes?: boolean;
+  qXMatrix?: number[][];
+  qYMatrix?: number[][];
+  experimentType?: string;
 }
 
 const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
@@ -414,100 +423,175 @@ const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
   maxQValue = 1,
   isLoading = false,
   loadingMessage,
-}) => (
-  <div className="flex flex-col min-h-0 min-w-0 overflow-hidden relative">
-    {isLoading && <LoadingOverlay message={loadingMessage} />}
-    {/* Always render header container with fixed height for consistent layout across panels */}
-    <div
-      className="shrink-0 flex justify-center items-center pt-2 pb-1 h-11"
-      style={{ paddingLeft: `${AXIS_LEFT_OFFSET}px`, paddingRight: `${AXIS_RIGHT_OFFSET}px` }}
-    >
-      {header}
-    </div>
-    <div className="flex-1 flex min-h-0">
-      <VisCanvas
-        aspect="equal"
-        abscissaConfig={{
-          visDomain: flipXAxis ? [cols, 0] : [0, cols],
-          showGrid,
-          isIndexAxis: true,
-          formatTick: formatTickAsInteger,
-          label: 'X (pixels)',
-        }}
-        ordinateConfig={{
-          visDomain: [0, rows],
-          showGrid,
-          isIndexAxis: true,
-          formatTick: formatTickAsInteger,
-          label: 'Y (pixels)',
-          flip: !flipYAxis,  // Default flip=true (y=0 at top); when flipYAxis, flip=false (y=0 at bottom)
-        }}
+  showQSpaceAxes = false,
+  qXMatrix = [],
+  qYMatrix = [],
+  experimentType = 'SAXS',
+}) => {
+  // Compute axis labels based on experiment type
+  const unit = 'nm\u207B\u00B9'; // nm⁻¹ with superscript
+  const xAxisLabel = showQSpaceAxes
+    ? (experimentType?.toLowerCase() === 'gisaxs' ? `q (in-plane) (${unit})` : `qₓ (${unit})`)
+    : 'X (pixels)';
+  const yAxisLabel = showQSpaceAxes
+    ? (experimentType?.toLowerCase() === 'gisaxs' ? `q (out-of-plane) (${unit})` : `qᵧ (${unit})`)
+    : 'Y (pixels)';
+
+  // visDomain stays in PIXEL coordinates always
+  // This ensures the image displays correctly and overlays align properly
+  // For q-space display, we use formatTick to show q-values at each pixel position
+  const xVisDomain: [number, number] = flipXAxis ? [cols, 0] : [0, cols];
+  const yVisDomain: [number, number] = [0, rows];
+
+  // Format q-value for display
+  const formatQValue = (qValue: number): string => {
+    if (!isFinite(qValue)) return '';
+    const rounded = Math.round(qValue * 10) / 10;
+    if (Math.abs(rounded - Math.round(rounded)) < 0.01) {
+      return Math.round(rounded).toString();
+    }
+    return rounded.toFixed(1);
+  };
+
+  // formatTick functions that look up q-values from the matrices
+  const formatXTick = useMemo(() => {
+    if (!showQSpaceAxes || !qXMatrix?.length || !qXMatrix[0]?.length) {
+      return formatTickAsInteger;
+    }
+    return (pixelX: number) => {
+      const col = Math.round(Math.max(0, Math.min(cols - 1, pixelX)));
+      const qValue = qXMatrix[0]?.[col];
+      if (qValue === undefined) return '';
+      return formatQValue(qValue);
+    };
+  }, [showQSpaceAxes, qXMatrix, cols]);
+
+  const formatYTick = useMemo(() => {
+    if (!showQSpaceAxes || !qYMatrix?.length) {
+      return formatTickAsInteger;
+    }
+    return (pixelY: number) => {
+      const row = Math.round(Math.max(0, Math.min(rows - 1, pixelY)));
+      const qValue = qYMatrix[row]?.[0];
+      if (qValue === undefined) return '';
+      return formatQValue(qValue);
+    };
+  }, [showQSpaceAxes, qYMatrix, rows]);
+
+  // Y-axis flip: always flip=true so pixel 0 is at top (image convention)
+  // User's flipYAxis toggle inverts this
+  const shouldFlipYAxis = !flipYAxis;
+
+  return (
+    <div className="flex flex-col min-h-0 min-w-0 overflow-hidden relative">
+      {isLoading && <LoadingOverlay message={loadingMessage} />}
+      <div
+        className="shrink-0 flex justify-center items-center pt-2 pb-1 h-11"
+        style={{ paddingLeft: `${AXIS_LEFT_OFFSET}px`, paddingRight: `${AXIS_RIGHT_OFFSET}px` }}
       >
-        <DefaultInteractions />
-        <ResetZoomButton />
-        <HeatmapMesh
-          values={dataArray}
-          domain={domain}
-          colorMap={colorMap}
-          scaleType={scaleType}
-          invertColorMap={invertColorMap}
-          scale={[flipXAxis ? -1 : 1, flipYAxis ? 1 : -1, 1]}
-        />
-        <TooltipMesh
-          guides="both"
-          renderTooltip={(x, y) => {
-            const xi = Math.floor(x);
-            const yi = Math.floor(y);
-            // Bounds check
-            if (xi < 0 || xi >= cols || yi < 0 || yi >= rows) {
-              return null;
-            }
-            const value = dataArray.get(yi, xi);
-            return (
-              <div className="text-sm">
-                <div>x={xi}, y={yi}</div>
-                <div className="font-semibold">{value?.toPrecision(5)}</div>
-              </div>
-            );
+        {header}
+      </div>
+      <div className="flex-1 flex min-h-0">
+        <VisCanvas
+          aspect="equal"
+          abscissaConfig={{
+            visDomain: xVisDomain,
+            showGrid,
+            isIndexAxis: true,
+            formatTick: formatXTick,
+            label: xAxisLabel,
           }}
-        />
-        <LinecutOverlay linecuts={linecuts} rows={rows} cols={cols} />
-        {inclinedPixelWidthCalculator && (
-          <InclinedLinecutOverlay
-            linecuts={inclinedLinecuts}
+          ordinateConfig={{
+            visDomain: yVisDomain,
+            showGrid,
+            isIndexAxis: true,
+            formatTick: formatYTick,
+            label: yAxisLabel,
+            flip: shouldFlipYAxis,
+          }}
+        >
+          <DefaultInteractions />
+          <ResetZoomButton />
+          <HeatmapMesh
+            values={dataArray}
+            domain={domain}
+            colorMap={colorMap}
+            scaleType={scaleType}
+            invertColorMap={invertColorMap}
+            scale={[flipXAxis ? -1 : 1, flipYAxis ? 1 : -1, 1]}
+          />
+          <TooltipMesh
+            guides="both"
+            renderTooltip={(x, y) => {
+              const xi = Math.floor(x);
+              const yi = Math.floor(y);
+              // Bounds check
+              if (xi < 0 || xi >= cols || yi < 0 || yi >= rows) {
+                return null;
+              }
+              const value = dataArray.get(yi, xi);
+
+              if (showQSpaceAxes) {
+                const qx = qXMatrix?.[0]?.[xi];
+                const qy = qYMatrix?.[yi]?.[0];
+                return (
+                  <div className="text-sm">
+                    <div>qx={qx?.toPrecision(4) ?? 'N/A'}, qy={qy?.toPrecision(4) ?? 'N/A'}</div>
+                    <div className="font-semibold">{value?.toPrecision(5)}</div>
+                  </div>
+                );
+              }
+              // Pixel mode
+              return (
+                <div className="text-sm">
+                  <div>x={xi}, y={yi}</div>
+                  <div className="font-semibold">{value?.toPrecision(5)}</div>
+                </div>
+              );
+            }}
+          />
+          <LinecutOverlay
+            linecuts={linecuts}
             rows={rows}
             cols={cols}
+          />
+          {inclinedPixelWidthCalculator && (
+            <InclinedLinecutOverlay
+              linecuts={inclinedLinecuts}
+              rows={rows}
+              cols={cols}
+              beamCenterX={beamCenterX}
+              beamCenterY={beamCenterY}
+              pixelWidthCalculator={inclinedPixelWidthCalculator}
+            />
+          )}
+          <AzimuthalSectorOverlay
+            integrations={azimuthalIntegrations}
+            qMagnitudeMatrix={qMagnitudeMatrix}
             beamCenterX={beamCenterX}
             beamCenterY={beamCenterY}
-            pixelWidthCalculator={inclinedPixelWidthCalculator}
+            maxQValue={maxQValue}
+            imageWidth={cols}
+            imageHeight={rows}
           />
-        )}
-        <AzimuthalSectorOverlay
-          integrations={azimuthalIntegrations}
-          qMagnitudeMatrix={qMagnitudeMatrix}
-          beamCenterX={beamCenterX}
-          beamCenterY={beamCenterY}
-          maxQValue={maxQValue}
-          imageWidth={cols}
-          imageHeight={rows}
+        </VisCanvas>
+      </div>
+      <div
+        className="shrink-0 h-12"
+        style={{ paddingLeft: `${AXIS_LEFT_OFFSET}px`, paddingRight: `${AXIS_RIGHT_OFFSET}px` }}
+      >
+        <ColorBar
+          domain={domain}
+          scaleType={scaleType}
+          colorMap={colorMap}
+          invertColorMap={invertColorMap}
+          horizontal
+          withBounds
         />
-      </VisCanvas>
+      </div>
     </div>
-    <div
-      className="shrink-0 h-12"
-      style={{ paddingLeft: `${AXIS_LEFT_OFFSET}px`, paddingRight: `${AXIS_RIGHT_OFFSET}px` }}
-    >
-      <ColorBar
-        domain={domain}
-        scaleType={scaleType}
-        colorMap={colorMap}
-        invertColorMap={invertColorMap}
-        horizontal
-        withBounds
-      />
-    </div>
-  </div>
-);
+  );
+};
 import { notifications } from '@/components/ui';
 import {
   TransformDataFunction,
@@ -567,6 +651,9 @@ interface H5WebScatterSubplotProps {
   rightHeader?: React.ReactNode;
   comparisonHeader?: React.ReactNode;
   maskUri?: string | null;
+  experimentType?: string;
+  showQSpaceAxes: boolean;
+  setShowQSpaceAxes: (value: boolean) => void;
 }
 
 // Convert 2D number array to ndarray
@@ -649,12 +736,15 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
   rightHeader,
   comparisonHeader,
   maskUri,
+  experimentType = 'SAXS',
+  showQSpaceAxes,
+  setShowQSpaceAxes,
 }) => {
   // Raw data from fetch
   const [leftArray, setLeftArray] = useState<number[][]>([]);
   const [rightArray, setRightArray] = useState<number[][]>([]);
 
-  // Toolbar state - internal controls that override props when changed
+  // Toolbar state
   const [scaleType, setScaleType] = useState<ColorScaleType>(
     isLogScale ? ScaleType.Log : ScaleType.Linear
   );
@@ -671,6 +761,15 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
   const [showGrid, setShowGrid] = useState(false);
   const [showOverlays, setShowOverlays] = useState(true);
   const [customDomain, setCustomDomain] = useState<CustomDomain>([null, null]);
+
+  // Determine if q-space toggle is enabled (calibration must be set with valid q-matrices)
+  const canToggleQSpace = useMemo(() => {
+    if (!qXMatrix?.length || !qYMatrix?.length) return false;
+    if (!qXMatrix[0]?.length || !qYMatrix[0]?.length) return false;
+    const qxValue = qXMatrix[0][0];
+    const qyValue = qYMatrix[0][0];
+    return isFinite(qxValue) && isFinite(qyValue);
+  }, [qXMatrix, qYMatrix]);
 
   // Handler for scale type changes (type-safe wrapper)
   const handleScaleChange = useCallback((newScale: ColorScaleType) => {
@@ -883,7 +982,6 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
 
     // Add horizontal linecuts (use qYMatrix for width calculation)
     horizontalLinecuts.forEach(lc => {
-      // Calculate pixel width using local scale (consistent regardless of position)
       const pixelWidth = calculateLocalPixelWidth(lc.width, qYMatrix, 'horizontal');
       linecuts.push({
         position: lc.pixelPosition,
@@ -896,7 +994,6 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
 
     // Add vertical linecuts (use qXMatrix for width calculation)
     verticalLinecuts.forEach(lc => {
-      // Calculate pixel width using local scale (consistent regardless of position)
       const pixelWidth = calculateLocalPixelWidth(lc.width, qXMatrix, 'vertical');
       linecuts.push({
         position: lc.pixelPosition,
@@ -916,7 +1013,6 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
 
     // Add horizontal linecuts (use qYMatrix for width calculation)
     horizontalLinecuts.forEach(lc => {
-      // Calculate pixel width using local scale (consistent regardless of position)
       const pixelWidth = calculateLocalPixelWidth(lc.width, qYMatrix, 'horizontal');
       linecuts.push({
         position: lc.pixelPosition,
@@ -929,7 +1025,6 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
 
     // Add vertical linecuts (use qXMatrix for width calculation)
     verticalLinecuts.forEach(lc => {
-      // Calculate pixel width using local scale (consistent regardless of position)
       const pixelWidth = calculateLocalPixelWidth(lc.width, qXMatrix, 'vertical');
       linecuts.push({
         position: lc.pixelPosition,
@@ -1094,6 +1189,15 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
         />
         <Separator />
 
+        <ToggleBtn
+          label="Q-Space"
+          Icon={ChartLineIcon}
+          value={showQSpaceAxes}
+          onToggle={() => setShowQSpaceAxes(!showQSpaceAxes)}
+          disabled={!canToggleQSpace}
+        />
+        <Separator />
+
         <SnapshotBtn />
         </Toolbar>
       </div>
@@ -1122,6 +1226,10 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
           maxQValue={maxQValue}
           isLoading={isLoadingImages}
           loadingMessage="Loading image..."
+          showQSpaceAxes={showQSpaceAxes}
+          qXMatrix={qXMatrix}
+          qYMatrix={qYMatrix}
+          experimentType={experimentType}
         />
         <HeatmapPanel
           header={rightHeader}
@@ -1145,6 +1253,10 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
           maxQValue={maxQValue}
           isLoading={isLoadingImages}
           loadingMessage="Loading image..."
+          showQSpaceAxes={showQSpaceAxes}
+          qXMatrix={qXMatrix}
+          qYMatrix={qYMatrix}
+          experimentType={experimentType}
         />
         <HeatmapPanel
           header={comparisonHeader ?? <span className="font-medium">{comparisonLabel}</span>}
@@ -1160,6 +1272,10 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
           showGrid={showGrid}
           isLoading={isLoadingImages}
           loadingMessage="Loading..."
+          showQSpaceAxes={showQSpaceAxes}
+          qXMatrix={qXMatrix}
+          qYMatrix={qYMatrix}
+          experimentType={experimentType}
         />
       </div>
     </div>

@@ -32,6 +32,7 @@ export interface DisplaySettings {
   imageColormap: string;
   differenceColormap: string;
   normalizationMode: string;
+  showQSpaceAxes: boolean;
 }
 
 /**
@@ -95,7 +96,8 @@ const DEFAULT_DISPLAY_SETTINGS: DisplaySettings = {
   normalization: 'none',
   imageColormap: 'Viridis',
   differenceColormap: 'RdBu',
-  normalizationMode: 'together'
+  normalizationMode: 'together',
+  showQSpaceAxes: false
 };
 
 /**

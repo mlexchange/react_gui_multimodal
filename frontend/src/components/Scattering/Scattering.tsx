@@ -121,6 +121,8 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     setDifferenceColormap,
     normalizationMode,
     setNormalizationMode,
+    showQSpaceAxes,
+    setShowQSpaceAxes,
     mainTransformDataFunction,
     restoreSettings: restoreDisplaySettings,
   } = useDataTransformation();
@@ -403,6 +405,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
         imageColormap,
         differenceColormap,
         normalizationMode,
+        showQSpaceAxes,
       },
       horizontalLinecuts,
       verticalLinecuts,
@@ -434,6 +437,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     imageColormap,
     differenceColormap,
     normalizationMode,
+    showQSpaceAxes,
     horizontalLinecuts,
     verticalLinecuts,
     inclinedLinecuts,
@@ -826,6 +830,9 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                       </div>
                     }
                     maskUri={maskUri}
+                    experimentType={experimentType}
+                    showQSpaceAxes={showQSpaceAxes}
+                    setShowQSpaceAxes={setShowQSpaceAxes}
                   />
                 ) : (
                   <ScatterSubplot

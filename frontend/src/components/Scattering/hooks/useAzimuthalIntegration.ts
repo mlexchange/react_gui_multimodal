@@ -116,8 +116,7 @@ export default function useAzimuthalIntegration(
             {
                 onSuccess: (result: AzimuthalIntegrationResult) => {
                     if (result.success) {
-                        // Update max Q value if needed (first fetch only)
-                        if (maxQValue === 2 && result.q_max > 0) {
+                        if (result.q_max > 0) {
                             setMaxQValue(result.q_max);
                             setGlobalQRange([0, result.q_max]);
                         }
@@ -152,7 +151,7 @@ export default function useAzimuthalIntegration(
                 },
             }
         );
-    }, [useApi, calibrationParams, leftScanUri, rightScanUri, maskUri, maxQValue, filterByQRange, updateIntegrationData]);
+    }, [useApi, calibrationParams, leftScanUri, rightScanUri, maskUri, filterByQRange, updateIntegrationData]);
 
     // ======== INTEGRATION MANAGEMENT FUNCTIONS ========
 
