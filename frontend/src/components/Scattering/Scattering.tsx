@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Select, Menu, Popover, IconButton, notifications } from '@/components/ui';
 import { PrevNextSelect, ContentCard, LoadingOverlay, Modal } from '@/components/shared';
 import { CircleHalfTiltIcon, GearIcon, GitDiffIcon, InfoIcon, ListIcon, TreeStructureIcon, WarningIcon, WrenchIcon } from '@phosphor-icons/react';
@@ -234,7 +234,6 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
       azimuthalIntegrations,
       azimuthalData1,
       azimuthalData2,
-      maxQValue,
       loadingAzimuthalIntegrations,
       addAzimuthalIntegration,
       updateAzimuthalQRange,
@@ -291,6 +290,22 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
         console.error('Failed to fetch Q-vectors for overlay:', error);
       });
   }, [calibrationParams, experimentType, imageWidth, imageHeight, qMagnitudeCacheKey]);
+
+  // Compute maxQValue from qMagnitudeMatrix
+  const maxQValue = useMemo(() => {
+    if (!qMagnitudeMatrix || qMagnitudeMatrix.length === 0) {
+      return 2; // Default fallback before calibration is set
+    }
+    let max = 0;
+    for (const row of qMagnitudeMatrix) {
+      for (const val of row) {
+        if (Number.isFinite(val) && val > max) {
+          max = val;
+        }
+      }
+    }
+    return max > 0 ? max : 2;
+  }, [qMagnitudeMatrix]);
 
   // Batch processing hook
   const batchProcessing = useBatchProcessing({

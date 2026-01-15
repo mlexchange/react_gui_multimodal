@@ -31,10 +31,6 @@ export default function useAzimuthalIntegration(
     const [azimuthalData1, setAzimuthalData1] = useState<AzimuthalData[]>([]);
     const [azimuthalData2, setAzimuthalData2] = useState<AzimuthalData[]>([]);
 
-    // Q-range and max Q value
-    const [maxQValue, setMaxQValue] = useState<number>(2);
-    const [globalQRange, setGlobalQRange] = useState<[number, number] | null>(null);
-
     // Loading state per integration
     const [loadingAzimuthalIntegrations, setLoadingAzimuthalIntegrations] = useState<Set<number>>(new Set());
 
@@ -116,11 +112,6 @@ export default function useAzimuthalIntegration(
             {
                 onSuccess: (result: AzimuthalIntegrationResult) => {
                     if (result.success) {
-                        if (result.q_max > 0) {
-                            setMaxQValue(result.q_max);
-                            setGlobalQRange([0, result.q_max]);
-                        }
-
                         // Update integration data with filtered values
                         updateIntegrationData(id, {
                             q1: result.q_1,
@@ -175,14 +166,12 @@ export default function useAzimuthalIntegration(
 
         setAzimuthalIntegrations(prev => [...prev, newIntegration]);
         // Trigger data fetch (debounced via linecutApi)
-        // New integrations start with null (full range), not globalQRange
         setTimeout(() => fetchAzimuthalData(newId, null, DEFAULT_AZIMUTH_RANGE), 0);
     }, [fetchAzimuthalData, azimuthalIntegrations]);
 
     /**
      * Updates the Q-range for a specific integration.
      * The fetch is debounced via linecutApi.
-     * Note: Does not update globalQRange - each integration has its own qRange.
      */
     const updateAzimuthalQRange = useCallback((id: number, qRange: [number, number]) => {
         setAzimuthalIntegrations(prev =>
@@ -308,8 +297,6 @@ export default function useAzimuthalIntegration(
         azimuthalIntegrations,
         azimuthalData1,
         azimuthalData2,
-        maxQValue,
-        globalQRange,
         loadingAzimuthalIntegrations,
 
         // Functions
