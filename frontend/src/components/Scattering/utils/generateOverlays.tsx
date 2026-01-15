@@ -615,3 +615,165 @@ export const AzimuthalSectorOverlay: React.FC<AzimuthalSectorOverlayProps> = ({
   );
 };
 
+// ============================================================================
+// Mask Overlay Component
+// ============================================================================
+
+export interface MaskOverlayProps {
+  /** Mask data as Uint8Array (0 = unmasked, 1 = masked) */
+  maskData: Uint8Array;
+  /** Shape of the mask as [height, width] */
+  maskShape: [number, number];
+  /** Width of the displayed image in pixels */
+  imageWidth: number;
+  /** Height of the displayed image in pixels */
+  imageHeight: number;
+}
+
+/**
+ * Rectangle representing a run of masked pixels in a row.
+ */
+interface MaskRectangle {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Build mask rectangles using run-length encoding to minimize SVG elements.
+ * Groups adjacent masked pixels into horizontal rectangles.
+ */
+function buildMaskRectangles(
+  maskData: Uint8Array,
+  maskShape: [number, number],
+  imageWidth: number,
+  imageHeight: number
+): MaskRectangle[] {
+  const [maskHeight, maskWidth] = maskShape;
+  const rectangles: MaskRectangle[] = [];
+
+  // Calculate scale factors if mask doesn't match image dimensions
+  const scaleX = imageWidth / maskWidth;
+  const scaleY = imageHeight / maskHeight;
+
+  for (let row = 0; row < maskHeight; row++) {
+    let runStart: number | null = null;
+
+    for (let col = 0; col <= maskWidth; col++) {
+      const idx = row * maskWidth + col;
+      const isMasked = col < maskWidth && maskData[idx] === 1;
+
+      if (isMasked && runStart === null) {
+        // Start of a new run
+        runStart = col;
+      } else if (!isMasked && runStart !== null) {
+        // End of a run - create rectangle
+        rectangles.push({
+          x: runStart * scaleX,
+          y: row * scaleY,
+          width: (col - runStart) * scaleX,
+          height: scaleY,
+        });
+        runStart = null;
+      }
+    }
+  }
+
+  return rectangles;
+}
+
+/**
+ * SVG-based mask overlay for H5Web visualization.
+ *
+ * Renders semi-transparent magenta rectangles over masked pixels.
+ * Uses run-length encoding to minimize the number of SVG elements.
+ */
+export const MaskOverlay: React.FC<MaskOverlayProps> = ({
+  maskData,
+  maskShape,
+  imageWidth,
+  imageHeight,
+}) => {
+  // Memoize rectangle computation
+  const rectangles = useMemo(() => {
+    return buildMaskRectangles(maskData, maskShape, imageWidth, imageHeight);
+  }, [maskData, maskShape, imageWidth, imageHeight]);
+
+  // Image corner points for clipping
+  const clipId = useId();
+  const clipPathId = `mask-clip-${clipId}`;
+  const clipCorners = useMemo(() => [
+    new Vector3(0, 0),
+    new Vector3(imageWidth, 0),
+    new Vector3(imageWidth, imageHeight),
+    new Vector3(0, imageHeight),
+  ], [imageWidth, imageHeight]);
+
+  if (rectangles.length === 0) {
+    return null;
+  }
+
+  // Group rectangles into batches to avoid too many DataToHtml calls
+  // Each batch renders multiple rectangles
+  const BATCH_SIZE = 500;
+  const batches: MaskRectangle[][] = [];
+  for (let i = 0; i < rectangles.length; i += BATCH_SIZE) {
+    batches.push(rectangles.slice(i, i + BATCH_SIZE));
+  }
+
+  return (
+    <>
+      {/* Define clipPath for constraining overlay to image bounds */}
+      <DataToHtml points={clipCorners}>
+        {(topLeft, topRight, bottomRight, bottomLeft) => (
+          <SvgElement>
+            <defs>
+              <clipPath id={clipPathId}>
+                <polygon
+                  points={`${topLeft.x},${topLeft.y} ${topRight.x},${topRight.y} ${bottomRight.x},${bottomRight.y} ${bottomLeft.x},${bottomLeft.y}`}
+                />
+              </clipPath>
+            </defs>
+          </SvgElement>
+        )}
+      </DataToHtml>
+
+      {/* Render rectangles in batches */}
+      {batches.map((batch, batchIndex) => {
+        // Create points array for all corners of all rectangles in batch
+        const points: Vector3[] = [];
+        for (const rect of batch) {
+          points.push(new Vector3(rect.x, rect.y)); // top-left
+          points.push(new Vector3(rect.x + rect.width, rect.y + rect.height)); // bottom-right
+        }
+
+        return (
+          <DataToHtml key={batchIndex} points={points}>
+            {(...htmlPoints) => (
+              <SvgElement>
+                <g clipPath={`url(#${clipPathId})`}>
+                  {batch.map((_rect, rectIndex) => {
+                    const topLeft = htmlPoints[rectIndex * 2];
+                    const bottomRight = htmlPoints[rectIndex * 2 + 1];
+                    return (
+                      <rect
+                        key={rectIndex}
+                        x={topLeft.x}
+                        y={topLeft.y}
+                        width={bottomRight.x - topLeft.x}
+                        height={bottomRight.y - topLeft.y}
+                        fill="#FF00FF"
+                        fillOpacity={0.75}
+                      />
+                    );
+                  })}
+                </g>
+              </SvgElement>
+            )}
+          </DataToHtml>
+        );
+      })}
+    </>
+  );
+};

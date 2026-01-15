@@ -7,7 +7,9 @@ Handles mask resolution from PONI files and mask uploads.
 import os
 from typing import Optional
 
+import msgpack
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile
+from fastapi.responses import Response
 from pydantic import BaseModel
 
 from utils.mask_manager import (
@@ -24,13 +26,6 @@ class MaskResolutionResponse(BaseModel):
     mask_uri: Optional[str] = None
     mask_name: Optional[str] = None
     message: str
-
-
-class MaskUploadResponse(BaseModel):
-    mask_id: str
-    shape: list[int]
-    message: str
-    status: str  # 'success' | 'warning' | 'error'
 
 
 @router.get("/resolve-mask", response_model=MaskResolutionResponse)
@@ -117,7 +112,7 @@ async def resolve_mask(
         )
 
 
-@router.post("/upload-mask", response_model=MaskUploadResponse)
+@router.post("/upload-mask")
 async def upload_mask(
     file: UploadFile = File(..., description="Mask file (.npy, .tiff, .edf, .cbf, .csv)"),
     expected_width: Optional[int] = Query(
@@ -126,7 +121,7 @@ async def upload_mask(
     expected_height: Optional[int] = Query(
         None, description="Expected image height for validation"
     ),
-) -> MaskUploadResponse:
+) -> Response:
     """
     Upload a mask file.
 
@@ -150,8 +145,8 @@ async def upload_mask(
 
     Returns
     -------
-    MaskUploadResponse
-        Contains mask_id, shape, message, and status ('success', 'warning', or 'error').
+    Response
+        msgpack binary containing mask_id, shape, data, message, and status.
     """
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided")
@@ -163,24 +158,25 @@ async def upload_mask(
         mask_height, mask_width = mask_array.shape
 
         # Validate dimensions if expected values are provided
+        status = "success"
+        message = f"Mask uploaded successfully ({mask_height}×{mask_width})"
         if expected_width is not None and expected_height is not None:
             if mask_width != expected_width or mask_height != expected_height:
-                return MaskUploadResponse(
-                    mask_id=mask_id,
-                    shape=list(mask_array.shape),
-                    message=(
-                        f"Mask size ({mask_height}×{mask_width}) doesn't match "
-                        f"image size ({expected_height}×{expected_width})"
-                    ),
-                    status="warning",
+                status = "warning"
+                message = (
+                    f"Mask size ({mask_height}×{mask_width}) doesn't match "
+                    f"image size ({expected_height}×{expected_width})"
                 )
 
-        return MaskUploadResponse(
-            mask_id=mask_id,
-            shape=list(mask_array.shape),
-            message=f"Mask uploaded successfully ({mask_height}×{mask_width})",
-            status="success",
-        )
+        packed_data = msgpack.packb({
+            "mask_id": mask_id,
+            "shape": list(mask_array.shape),
+            "data": mask_array.tobytes(),
+            "message": message,
+            "status": status,
+        })
+
+        return Response(content=packed_data, media_type="application/octet-stream")
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -200,7 +196,7 @@ async def load_mask_from_tiled_endpoint(
     expected_height: Optional[int] = Query(
         None, description="Expected image height for validation"
     ),
-) -> dict:
+) -> Response:
     """
     Load a mask from Tiled and cache it.
 
@@ -215,8 +211,8 @@ async def load_mask_from_tiled_endpoint(
 
     Returns
     -------
-    dict
-        Contains mask_id, shape, message, and status ('success' or 'warning').
+    Response
+        msgpack binary containing mask_id, mask_uri, shape, data, message, and status.
     """
     mask_uri = mask_uri.lstrip("/")
 
@@ -228,30 +224,30 @@ async def load_mask_from_tiled_endpoint(
         mask_id = f"{tiled_base_uri}:{mask_uri}"
         mask_height, mask_width = mask_array.shape
 
-        # Validate dimensions if expected values are provided
-        if expected_width is not None and expected_height is not None:
-            if mask_width != expected_width or mask_height != expected_height:
-                return {
-                    "mask_id": mask_id,
-                    "mask_uri": mask_uri,
-                    "shape": list(mask_array.shape),
-                    "message": (
-                        f"Mask size ({mask_height}×{mask_width}) doesn't match "
-                        f"image size ({expected_height}×{expected_width})"
-                    ),
-                    "status": "warning",
-                }
-
         # Extract mask name from URI (last path segment)
         mask_name = mask_uri.split("/")[-1]
 
-        return {
+        # Validate dimensions if expected values are provided
+        status = "success"
+        message = f"Loaded: {mask_name} ({mask_height}×{mask_width})"
+        if expected_width is not None and expected_height is not None:
+            if mask_width != expected_width or mask_height != expected_height:
+                status = "warning"
+                message = (
+                    f"Mask size ({mask_height}×{mask_width}) doesn't match "
+                    f"image size ({expected_height}×{expected_width})"
+                )
+
+        packed_data = msgpack.packb({
             "mask_id": mask_id,
             "mask_uri": mask_uri,
             "shape": list(mask_array.shape),
-            "message": f"Loaded: {mask_name} ({mask_height}×{mask_width})",
-            "status": "success",
-        }
+            "data": mask_array.tobytes(),
+            "message": message,
+            "status": status,
+        })
+
+        return Response(content=packed_data, media_type="application/octet-stream")
 
     except Exception as e:
         raise HTTPException(

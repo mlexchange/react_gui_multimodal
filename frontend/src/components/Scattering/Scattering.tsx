@@ -97,6 +97,9 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     qYMatrix,
     maskUri,
     setMaskUri,
+    maskData,
+    maskShape,
+    updateMaskData,
     restoreState: restoreScatteringState,
   } = useScattering();
 
@@ -845,6 +848,8 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                       </div>
                     }
                     maskUri={maskUri}
+                    maskData={maskData}
+                    maskShape={maskShape}
                     experimentType={experimentType}
                     showQSpaceAxes={showQSpaceAxes}
                     setShowQSpaceAxes={setShowQSpaceAxes}
@@ -1099,6 +1104,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
           experimentType={experimentType}
           maskUri={maskUri}
           onMaskUpdate={setMaskUri}
+          onMaskDataUpdate={updateMaskData}
           expectedImageWidth={imageWidth}
           expectedImageHeight={imageHeight}
         />

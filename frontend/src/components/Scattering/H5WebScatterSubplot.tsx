@@ -21,7 +21,7 @@ import {
   type CustomDomain,
 } from '@h5web/lib';
 import { Vector3 } from 'three';
-import { AzimuthalSectorOverlay } from './utils/generateOverlays';
+import { AzimuthalSectorOverlay, MaskOverlay } from './utils/generateOverlays';
 import ndarray, { NdArray } from 'ndarray';
 import {
   ArrowsHorizontalIcon,
@@ -29,6 +29,7 @@ import {
   GridFourIcon,
   StackIcon,
   ChartLineIcon,
+  MaskHappyIcon,
 } from '@phosphor-icons/react';
 
 // Domain type for heatmap visualization
@@ -399,6 +400,9 @@ interface HeatmapPanelProps {
   qXMatrix?: number[][];
   qYMatrix?: number[][];
   experimentType?: string;
+  maskData?: Uint8Array | null;
+  maskShape?: [number, number] | null;
+  showMaskOverlay?: boolean;
 }
 
 const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
@@ -427,6 +431,9 @@ const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
   qXMatrix = [],
   qYMatrix = [],
   experimentType = 'SAXS',
+  maskData,
+  maskShape,
+  showMaskOverlay = false,
 }) => {
   // Compute axis labels based on experiment type
   const unit = 'nm\u207B\u00B9'; // nm⁻¹ with superscript
@@ -574,6 +581,14 @@ const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
             imageWidth={cols}
             imageHeight={rows}
           />
+          {showMaskOverlay && maskData && maskShape && (
+            <MaskOverlay
+              maskData={maskData}
+              maskShape={maskShape}
+              imageWidth={cols}
+              imageHeight={rows}
+            />
+          )}
         </VisCanvas>
       </div>
       <div
@@ -651,6 +666,8 @@ interface H5WebScatterSubplotProps {
   rightHeader?: React.ReactNode;
   comparisonHeader?: React.ReactNode;
   maskUri?: string | null;
+  maskData?: Uint8Array | null;
+  maskShape?: [number, number] | null;
   experimentType?: string;
   showQSpaceAxes: boolean;
   setShowQSpaceAxes: (value: boolean) => void;
@@ -736,6 +753,8 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
   rightHeader,
   comparisonHeader,
   maskUri,
+  maskData,
+  maskShape,
   experimentType = 'SAXS',
   showQSpaceAxes,
   setShowQSpaceAxes,
@@ -760,6 +779,7 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
   const [flipYAxis, setFlipYAxis] = useState(false);
   const [showGrid, setShowGrid] = useState(false);
   const [showOverlays, setShowOverlays] = useState(true);
+  const [showMaskOverlay, setShowMaskOverlay] = useState(true);
   const [customDomain, setCustomDomain] = useState<CustomDomain>([null, null]);
 
   // Determine if q-space toggle is enabled (calibration must be set with valid q-matrices)
@@ -1187,6 +1207,13 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
           value={showOverlays}
           onToggle={() => setShowOverlays(!showOverlays)}
         />
+        <ToggleBtn
+          label="Mask"
+          Icon={MaskHappyIcon}
+          value={showMaskOverlay}
+          onToggle={() => setShowMaskOverlay(!showMaskOverlay)}
+          disabled={!maskData}
+        />
         <Separator />
 
         <ToggleBtn
@@ -1230,6 +1257,9 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
           qXMatrix={qXMatrix}
           qYMatrix={qYMatrix}
           experimentType={experimentType}
+          maskData={maskData}
+          maskShape={maskShape}
+          showMaskOverlay={showMaskOverlay}
         />
         <HeatmapPanel
           header={rightHeader}
@@ -1257,6 +1287,9 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
           qXMatrix={qXMatrix}
           qYMatrix={qYMatrix}
           experimentType={experimentType}
+          maskData={maskData}
+          maskShape={maskShape}
+          showMaskOverlay={showMaskOverlay}
         />
         <HeatmapPanel
           header={comparisonHeader ?? <span className="font-medium">{comparisonLabel}</span>}

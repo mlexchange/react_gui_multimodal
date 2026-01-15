@@ -48,6 +48,14 @@ export default function useScattering() {
 
   // Mask state
   const [maskUri, setMaskUri] = useState<string | null>(null);
+  const [maskData, setMaskData] = useState<Uint8Array | null>(null);
+  const [maskShape, setMaskShape] = useState<[number, number] | null>(null);
+
+  // Callback to update mask data and shape together
+  const updateMaskData = useCallback((data: Uint8Array | null, shape: [number, number] | null) => {
+    setMaskData(data);
+    setMaskShape(shape);
+  }, []);
 
   // Check if calibration is complete
   const isCalibrationSet = useMemo(
@@ -185,6 +193,9 @@ export default function useScattering() {
     // Mask
     maskUri,
     setMaskUri,
+    maskData,
+    maskShape,
+    updateMaskData,
 
     // Session restoration
     restoreState,

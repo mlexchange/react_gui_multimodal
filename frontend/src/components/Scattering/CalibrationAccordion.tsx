@@ -1,4 +1,5 @@
 import { useState, useEffect, ReactNode, useCallback } from 'react';
+import { unpack } from 'msgpackr';
 import { NumberInput } from '@/components/ui';
 import { Button } from '@blueskyproject/finch';
 import { Tiled, TiledItemLinks } from '@blueskyproject/tiled';
@@ -30,6 +31,8 @@ interface CalibrationAccordionProps {
     experimentType: string;           // 'SAXS' or 'GISAXS'
     maskUri: string | null;
     onMaskUpdate: (maskUri: string | null) => void;
+    /** Callback to update mask data (Uint8Array of 0/1 values) */
+    onMaskDataUpdate: (data: Uint8Array | null, shape: [number, number] | null) => void;
     /** Expected image width for mask validation */
     expectedImageWidth?: number;
     /** Expected image height for mask validation */
@@ -60,6 +63,7 @@ export default function CalibrationAccordion({
     experimentType,
     maskUri,
     onMaskUpdate,
+    onMaskDataUpdate,
     expectedImageWidth,
     expectedImageHeight,
 }: CalibrationAccordionProps) {
@@ -230,7 +234,16 @@ export default function CalibrationAccordion({
         try {
             const response = await fetch(`/api/load-mask-from-tiled?${params}`);
             if (response.ok) {
-                const data = await response.json();
+                // Deserialize msgpack response
+                const buffer = await response.arrayBuffer();
+                const data = unpack(new Uint8Array(buffer)) as {
+                    mask_id: string;
+                    mask_uri: string;
+                    shape: [number, number];
+                    data: Uint8Array;
+                    message: string;
+                    status: string;
+                };
 
                 // Use status and message from backend response
                 setMaskStatus({
@@ -238,10 +251,9 @@ export default function CalibrationAccordion({
                     type: data.status as MaskStatusType,
                 });
 
-                // Only set the mask if status is success
-                if (data.status === 'success') {
-                    onMaskUpdate(data.mask_uri);
-                }
+                // Set the mask URI and data
+                onMaskUpdate(data.mask_uri);
+                onMaskDataUpdate(new Uint8Array(data.data), data.shape);
             } else {
                 console.error('Failed to load mask');
                 setMaskStatus({
@@ -260,7 +272,7 @@ export default function CalibrationAccordion({
             setPendingMaskUri(null);
             setPendingMaskName(null);
         }
-    }, [pendingMaskUri, onMaskUpdate, expectedImageWidth, expectedImageHeight]);
+    }, [pendingMaskUri, onMaskUpdate, onMaskDataUpdate, expectedImageWidth, expectedImageHeight]);
 
     // Handle uploading a mask file
     const handleMaskFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -283,7 +295,15 @@ export default function CalibrationAccordion({
             });
 
             if (response.ok) {
-                const data = await response.json();
+                // Deserialize msgpack response
+                const buffer = await response.arrayBuffer();
+                const data = unpack(new Uint8Array(buffer)) as {
+                    mask_id: string;
+                    shape: [number, number];
+                    data: Uint8Array;
+                    message: string;
+                    status: string;
+                };
 
                 // Use status from backend response
                 setMaskStatus({
@@ -291,10 +311,9 @@ export default function CalibrationAccordion({
                     type: data.status as MaskStatusType,
                 });
 
-                // Only set the mask if status is success
-                if (data.status === 'success') {
-                    onMaskUpdate(data.mask_id);
-                }
+                // Set the mask ID and data
+                onMaskUpdate(data.mask_id);
+                onMaskDataUpdate(new Uint8Array(data.data), data.shape);
             } else {
                 const error = await response.json();
                 console.error('Failed to upload mask:', error.detail);
@@ -313,13 +332,14 @@ export default function CalibrationAccordion({
 
         // Reset the file input
         event.target.value = '';
-    }, [onMaskUpdate, expectedImageWidth, expectedImageHeight]);
+    }, [onMaskUpdate, onMaskDataUpdate, expectedImageWidth, expectedImageHeight]);
 
     // Clear mask
     const handleClearMask = useCallback(() => {
         onMaskUpdate(null);
+        onMaskDataUpdate(null, null);
         setMaskStatus(null);
-    }, [onMaskUpdate]);
+    }, [onMaskUpdate, onMaskDataUpdate]);
 
     const handleSubmit = () => {
         if (isCalibrationComplete(localParams)) {
