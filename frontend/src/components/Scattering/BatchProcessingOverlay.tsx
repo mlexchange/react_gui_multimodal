@@ -24,7 +24,13 @@ import { BatchScanSelector } from './BatchScanSelector';
 import ProgressBar from './SummaryProgressBar';
 import type { BatchOperationType, BatchJobResult } from './hooks/useBatchProcessing';
 import type { Linecut, InclinedLinecut, AzimuthalIntegration } from './types';
-import { OPERATION_LABELS } from './utils/constants';
+
+const OPERATION_LABELS: Record<BatchOperationType, string> = {
+  horizontal: 'Horizontal',
+  vertical: 'Vertical',
+  inclined: 'Inclined',
+  azimuthal: 'Azimuthal',
+};
 
 interface BatchProcessingOverlayProps {
   isOpen: boolean;
@@ -376,9 +382,7 @@ export function BatchProcessingOverlay({
         onClose={() => setIsSelectorOpen(false)}
         scanUris={scanUris}
         scanNames={scanNames}
-        operationType={activeTab}
-        onStartBatch={handleScanSelectionComplete}
-        isProcessing={false}
+        onConfirm={handleScanSelectionComplete}
         initialSelectedUris={selectedScanUris}
       />
     </div>

@@ -12,18 +12,14 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { Modal } from '@/components/shared';
 import { ButtonWithIcon } from '@blueskyproject/finch';
-import { PlayIcon, StackIcon } from '@phosphor-icons/react';
-import { BatchOperationType } from './hooks/useBatchProcessing';
-import { OPERATION_LABELS_FULL } from './utils/constants';
+import { CheckIcon, StackIcon } from '@phosphor-icons/react';
 
 interface BatchScanSelectorProps {
   isOpen: boolean;
   onClose: () => void;
   scanUris: string[];
   scanNames: string[];
-  operationType: BatchOperationType;
-  onStartBatch: (selectedUris: string[]) => void;
-  isProcessing: boolean;
+  onConfirm: (selectedUris: string[]) => void;
   /** Optional: URIs of scans that should be pre-selected when modal opens */
   initialSelectedUris?: string[];
 }
@@ -33,9 +29,7 @@ export function BatchScanSelector({
   onClose,
   scanUris,
   scanNames,
-  operationType,
-  onStartBatch,
-  isProcessing,
+  onConfirm,
   initialSelectedUris,
 }: BatchScanSelectorProps) {
   // Set of selected indices
@@ -120,28 +114,26 @@ export function BatchScanSelector({
   }, []);
 
   /**
-   * Start batch processing with selected scans
+   * Confirm selection and pass selected URIs to parent
    */
-  const handleStart = useCallback(() => {
+  const handleConfirm = useCallback(() => {
     const selectedUris = Array.from(selectedIndices)
       .sort((a, b) => a - b)  // Keep original order
       .map(i => scanUris[i]);
-    onStartBatch(selectedUris);
-  }, [selectedIndices, scanUris, onStartBatch]);
-
-  const operationLabel = OPERATION_LABELS_FULL[operationType];
+    onConfirm(selectedUris);
+  }, [selectedIndices, scanUris, onConfirm]);
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={`Batch ${operationLabel}`}
+      title="Select Scans for Batch Processing"
       titleIcon={<StackIcon size={20} />}
     >
       <div className="space-y-4">
         {/* Description */}
         <p className="text-sm text-gray-600">
-          Select scans to process with the current {operationLabel.toLowerCase()} settings.
+          Select scans to process with all current linecut and integration settings.
         </p>
 
         {/* Select All checkbox */}
@@ -194,10 +186,10 @@ export function BatchScanSelector({
             {selectedIndices.size} of {scanUris.length} scans selected
           </span>
           <ButtonWithIcon
-            icon={<PlayIcon size={16} />}
-            text={isProcessing ? 'Processing...' : 'Start Processing'}
-            cb={handleStart}
-            disabled={selectedIndices.size === 0 || isProcessing}
+            icon={<CheckIcon size={16} />}
+            text="Confirm"
+            cb={handleConfirm}
+            disabled={selectedIndices.size === 0}
             size="small"
             styles="disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed"
           />
