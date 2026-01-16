@@ -82,6 +82,12 @@ const LinecutWidget: React.FC<LinecutWidgetProps> = ({
     [qMatrix, config]
   );
 
+  // Calculate max width based on q-range (rounded to 2 decimal places)
+  const maxWidth = React.useMemo(() => {
+    const qRange = Math.abs(maxQValue - minQValue);
+    return parseFloat(qRange.toFixed(2)) || 10;
+  }, [minQValue, maxQValue]);
+
   return (
     <div className="w-full relative mb-4">
       <LinecutSectionHeader>{linecutType} Linecuts</LinecutSectionHeader>
@@ -119,11 +125,11 @@ const LinecutWidget: React.FC<LinecutWidgetProps> = ({
               <h4 className="text-sm mb-1">Width (nm⁻¹)</h4>
               <InputSlider
                 min={0}
-                max={10}
+                max={maxWidth}
                 value={linecut.width || 0}
                 step={0.1}
                 onChange={(value) => updateWidth(linecut.id, value)}
-                marks={[0, 10]}
+                marks={[0, maxWidth]}
                 styles="w-full"
               />
             </div>

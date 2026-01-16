@@ -11,6 +11,7 @@ interface InclinedLinecutWidgetProps {
   linecutType: string;
   linecuts: InclinedLinecut[];
   units: string;
+  maxQWidth?: number;
   updateInclinedLinecutAngle: (id: number, angle: number) => void;
   updateInclinedLinecutWidth: (id: number, qWidth: number) => void;
   updateInclinedLinecutColor: (id: number, side: 'left' | 'right', color: string) => void;
@@ -22,12 +23,16 @@ const InclinedLinecutWidget: React.FC<InclinedLinecutWidgetProps> = ({
   linecutType,
   linecuts,
   units,
+  maxQWidth: rawMaxQWidth = 10,
   updateInclinedLinecutAngle,
   updateInclinedLinecutWidth,
   updateInclinedLinecutColor,
   deleteInclinedLinecut,
   toggleInclinedLinecutVisibility,
 }) => {
+  // Round maxQWidth to 2 decimal places
+  const maxQWidth = parseFloat(rawMaxQWidth.toFixed(2)) || 10;
+
   const {
     colorPickerRef,
     colorPicker,
@@ -75,8 +80,8 @@ const InclinedLinecutWidget: React.FC<InclinedLinecutWidgetProps> = ({
                 <h4 className="text-sm mb-1">Width ({units})</h4>
                 <InputSlider
                   min={0}
-                  max={10}
-                  marks={[0, 10]}
+                  max={maxQWidth}
+                  marks={[0, maxQWidth]}
                   value={linecut.qWidth ?? 0}
                   step={0.01}
                   onChange={(value) => updateInclinedLinecutWidth(linecut.id, value)}

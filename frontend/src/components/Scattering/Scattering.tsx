@@ -699,6 +699,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                       linecutType={linecutType}
                       linecuts={inclinedLinecuts}
                       units="nm⁻¹"
+                      maxQWidth={maxQValue}
                       updateInclinedLinecutAngle={updateInclinedLinecutAngle}
                       updateInclinedLinecutWidth={updateInclinedLinecutWidth}
                       updateInclinedLinecutColor={updateInclinedLinecutColor}
