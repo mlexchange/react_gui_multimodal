@@ -18,10 +18,11 @@
   "main": "./dist/multimodal.umd.js",
   "module": "./dist/multimodal.es.js",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --config vite.app.config.ts",
     "build": "tsc -b && vite build",
+    "build:app": "tsc -b && vite build --config vite.app.config.ts",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview --config vite.app.config.ts"
   },
   "peerDependencies": {
     "react": ">16.8.x",
