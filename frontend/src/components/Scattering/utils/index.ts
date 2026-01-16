@@ -7,6 +7,7 @@ export * from './calculateQSpaceToPixelWidth';
 export * from './calculateQSpaceToPixelWidthInclinedLinecut';
 export * from './constants';
 export * from './dataProcessingScatterSubplot';
+export * from './h5webUtils';
 export * from './findPixelPositionForQValue';
 export * from './generateOverlays';
 export * from './getArrayMinAndMax';

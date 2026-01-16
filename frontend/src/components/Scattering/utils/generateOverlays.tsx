@@ -1,13 +1,16 @@
 /**
  * SVG-based overlay generation for H5Web visualization.
  *
- * Provides components for rendering azimuthal integration overlays using
- * H5Web's DataToHtml and SvgElement components for proper coordinate transformation.
+ * Provides components for rendering linecut, inclined linecut, and azimuthal
+ * integration overlays using H5Web's DataToHtml and SvgElement components
+ * for proper coordinate transformation.
  */
 
 import React, { useMemo, useId } from 'react';
 import { DataToHtml, SvgElement } from '@h5web/lib';
 import { Vector3 } from 'three';
+import { calculateInclinedLineEndpoints } from './calculateInclinedLinecutEndpoints';
+import type { InclinedLinecut } from '../types';
 
 // ============================================================================
 // Types
@@ -26,6 +29,34 @@ export interface AzimuthalSectorOverlayProps {
   maxQValue: number;
   imageWidth: number;
   imageHeight: number;
+}
+
+export interface LinecutOverlayProps {
+  linecuts: Array<{
+    position: number;  // pixel position
+    width: number;     // width in pixels
+    color: string;
+    type: 'horizontal' | 'vertical';
+    hidden?: boolean;
+  }>;
+  rows: number;
+  cols: number;
+}
+
+export interface InclinedLinecutOverlayProps {
+  linecuts: Array<{
+    angle: number;
+    qWidth: number;
+    qXPosition: number;
+    qYPosition: number;
+    color: string;
+    hidden?: boolean;
+  }>;
+  rows: number;
+  cols: number;
+  beamCenterX: number;
+  beamCenterY: number;
+  pixelWidthCalculator: (qXPosition: number, qYPosition: number, angle: number, qWidth: number) => number;
 }
 
 // ============================================================================
@@ -771,6 +802,306 @@ export const MaskOverlay: React.FC<MaskOverlayProps> = ({
                 </g>
               </SvgElement>
             )}
+          </DataToHtml>
+        );
+      })}
+    </>
+  );
+};
+
+// ============================================================================
+// Linecut Overlay Component
+// ============================================================================
+
+/**
+ * SVG-based linecut overlay for H5Web visualization.
+ * Renders horizontal/vertical linecut bands and center lines.
+ */
+export const LinecutOverlay: React.FC<LinecutOverlayProps> = ({
+  linecuts,
+  rows,
+  cols,
+}) => {
+  const visibleLinecuts = linecuts.filter(lc => !lc.hidden);
+
+  if (visibleLinecuts.length === 0) return null;
+
+  return (
+    <>
+      {visibleLinecuts.map((linecut, index) => {
+        const { position, width, color, type } = linecut;
+        const halfWidth = width / 2;
+
+        if (type === 'horizontal') {
+          // Horizontal linecut: band spans full width, at y=position
+          const yTop = Math.max(0, position - halfWidth);
+          const yBottom = Math.min(rows, position + halfWidth);
+
+          return (
+            <DataToHtml
+              key={`h-linecut-${index}`}
+              points={[
+                new Vector3(0, yTop),
+                new Vector3(cols, yTop),
+                new Vector3(cols, yBottom),
+                new Vector3(0, yBottom),
+                new Vector3(0, position),
+                new Vector3(cols, position),
+              ]}
+            >
+              {(p0, p1, p2, p3, lineStart, lineEnd) => (
+                <SvgElement>
+                  {/* Width band with transparency - opacity 0.3 matching Plotly */}
+                  {width > 0 && (
+                    <polygon
+                      points={`${p0.x},${p0.y} ${p1.x},${p1.y} ${p2.x},${p2.y} ${p3.x},${p3.y}`}
+                      fill={color}
+                      fillOpacity={0.3}
+                      stroke="none"
+                    />
+                  )}
+                  {/* Center line - opacity 0.75, width 1 matching Plotly */}
+                  <line
+                    x1={lineStart.x}
+                    y1={lineStart.y}
+                    x2={lineEnd.x}
+                    y2={lineEnd.y}
+                    stroke={color}
+                    strokeWidth={1}
+                    strokeOpacity={0.75}
+                  />
+                </SvgElement>
+              )}
+            </DataToHtml>
+          );
+        } else {
+          // Vertical linecut: band spans full height, at x=position
+          const xLeft = Math.max(0, position - halfWidth);
+          const xRight = Math.min(cols, position + halfWidth);
+
+          return (
+            <DataToHtml
+              key={`v-linecut-${index}`}
+              points={[
+                new Vector3(xLeft, 0),
+                new Vector3(xRight, 0),
+                new Vector3(xRight, rows),
+                new Vector3(xLeft, rows),
+                new Vector3(position, 0),
+                new Vector3(position, rows),
+              ]}
+            >
+              {(p0, p1, p2, p3, lineStart, lineEnd) => (
+                <SvgElement>
+                  {/* Width band with transparency - opacity 0.3 matching Plotly */}
+                  {width > 0 && (
+                    <polygon
+                      points={`${p0.x},${p0.y} ${p1.x},${p1.y} ${p2.x},${p2.y} ${p3.x},${p3.y}`}
+                      fill={color}
+                      fillOpacity={0.3}
+                      stroke="none"
+                    />
+                  )}
+                  {/* Center line - opacity 0.75, width 1 matching Plotly */}
+                  <line
+                    x1={lineStart.x}
+                    y1={lineStart.y}
+                    x2={lineEnd.x}
+                    y2={lineEnd.y}
+                    stroke={color}
+                    strokeWidth={1}
+                    strokeOpacity={0.75}
+                  />
+                </SvgElement>
+              )}
+            </DataToHtml>
+          );
+        }
+      })}
+    </>
+  );
+};
+
+// ============================================================================
+// Inclined Linecut Overlay Component
+// ============================================================================
+
+/**
+ * Sutherland-Hodgman polygon clipping to image boundaries.
+ */
+const clipPolygonToImageBoundaries = (
+  points: Array<{ x: number; y: number }>,
+  imageWidth: number,
+  imageHeight: number
+): Array<{ x: number; y: number }> => {
+  if (points.length < 3) return points;
+
+  const isInside = (p: { x: number; y: number }, edge: { x1: number; y1: number; x2: number; y2: number }) => {
+    const dx = edge.x2 - edge.x1;
+    const dy = edge.y2 - edge.y1;
+    const cross = (p.x - edge.x1) * dy - (p.y - edge.y1) * dx;
+    return cross <= 0;
+  };
+
+  const getIntersection = (
+    p1: { x: number; y: number },
+    p2: { x: number; y: number },
+    edge: { x1: number; y1: number; x2: number; y2: number }
+  ) => {
+    const dx1 = p2.x - p1.x;
+    const dy1 = p2.y - p1.y;
+    const dx2 = edge.x2 - edge.x1;
+    const dy2 = edge.y2 - edge.y1;
+    const det = dx1 * dy2 - dy1 * dx2;
+    if (det === 0) return { x: edge.x1, y: edge.y1 };
+    const t = ((edge.x1 - p1.x) * dy2 - (edge.y1 - p1.y) * dx2) / det;
+    return { x: p1.x + t * dx1, y: p1.y + t * dy1 };
+  };
+
+  const edges = [
+    { x1: 0, y1: 0, x2: imageWidth, y2: 0 },
+    { x1: imageWidth, y1: 0, x2: imageWidth, y2: imageHeight },
+    { x1: imageWidth, y1: imageHeight, x2: 0, y2: imageHeight },
+    { x1: 0, y1: imageHeight, x2: 0, y2: 0 },
+  ];
+
+  let clipped = [...points, points[0]]; // Close polygon
+
+  for (const edge of edges) {
+    const input = clipped;
+    clipped = [];
+
+    for (let i = 0; i < input.length - 1; i++) {
+      const current = input[i];
+      const next = input[i + 1];
+      const currentInside = isInside(current, edge);
+      const nextInside = isInside(next, edge);
+
+      if (currentInside && nextInside) {
+        clipped.push(next);
+      } else if (currentInside && !nextInside) {
+        clipped.push(getIntersection(current, next, edge));
+      } else if (!currentInside && nextInside) {
+        clipped.push(getIntersection(current, next, edge));
+        clipped.push(next);
+      }
+    }
+
+    if (clipped.length > 0) {
+      clipped.push(clipped[0]); // Close polygon
+    }
+    if (clipped.length < 3) return [];
+  }
+
+  return clipped.slice(0, -1); // Remove closing point
+};
+
+/**
+ * SVG-based inclined linecut overlay for H5Web visualization.
+ * Renders inclined linecut bands with beam center marker.
+ */
+export const InclinedLinecutOverlay: React.FC<InclinedLinecutOverlayProps> = ({
+  linecuts,
+  rows,
+  cols,
+  beamCenterX,
+  beamCenterY,
+  pixelWidthCalculator,
+}) => {
+  const visibleLinecuts = linecuts.filter(lc => !lc.hidden);
+
+  if (visibleLinecuts.length === 0) return null;
+
+  return (
+    <>
+      {visibleLinecuts.map((linecut, index) => {
+        const { angle, qWidth, qXPosition, qYPosition, color } = linecut;
+
+        // Calculate endpoints using the same function as Plotly implementation
+        const endpoints = calculateInclinedLineEndpoints({
+          linecut: { angle } as InclinedLinecut,
+          imageWidth: cols,
+          imageHeight: rows,
+          beam_center_x: beamCenterX,
+          beam_center_y: beamCenterY,
+          factor: 1, // No scaling factor needed - we're working in full resolution
+        });
+
+        if (!endpoints) return null;
+        const { x0, y0, x1, y1 } = endpoints;
+
+        // Calculate perpendicular vector for width envelope
+        const radians = (angle * Math.PI) / 180;
+        const dx = Math.cos(radians);
+        const dy = -Math.sin(radians);
+        const perpDx = -dy;
+        const perpDy = dx;
+
+        // Calculate pixel width from q-space width (position and angle aware)
+        const pixelWidth = pixelWidthCalculator(qXPosition, qYPosition, angle, qWidth);
+        const halfWidthPixels = pixelWidth / 2;
+
+        // Calculate envelope corners and clip to image boundaries
+        const rawEnvelope = [
+          { x: x0 + perpDx * halfWidthPixels, y: y0 + perpDy * halfWidthPixels },
+          { x: x1 + perpDx * halfWidthPixels, y: y1 + perpDy * halfWidthPixels },
+          { x: x1 - perpDx * halfWidthPixels, y: y1 - perpDy * halfWidthPixels },
+          { x: x0 - perpDx * halfWidthPixels, y: y0 - perpDy * halfWidthPixels },
+        ];
+
+        const clippedEnvelope = clipPolygonToImageBoundaries(rawEnvelope, cols, rows);
+
+        // Beam center position
+        const beamX = beamCenterX;
+        const beamY = beamCenterY;
+
+        // Build points array for DataToHtml
+        const dataPoints = [
+          new Vector3(x0, y0),
+          new Vector3(x1, y1),
+          new Vector3(beamX, beamY),
+          ...clippedEnvelope.map(p => new Vector3(p.x, p.y)),
+        ];
+
+        return (
+          <DataToHtml
+            key={`inclined-linecut-${index}`}
+            points={dataPoints}
+          >
+            {(...htmlPoints) => {
+              const [lineStart, lineEnd, center, ...envPoints] = htmlPoints;
+              return (
+                <SvgElement>
+                  {/* Clipped width envelope - opacity 0.3 matching Plotly */}
+                  {qWidth > 0 && envPoints.length >= 3 && (
+                    <polygon
+                      points={envPoints.map(p => `${p.x},${p.y}`).join(' ')}
+                      fill={color}
+                      fillOpacity={0.3}
+                      stroke="none"
+                    />
+                  )}
+                  {/* Central line - opacity 0.75, width 2 matching Plotly */}
+                  <line
+                    x1={lineStart.x}
+                    y1={lineStart.y}
+                    x2={lineEnd.x}
+                    y2={lineEnd.y}
+                    stroke={color}
+                    strokeWidth={2}
+                    strokeOpacity={0.75}
+                  />
+                  {/* Beam center marker - size ~10px, opacity 0.75 matching Plotly */}
+                  <circle
+                    cx={center.x}
+                    cy={center.y}
+                    r={5}
+                    fill={color}
+                    fillOpacity={0.75}
+                  />
+                </SvgElement>
+              );
+            }}
           </DataToHtml>
         );
       })}
