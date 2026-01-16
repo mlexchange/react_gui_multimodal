@@ -36,7 +36,6 @@ import { BatchProcessingWidget } from './BatchProcessingWidget';
 // Import utilities
 import { handleExperimentTypeChange, addLinecut } from './utils/linecutHandlers';
 import { leftImageColorPalette, rightImageColorPalette } from './utils/constants';
-import { fetchQVectors } from './services/linecutApi';
 
 // Import assets
 import alsLogo from '@/assets/als-logo.png';
@@ -243,52 +242,20 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
       restoreIntegrations: restoreAzimuthalIntegrations,
   } = useAzimuthalIntegration(calibrationParams, leftScanUri, rightScanUri, maskUri);
 
-  // Q-magnitude matrix for azimuthal overlay rendering
-  // This is cached and only refetched when calibration or image dimensions change
-  const [qMagnitudeMatrix, setQMagnitudeMatrix] = useState<number[][] | null>(null);
-  const [qMagnitudeCacheKey, setQMagnitudeCacheKey] = useState<string>('');
-
   // Get image dimensions from imageData1 (assumes both images have same dimensions)
   const imageHeight = imageData1.length;
   const imageWidth = imageData1[0]?.length || 0;
 
-  // Fetch Q-magnitude matrix when calibration or dimensions change
-  useEffect(() => {
-    if (!calibrationParams || imageWidth === 0 || imageHeight === 0) {
-      return;
+  // Compute Q-magnitude matrix from qXMatrix and qYMatrix (already fetched by useScattering)
+  const qMagnitudeMatrix = useMemo(() => {
+    if (!qXMatrix?.length || !qYMatrix?.length) {
+      return null;
     }
-
-    // Generate cache key from calibration and dimensions
-    const cacheKey = JSON.stringify({
-      calibration: calibrationParams,
-      width: imageWidth,
-      height: imageHeight,
-    });
-
-    // Skip if we already have this cached
-    if (cacheKey === qMagnitudeCacheKey) {
-      return;
-    }
-
-    // Fetch Q-vectors and compute Q-magnitude
-    fetchQVectors({
-      calibration: calibrationParams,
-      experimentType,
-      imageWidth,
-      imageHeight,
-    })
-      .then(({ q_x, q_y }) => {
-        // Compute Q magnitude: sqrt(qX² + qY²)
-        const qMag = q_x.map((row, y) =>
-          row.map((qx, x) => Math.sqrt(qx * qx + q_y[y][x] * q_y[y][x]))
-        );
-        setQMagnitudeMatrix(qMag);
-        setQMagnitudeCacheKey(cacheKey);
-      })
-      .catch((error) => {
-        console.error('Failed to fetch Q-vectors for overlay:', error);
-      });
-  }, [calibrationParams, experimentType, imageWidth, imageHeight, qMagnitudeCacheKey]);
+    // Compute Q magnitude: sqrt(qX² + qY²)
+    return qXMatrix.map((row, y) =>
+      row.map((qx, x) => Math.sqrt(qx * qx + qYMatrix[y][x] * qYMatrix[y][x]))
+    );
+  }, [qXMatrix, qYMatrix]);
 
   // Compute maxQValue from qMagnitudeMatrix
   const maxQValue = useMemo(() => {
