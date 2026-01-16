@@ -11,7 +11,6 @@ import {
   HeatmapMesh,
   DefaultInteractions,
   ResetZoomButton,
-  ScaleType,
   ColorBar,
   TooltipMesh,
 } from '@h5web/lib';

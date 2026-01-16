@@ -26,12 +26,12 @@ import LinecutWidget from './LinecutWidget';
 import InclinedLinecutWidget from './InclinedLinecutWidget';
 import AzimuthalIntegrationWidget from './AzimuthalIntegrationWidget';
 import DataTransformationAccordion from './DataTransformationAccordion';
-import CalibrationAccordion from './CalibrationAccordion';
+import CalibrationWidget from './CalibrationWidget';
 import LinecutFig from './LinecutFig';
 import InclinedLinecutFig from './InclinedLinecutFig';
 import AzimuthalIntegrationFig from './AzimuthalIntegrationFig';
 import SummaryFig from './SummaryFig';
-import { BatchProcessingOverlay } from './BatchProcessingOverlay';
+import { BatchProcessingWidget } from './BatchProcessingWidget';
 
 // Import utilities
 import { handleExperimentTypeChange, addLinecut } from './utils/linecutHandlers';
@@ -1023,7 +1023,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
         titleIcon={<WrenchIcon size={24} weight="bold" />}
         showCloseButton={false}
       >
-        <CalibrationAccordion
+        <CalibrationWidget
           onCalibrationUpdate={handleCalibrationUpdate}
           calibrationParams={calibrationParams}
           experimentType={experimentType}
@@ -1036,7 +1036,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
       </Modal>
 
       {/* Batch Processing Overlay */}
-      <BatchProcessingOverlay
+      <BatchProcessingWidget
         isOpen={isBatchOverlayOpen}
         onClose={() => setIsBatchOverlayOpen(false)}
         horizontalLinecuts={horizontalLinecuts}

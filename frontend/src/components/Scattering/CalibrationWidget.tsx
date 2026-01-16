@@ -25,7 +25,7 @@ const IconLabel: React.FC<IconLabelProps> = ({ icon, label }) => (
     </div>
 );
 
-interface CalibrationAccordionProps {
+interface CalibrationWidgetProps {
     calibrationParams: CalibrationParams | null;
     onCalibrationUpdate: (params: CalibrationParams) => void;
     experimentType: string;           // 'SAXS' or 'GISAXS'
@@ -57,7 +57,7 @@ const energyToWavelength = (energy: number): number => {
     return HC_CONSTANT / energy;
 };
 
-export default function CalibrationAccordion({
+export default function CalibrationWidget({
     calibrationParams,
     onCalibrationUpdate,
     experimentType,
@@ -66,7 +66,7 @@ export default function CalibrationAccordion({
     onMaskDataUpdate,
     expectedImageWidth,
     expectedImageHeight,
-}: CalibrationAccordionProps) {
+}: CalibrationWidgetProps) {
     const [isModified, setIsModified] = useState(false);
     const [localParams, setLocalParams] = useState<CalibrationParams>(() =>
         calibrationParams ?? {}

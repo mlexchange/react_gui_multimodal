@@ -1,5 +1,5 @@
 /**
- * BatchProcessingOverlay - Centralized batch processing interface.
+ * BatchProcessingWidget - Centralized batch processing interface.
  *
  * This overlay provides a unified interface for:
  * - Selecting scans for batch processing
@@ -32,7 +32,7 @@ const OPERATION_LABELS: Record<BatchOperationType, string> = {
   azimuthal: 'Azimuthal',
 };
 
-interface BatchProcessingOverlayProps {
+interface BatchProcessingWidgetProps {
   isOpen: boolean;
   onClose: () => void;
 
@@ -87,7 +87,7 @@ interface BatchProcessingOverlayProps {
   experimentType: string;
 }
 
-export function BatchProcessingOverlay({
+export function BatchProcessingWidget({
   isOpen,
   onClose,
   horizontalLinecuts,
@@ -115,7 +115,7 @@ export function BatchProcessingOverlay({
   runBatchAll,
   onCancel,
   experimentType,
-}: BatchProcessingOverlayProps) {
+}: BatchProcessingWidgetProps) {
   // Get linecuts for the active tab
   const activeLinecuts = useMemo(() => {
     switch (activeTab) {
