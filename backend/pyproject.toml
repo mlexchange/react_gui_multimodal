@@ -2,7 +2,6 @@
 name = "xscattering-backend"
 version = "0.1.0"
 description = "FastAPI backend for X-ray scattering analysis"
-readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "fabio>=2025.10.0",

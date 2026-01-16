@@ -24,7 +24,7 @@ COPY pyproject.toml uv.lock ./
 # --system installs packages into the system Python rather than creating a virtual environment
 # --locked ensures the exact versions from uv.lock are used
 # --no-cache reduces the image size by not storing the uv cache
-RUN uv sync --system --frozen --no-cache --no-dev
+RUN uv sync --no-cache --no-dev
 
 # Copy the rest of the application code
 # This step is done after installing dependencies for better caching
