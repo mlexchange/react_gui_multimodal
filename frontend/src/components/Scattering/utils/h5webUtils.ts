@@ -19,6 +19,43 @@ export const formatTickAsInteger = (val: number): string => {
 };
 
 /**
+ * Binary search to find index of closest value in a sorted array.
+ * Works with both ascending and descending arrays.
+ *
+ * @param arr - Sorted array (ascending or descending)
+ * @param target - Value to find
+ * @returns Index of closest value
+ */
+export const binarySearchClosest = (arr: number[], target: number): number => {
+  if (arr.length === 0) return 0;
+  if (arr.length === 1) return 0;
+
+  // Determine if array is ascending or descending
+  const ascending = arr[arr.length - 1] > arr[0];
+
+  let left = 0;
+  let right = arr.length - 1;
+
+  while (left < right - 1) {
+    const mid = Math.floor((left + right) / 2);
+    const midVal = arr[mid];
+
+    if (midVal === target) return mid;
+
+    if (ascending) {
+      if (midVal < target) left = mid;
+      else right = mid;
+    } else {
+      if (midVal > target) left = mid;
+      else right = mid;
+    }
+  }
+
+  // Return the closer of the two remaining candidates
+  return Math.abs(arr[left] - target) <= Math.abs(arr[right] - target) ? left : right;
+};
+
+/**
  * Convert 2D number array to ndarray for H5Web visualization
  */
 export const arrayToNdarray = (arr: number[][]): NdArray<Float32Array> | null => {

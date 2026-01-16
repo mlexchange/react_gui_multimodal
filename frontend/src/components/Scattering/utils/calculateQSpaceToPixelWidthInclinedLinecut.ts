@@ -1,3 +1,5 @@
+import { binarySearchClosest } from './h5webUtils';
+
 /**
  * Calculates width in pixel space from q-space parameters for inclined linecuts
  *
@@ -69,29 +71,7 @@ export const qToPixel = (
   qXVector: number[],
   qYVector: number[]
 ): [number, number] => {
-  // Find index of closest q-value in qXVector
-  let xPixel = 0;
-  let minDiffX = Math.abs(qXVector[0] - qX);
-
-  for (let i = 1; i < qXVector.length; i++) {
-    const diff = Math.abs(qXVector[i] - qX);
-    if (diff < minDiffX) {
-      minDiffX = diff;
-      xPixel = i;
-    }
-  }
-
-  // Find index of closest q-value in qYVector
-  let yPixel = 0;
-  let minDiffY = Math.abs(qYVector[0] - qY);
-
-  for (let i = 1; i < qYVector.length; i++) {
-    const diff = Math.abs(qYVector[i] - qY);
-    if (diff < minDiffY) {
-      minDiffY = diff;
-      yPixel = i;
-    }
-  }
-
+  const xPixel = binarySearchClosest(qXVector, qX);
+  const yPixel = binarySearchClosest(qYVector, qY);
   return [xPixel, yPixel];
 };

@@ -1,3 +1,5 @@
+import { binarySearchClosest } from './h5webUtils';
+
 /**
  * Generic helper function to find pixel position from q-value using a matrix
  * @param qValue The q-value to find in the matrix
@@ -11,45 +13,20 @@ export function findPixelPositionForQValue(
   direction: 'horizontal' | 'vertical' = 'horizontal'
 ): number {
   if (!qMatrix || qMatrix.length === 0) {
-    return 0; // Fallback to 0 if no mapping is available
+    return 0;
   }
 
-  // For empty first row/column case
   if (!qMatrix[0] || qMatrix[0].length === 0) {
     return 0;
   }
 
   if (direction === 'horizontal') {
-    // Find the row where q-values are closest to our target
-    // For horizontal linecuts (using qYMatrix), we use the first column of each row
-    let closestRow = 0;
-    let smallestDifference = Math.abs(qMatrix[0][0] - qValue);
-
-    for (let y = 0; y < qMatrix.length; y++) {
-      if (qMatrix[y] && qMatrix[y][0] !== undefined) {
-        const difference = Math.abs(qMatrix[y][0] - qValue);
-        if (difference < smallestDifference) {
-          smallestDifference = difference;
-          closestRow = y;
-        }
-      }
-    }
-    return closestRow;
+    // Extract first column values for binary search
+    const columnValues = qMatrix.map(row => row[0]).filter(v => v !== undefined);
+    return binarySearchClosest(columnValues, qValue);
   } else {
-    // Find the column where q-values are closest to our target
-    // For vertical linecuts (using qXMatrix), we use the first row's columns
-    let closestColumn = 0;
-    let smallestDifference = Math.abs(qMatrix[0][0] - qValue);
-
-    for (let x = 0; x < qMatrix[0].length; x++) {
-      if (qMatrix[0][x] !== undefined) {
-        const difference = Math.abs(qMatrix[0][x] - qValue);
-        if (difference < smallestDifference) {
-          smallestDifference = difference;
-          closestColumn = x;
-        }
-      }
-    }
-    return closestColumn;
+    // Use first row for binary search
+    const rowValues = qMatrix[0].filter(v => v !== undefined);
+    return binarySearchClosest(rowValues, qValue);
   }
 }
