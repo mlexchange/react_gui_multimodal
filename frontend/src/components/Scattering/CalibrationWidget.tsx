@@ -349,7 +349,10 @@ export default function CalibrationWidget({
     };
 
     // Check if form has enough data to submit
-    const canSubmit = isModified && isCalibrationComplete(localParams);
+    // For GISAXS, incident_angle is required
+    const isIncidentAngleValid = experimentType !== 'GISAXS' ||
+        (localParams.incident_angle !== undefined && localParams.incident_angle > 0);
+    const canSubmit = isModified && isCalibrationComplete(localParams) && isIncidentAngleValid;
 
     return (
         <div className="space-y-4">
