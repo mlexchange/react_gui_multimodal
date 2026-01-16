@@ -22,6 +22,8 @@ import {
 } from '@h5web/lib';
 import { Vector3 } from 'three';
 import { AzimuthalSectorOverlay, MaskOverlay } from './utils/generateOverlays';
+import { calculateQSpaceToPixelWidth } from './utils/calculateQSpaceToPixelWidth';
+import { calculateInclinedQSpaceToPixelWidth } from './utils/calculateQSpaceToPixelWidthInclinedLinecut';
 import ndarray, { NdArray } from 'ndarray';
 import {
   ArrowsHorizontalIcon,
@@ -171,6 +173,8 @@ interface InclinedLinecutOverlayProps {
   linecuts: Array<{
     angle: number;
     qWidth: number;
+    qXPosition: number;
+    qYPosition: number;
     color: string;
     hidden?: boolean;
   }>;
@@ -178,7 +182,7 @@ interface InclinedLinecutOverlayProps {
   cols: number;
   beamCenterX: number;
   beamCenterY: number;
-  pixelWidthCalculator: (qWidth: number) => number;
+  pixelWidthCalculator: (qXPosition: number, qYPosition: number, angle: number, qWidth: number) => number;
 }
 
 // Sutherland-Hodgman polygon clipping helper functions
@@ -264,7 +268,7 @@ const InclinedLinecutOverlay: React.FC<InclinedLinecutOverlayProps> = ({
   return (
     <>
       {visibleLinecuts.map((linecut, index) => {
-        const { angle, qWidth, color } = linecut;
+        const { angle, qWidth, qXPosition, qYPosition, color } = linecut;
 
         // Calculate endpoints using the same function as Plotly implementation
         const endpoints = calculateInclinedLineEndpoints({
@@ -286,8 +290,8 @@ const InclinedLinecutOverlay: React.FC<InclinedLinecutOverlayProps> = ({
         const perpDx = -dy;
         const perpDy = dx;
 
-        // Calculate pixel width from q-space width
-        const pixelWidth = pixelWidthCalculator(qWidth);
+        // Calculate pixel width from q-space width (position and angle aware)
+        const pixelWidth = pixelWidthCalculator(qXPosition, qYPosition, angle, qWidth);
         const halfWidthPixels = pixelWidth / 2;
 
         // Calculate envelope corners and clip to image boundaries
@@ -383,7 +387,7 @@ interface HeatmapPanelProps {
   showGrid?: boolean;
   linecuts?: LinecutOverlayProps['linecuts'];
   inclinedLinecuts?: InclinedLinecutOverlayProps['linecuts'];
-  inclinedPixelWidthCalculator?: (qWidth: number) => number;
+  inclinedPixelWidthCalculator?: (qXPosition: number, qYPosition: number, angle: number, qWidth: number) => number;
   azimuthalIntegrations?: Array<{
     qRange: [number, number] | null;
     azimuthRange: [number, number];
@@ -1000,9 +1004,9 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
   const leftImageLinecuts = useMemo(() => {
     const linecuts: LinecutOverlayProps['linecuts'] = [];
 
-    // Add horizontal linecuts (use qYMatrix for width calculation)
+    // Add horizontal linecuts (use qYMatrix for position-aware width calculation)
     horizontalLinecuts.forEach(lc => {
-      const pixelWidth = calculateLocalPixelWidth(lc.width, qYMatrix, 'horizontal');
+      const pixelWidth = calculateQSpaceToPixelWidth(lc.position, lc.width, qYMatrix, 'horizontal');
       linecuts.push({
         position: lc.pixelPosition,
         width: pixelWidth,
@@ -1012,9 +1016,9 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
       });
     });
 
-    // Add vertical linecuts (use qXMatrix for width calculation)
+    // Add vertical linecuts (use qXMatrix for position-aware width calculation)
     verticalLinecuts.forEach(lc => {
-      const pixelWidth = calculateLocalPixelWidth(lc.width, qXMatrix, 'vertical');
+      const pixelWidth = calculateQSpaceToPixelWidth(lc.position, lc.width, qXMatrix, 'vertical');
       linecuts.push({
         position: lc.pixelPosition,
         width: pixelWidth,
@@ -1025,15 +1029,15 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
     });
 
     return linecuts;
-  }, [horizontalLinecuts, verticalLinecuts, qYMatrix, qXMatrix, calculateLocalPixelWidth]);
+  }, [horizontalLinecuts, verticalLinecuts, qYMatrix, qXMatrix]);
 
   // Transform linecuts to overlay format for right image
   const rightImageLinecuts = useMemo(() => {
     const linecuts: LinecutOverlayProps['linecuts'] = [];
 
-    // Add horizontal linecuts (use qYMatrix for width calculation)
+    // Add horizontal linecuts (use qYMatrix for position-aware width calculation)
     horizontalLinecuts.forEach(lc => {
-      const pixelWidth = calculateLocalPixelWidth(lc.width, qYMatrix, 'horizontal');
+      const pixelWidth = calculateQSpaceToPixelWidth(lc.position, lc.width, qYMatrix, 'horizontal');
       linecuts.push({
         position: lc.pixelPosition,
         width: pixelWidth,
@@ -1043,9 +1047,9 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
       });
     });
 
-    // Add vertical linecuts (use qXMatrix for width calculation)
+    // Add vertical linecuts (use qXMatrix for position-aware width calculation)
     verticalLinecuts.forEach(lc => {
-      const pixelWidth = calculateLocalPixelWidth(lc.width, qXMatrix, 'vertical');
+      const pixelWidth = calculateQSpaceToPixelWidth(lc.position, lc.width, qXMatrix, 'vertical');
       linecuts.push({
         position: lc.pixelPosition,
         width: pixelWidth,
@@ -1056,21 +1060,35 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
     });
 
     return linecuts;
-  }, [horizontalLinecuts, verticalLinecuts, qYMatrix, qXMatrix, calculateLocalPixelWidth]);
+  }, [horizontalLinecuts, verticalLinecuts, qYMatrix, qXMatrix]);
 
-  // Calculate inclined linecut pixel width using average of both q-matrices
-  const calculateInclinedPixelWidth = useCallback((qWidth: number): number => {
-    // Use average of horizontal and vertical pixel widths for inclined linecuts
-    const hPixelWidth = calculateLocalPixelWidth(qWidth, qYMatrix, 'horizontal');
-    const vPixelWidth = calculateLocalPixelWidth(qWidth, qXMatrix, 'vertical');
-    return (hPixelWidth + vPixelWidth) / 2;
-  }, [calculateLocalPixelWidth, qYMatrix, qXMatrix]);
+  // Derive 1D q-vectors from 2D matrices for inclined linecut calculations
+  const qXVector = useMemo(() => qXMatrix?.[0] ?? [], [qXMatrix]);
+  const qYVector = useMemo(() => qYMatrix?.map(row => row[0]) ?? [], [qYMatrix]);
+
+  // Calculate inclined linecut pixel width using position and angle-aware calculation
+  const calculateInclinedPixelWidth = useCallback((
+    qXPosition: number,
+    qYPosition: number,
+    angle: number,
+    qWidth: number
+  ): number => {
+    if (!qXVector.length || !qYVector.length) {
+      // Fallback to average of horizontal/vertical if vectors not available
+      const hPixelWidth = calculateLocalPixelWidth(qWidth, qYMatrix, 'horizontal');
+      const vPixelWidth = calculateLocalPixelWidth(qWidth, qXMatrix, 'vertical');
+      return (hPixelWidth + vPixelWidth) / 2;
+    }
+    return calculateInclinedQSpaceToPixelWidth(qXPosition, qYPosition, angle, qWidth, qXVector, qYVector);
+  }, [qXVector, qYVector, qXMatrix, qYMatrix, calculateLocalPixelWidth]);
 
   // Transform inclined linecuts to overlay format for left image
   const leftInclinedLinecuts = useMemo(() => {
     return inclinedLinecuts.map(lc => ({
       angle: lc.angle,
       qWidth: lc.qWidth,
+      qXPosition: lc.qXPosition,
+      qYPosition: lc.qYPosition,
       color: lc.leftColor,
       hidden: lc.hidden,
     }));
@@ -1081,6 +1099,8 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
     return inclinedLinecuts.map(lc => ({
       angle: lc.angle,
       qWidth: lc.qWidth,
+      qXPosition: lc.qXPosition,
+      qYPosition: lc.qYPosition,
       color: lc.rightColor,
       hidden: lc.hidden,
     }));
