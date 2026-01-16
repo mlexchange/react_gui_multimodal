@@ -4,11 +4,6 @@ Linecut extraction utilities for batch processing.
 This module provides pure Python functions for extracting linecuts from
 scattering images. These functions are thread-safe (no shared state) and
 designed for parallel execution via ThreadPoolExecutor.
-
-The logic mirrors the frontend TypeScript implementation in:
-- frontend/src/components/Scattering/utils/findPixelPositionForQValue.ts
-- frontend/src/components/Scattering/utils/calculateQSpaceToPixelWidth.ts
-- frontend/src/components/Scattering/hooks/useInclinedLinecut.ts
 """
 
 from typing import Literal, Tuple
@@ -254,6 +249,8 @@ def extract_inclined_linecut(
     """
     Extract an inclined linecut along an angled path through the image.
 
+    Uses vectorized NumPy operations for performance.
+
     Args:
         image_array: 2D intensity array
         q_x_matrix: 2D array of q_x values
@@ -326,7 +323,9 @@ def extract_inclined_linecut(
         return np.array([]), np.array([])
 
     # Calculate pixel width for averaging
-    pixel_width = calculate_inclined_pixel_width(q_x_position, q_y_position, angle, q_width, q_x_vector, q_y_vector)
+    pixel_width = calculate_inclined_pixel_width(
+        q_x_position, q_y_position, angle, q_width, q_x_vector, q_y_vector
+    )
 
     # Perpendicular vector for width averaging
     perp_x = -dir_y
@@ -335,34 +334,48 @@ def extract_inclined_linecut(
     # Sample points along the line
     num_points = int(np.ceil(length))
     path_distances = np.linspace(0, length, num_points)
-    intensities = np.zeros(num_points)
+
+    # Generate base positions along the line (vectorized)
+    t_values = np.linspace(0, 1, num_points)
+    base_x = x0 + t_values * dx
+    base_y = y0 + t_values * dy
+
+    # Width offsets for averaging
     half_width = pixel_width / 2
+    if pixel_width > 0:
+        w_offsets = np.arange(-half_width, half_width + 0.5, 0.5)
+    else:
+        w_offsets = np.array([0.0])
 
-    for i in range(num_points):
-        # Base position along the line
-        base_x = x0 + (i / num_points) * dx
-        base_y = y0 + (i / num_points) * dy
+    # Create 2D grids of sample positions (num_points x num_offsets)
+    # Broadcasting: base positions + perpendicular offsets
+    sample_x = base_x[:, np.newaxis] + w_offsets[np.newaxis, :] * perp_x
+    sample_y = base_y[:, np.newaxis] + w_offsets[np.newaxis, :] * perp_y
 
-        sum_val = 0.0
-        count = 0
+    # Round to integer pixel coordinates
+    pixel_x = np.round(sample_x).astype(np.int32)
+    pixel_y = np.round(sample_y).astype(np.int32)
 
-        # Sample perpendicular to the line for width averaging
-        if pixel_width > 0:
-            w_range = np.arange(-half_width, half_width + 0.5, 0.5)
-        else:
-            w_range = [0.0]
+    # Create mask for valid coordinates
+    valid_mask = (
+        (pixel_x >= 0) & (pixel_x < image_width) &
+        (pixel_y >= 0) & (pixel_y < image_height)
+    )
 
-        for w in w_range:
-            x = int(round(base_x + w * perp_x))
-            y = int(round(base_y + w * perp_y))
+    # Clip coordinates to valid range for safe indexing
+    pixel_x_clipped = np.clip(pixel_x, 0, image_width - 1)
+    pixel_y_clipped = np.clip(pixel_y, 0, image_height - 1)
 
-            # Check if point is within bounds
-            if 0 <= x < image_width and 0 <= y < image_height:
-                val = image_array[y, x]
-                if not np.isnan(val):
-                    sum_val += val
-                    count += 1
+    # Extract all values at once using advanced indexing
+    values = image_array[pixel_y_clipped, pixel_x_clipped]
 
-        intensities[i] = sum_val / count if count > 0 else 0.0
+    # Apply validity mask and NaN mask
+    valid_values = valid_mask & ~np.isnan(values)
+    values = np.where(valid_values, values, 0.0)
+
+    # Compute mean along width axis (sum / count, avoiding division by zero)
+    value_sum = np.sum(values, axis=1)
+    value_count = np.sum(valid_values, axis=1)
+    intensities = np.divide(value_sum, value_count, out=np.zeros_like(value_sum), where=value_count > 0)
 
     return path_distances, intensities
