@@ -516,37 +516,34 @@ export default function CalibrationWidget({
 
             {/* Row 6: Incident Angle (GISAXS only) */}
             {experimentType === 'GISAXS' && (
-                <div className="flex items-center gap-4">
-                    <IconLabel
-                        icon={<AngleIcon size={30} />}
-                        label="Incident angle"
-                    />
-                    <div className="flex-1">
-                        <NumberInput
-                            label="Incident angle (°)"
-                            value={localParams.incident_angle ?? ''}
-                            onChange={handleParamChange('incident_angle')}
-                            decimalScale={3}
-                            step={0.001}
-                            min={0}
-                            max={5}
-                            size="sm"
+                <div className="space-y-2">
+                    <div className="flex items-center gap-4">
+                        <IconLabel
+                            icon={<AngleIcon size={30} />}
+                            label="Incident angle"
                         />
+                        <div className="flex-1">
+                            <NumberInput
+                                label="Incident angle (°)"
+                                value={localParams.incident_angle ?? ''}
+                                onChange={handleParamChange('incident_angle')}
+                                decimalScale={3}
+                                step={0.001}
+                                min={0}
+                                max={5}
+                                size="sm"
+                            />
+                        </div>
                     </div>
+                    {!localParams.incident_angle && (
+                        <div className="text-sm text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
+                            Incident angle is required for GISAXS experiments
+                        </div>
+                    )}
                 </div>
             )}
 
-            {/* Update Button */}
-            <Button
-                size="medium"
-                styles="w-full"
-                bgColor={canSubmit ? "bg-sky-500" : "bg-gray-400"}
-                cb={handleSubmit}
-                disabled={!canSubmit}
-                text="Update Calibration"
-            />
-
-            {/* Row 7: Detector Mask */}
+            {/* Detector Mask */}
             <div className="border-t border-slate-200 pt-4 mt-2">
                 <div className="flex items-center justify-between mb-2">
                     <span className="text-md font-medium text-sky-950">Detector Mask</span>
@@ -569,6 +566,10 @@ export default function CalibrationWidget({
                     }`}>
                         {maskStatus.message}
                     </div>
+                ) : maskUri ? (
+                    <div className="text-sm text-green-600 bg-green-50 px-3 py-2 rounded-lg mb-2">
+                        Mask loaded
+                    </div>
                 ) : (
                     <div className="text-sm text-slate-500 mb-2">
                         No mask loaded (pixels with value -1 are automatically masked)
@@ -583,6 +584,18 @@ export default function CalibrationWidget({
                         className="sr-only"
                     />
                 </label>
+            </div>
+
+            {/* Update Button */}
+            <div className="border-t border-slate-200 pt-4 mt-2">
+                <Button
+                    size="medium"
+                    styles="w-full"
+                    bgColor={canSubmit ? "bg-sky-500" : "bg-gray-400"}
+                    cb={handleSubmit}
+                    disabled={!canSubmit}
+                    text="Done"
+                />
             </div>
 
             {/* Mask Confirmation Dialog */}

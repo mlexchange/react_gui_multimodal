@@ -580,10 +580,10 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
               </div>
 
               {/* Calibration Button */}
-              {numOfFiles && !isCalibrationSet ? (
+              {numOfFiles && (!isCalibrationSet || (experimentType === 'GISAXS' && !calibrationParams.incident_angle)) ? (
                 <ButtonWithIcon
                   icon={<WarningIcon weight="fill" size={24} />}
-                  text="Calibration required"
+                  text={!isCalibrationSet ? "Calibration required" : "Incident angle required"}
                   bgColor="bg-amber-500"
                   hoverBgColor="hover:bg-amber-600"
                   cb={() => setIsCalibrationOpen(true)}
