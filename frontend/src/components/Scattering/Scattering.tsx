@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { Select, Menu, Popover, IconButton, notifications } from '@/components/ui';
+import { Select, Popover, IconButton, notifications } from '@/components/ui';
 import { PrevNextSelect, ContentCard, LoadingOverlay, Modal } from '@/components/shared';
-import { CircleHalfTiltIcon, GearIcon, GitDiffIcon, InfoIcon, ListIcon, TreeStructureIcon, WarningIcon, WrenchIcon } from '@phosphor-icons/react';
+import { CircleHalfTiltIcon, GitDiffIcon, InfoIcon, ListIcon, TreeStructureIcon, WarningIcon, WrenchIcon } from '@phosphor-icons/react';
 import { CalibrationParams, OperationType } from './types';
 
 import { Button, ButtonWithIcon } from '@blueskyproject/finch';
@@ -21,11 +21,7 @@ import useSessionPersistence, { PersistableState } from './hooks/useSessionPersi
 import useBatchProcessing from './hooks/useBatchProcessing';
 
 // Import components
-import ScatterSubplot from './ScatterSubplot';
 import H5WebScatterSubplot from './H5WebScatterSubplot';
-
-// Toggle between Plotly and H5Web implementations
-const USE_H5WEB = true;
 import LinecutWidget from './LinecutWidget';
 import InclinedLinecutWidget from './InclinedLinecutWidget';
 import AzimuthalIntegrationWidget from './AzimuthalIntegrationWidget';
@@ -744,41 +740,11 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
           {/* Scatter Images Card */}
           <ContentCard
             title="2D Scattering Data"
-            headerChildren={!USE_H5WEB && (
-              /* Legacy mode: show menu and settings button */
-              <div className="flex items-center gap-1">
-                <Menu position="bottom-end">
-                  <Menu.Target>
-                    <IconButton variant="subtle" size="md">
-                      <GitDiffIcon size={24} className='text-sky-950'/>
-                    </IconButton>
-                  </Menu.Target>
-                  <Menu.Dropdown>
-                    <Menu.Item
-                      onClick={() => setOperationType('subtract')}
-                      className={operationType === 'subtract' ? 'bg-sky-100' : ''}
-                    >
-                      Subtract (−)
-                    </Menu.Item>
-                    <Menu.Item
-                      onClick={() => setOperationType('divide')}
-                      className={operationType === 'divide' ? 'bg-sky-100' : ''}
-                    >
-                      Divide (÷)
-                    </Menu.Item>
-                  </Menu.Dropdown>
-                </Menu>
-                <IconButton variant="subtle" size="md" onClick={() => setIsSettingsOpen(true)}>
-                  <GearIcon size={24} className='text-sky-950'/>
-                </IconButton>
-              </div>
-            )}
             className="flex-1"
             contentClassName="flex flex-col">
               {/* Plots container */}
               <div className="flex-1 flex flex-col min-h-0">
-                {USE_H5WEB ? (
-                  <H5WebScatterSubplot
+                <H5WebScatterSubplot
                     operationType={operationType}
                     setOperationType={setOperationType}
                     setImageHeight={setImageHeight}
@@ -854,47 +820,6 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                     showQSpaceAxes={showQSpaceAxes}
                     setShowQSpaceAxes={setShowQSpaceAxes}
                   />
-                ) : (
-                  <ScatterSubplot
-                    operationType={operationType}
-                    setOperationType={setOperationType}
-                    setImageHeight={setImageHeight}
-                    setImageWidth={setImageWidth}
-                    setImageData1={setImageData1}
-                    setImageData2={setImageData2}
-                    horizontalLinecuts={horizontalLinecuts}
-                    verticalLinecuts={verticalLinecuts}
-                    inclinedLinecuts={inclinedLinecuts}
-                    leftImageColorPalette={leftImageColorPalette}
-                    rightImageColorPalette={rightImageColorPalette}
-                    setZoomedXPixelRange={setZoomedXPixelRange}
-                    setZoomedYPixelRange={setZoomedYPixelRange}
-                    setResolutionMessage={setResolutionMessage}
-                    isLogScale={isLogScale}
-                    lowerPercentile={lowerPercentile}
-                    upperPercentile={upperPercentile}
-                    normalization={normalization}
-                    imageColormap={imageColormap}
-                    differenceColormap={differenceColormap}
-                    normalizationMode={normalizationMode}
-                    azimuthalIntegrations={azimuthalIntegrations}
-                    azimuthalData1={azimuthalData1}
-                    azimuthalData2={azimuthalData2}
-                    maxQValue={maxQValue}
-                    calibrationParams={calibrationParams}
-                    qYMatrix={qYMatrix}
-                    qXMatrix={qXMatrix}
-                    units="nm⁻¹"
-                    mainTransformDataFunction={mainTransformDataFunction}
-                    leftImageIndex={leftImageIndex}
-                    rightImageIndex={rightImageIndex}
-                    scanUris={scanUris}
-                    isLoadingImages={isLoadingImages}
-                    setIsLoadingImages={setIsLoadingImages}
-                    isAzimuthalProcessing={loadingAzimuthalIntegrations.size > 0}
-                    maskUri={maskUri}
-                  />
-                )}
               </div>
 
               {resolutionMessage && (
