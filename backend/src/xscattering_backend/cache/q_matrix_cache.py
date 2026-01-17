@@ -8,18 +8,27 @@ when only linecut parameters change but calibration stays the same.
 import hashlib
 import json
 import threading
-from typing import Dict, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 
-from utils.q_space import compute_q_matrices
+from xscattering_backend.config.logging import get_logger
+from xscattering_backend.config.settings import get_config
+from xscattering_backend.utils.q_space import compute_q_matrices
+
+logger = get_logger(__name__)
 
 # Cache for Q-matrices
 # Key: hash of (image_shape, calibration)
 # Value: (q_x_matrix, q_y_matrix)
 _q_matrix_cache: Dict[str, Tuple[np.ndarray, np.ndarray]] = {}
+_q_matrix_order: List[str] = []  # LRU tracking - most recent at end
 _q_matrix_lock = threading.Lock()
-_max_cache_size = 20
+
+
+def _get_max_cache_size() -> int:
+    """Get the maximum cache size from configuration."""
+    return get_config()["cache_qspace_size"]
 
 
 def _compute_cache_key(image_shape: Tuple[int, int], calibration: dict) -> str:
@@ -70,13 +79,18 @@ def get_or_compute_q_matrices(
         (q_x_matrix, q_y_matrix) as 2D numpy arrays
     """
     cache_key = _compute_cache_key(image_shape, calibration)
+    max_cache_size = _get_max_cache_size()
 
     with _q_matrix_lock:
         if cache_key in _q_matrix_cache:
-            print(f"[Q-MATRIX CACHE HIT] {cache_key}")
+            # Move to end for LRU tracking
+            if cache_key in _q_matrix_order:
+                _q_matrix_order.remove(cache_key)
+            _q_matrix_order.append(cache_key)
+            logger.debug(f"Q-matrix cache hit: {cache_key}")
             return _q_matrix_cache[cache_key]
 
-    print(f"[Q-MATRIX CACHE MISS] {cache_key}")
+    logger.debug(f"Q-matrix cache miss: {cache_key}")
 
     # Compute Q-matrices (outside lock to allow parallel computation)
     q_x, q_y = compute_q_matrices(image_shape, calibration)
@@ -84,13 +98,19 @@ def get_or_compute_q_matrices(
     with _q_matrix_lock:
         # Check if another thread added it while we were computing
         if cache_key not in _q_matrix_cache:
-            # Enforce cache size limit (simple eviction: remove oldest)
-            if len(_q_matrix_cache) >= _max_cache_size:
-                # Remove first item (oldest)
-                oldest_key = next(iter(_q_matrix_cache))
-                del _q_matrix_cache[oldest_key]
-                print(f"[Q-MATRIX CACHE EVICT] {oldest_key}")
+            # Enforce cache size limit with proper LRU eviction
+            while len(_q_matrix_order) >= max_cache_size:
+                oldest_key = _q_matrix_order.pop(0)
+                if oldest_key in _q_matrix_cache:
+                    del _q_matrix_cache[oldest_key]
+                    logger.debug(f"Q-matrix cache evict: {oldest_key}")
 
             _q_matrix_cache[cache_key] = (q_x, q_y)
+            _q_matrix_order.append(cache_key)
+        else:
+            # Another thread added it - update LRU order
+            if cache_key in _q_matrix_order:
+                _q_matrix_order.remove(cache_key)
+            _q_matrix_order.append(cache_key)
 
     return q_x, q_y

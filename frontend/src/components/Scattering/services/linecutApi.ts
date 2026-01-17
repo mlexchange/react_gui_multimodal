@@ -528,7 +528,7 @@ export async function fetchQVectors(
   params: QVectorsParams,
   signal?: AbortSignal
 ): Promise<QVectorsResult> {
-  const url = new URL('/api/q-vectors', window.location.origin);
+  const url = new URL('/api/q-space', window.location.origin);
 
   const cal = params.calibration;
   url.searchParams.set('sample_detector_distance', cal.sample_detector_distance.toString());

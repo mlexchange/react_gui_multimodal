@@ -8,45 +8,21 @@ The frontend should debounce calls to this endpoint (300ms recommended).
 For batch processing across multiple scans, use the /batch-all endpoint instead.
 """
 
-from typing import Literal, Optional
-
 import msgpack
 import numpy as np
 from fastapi import APIRouter
 from fastapi.responses import Response
-from pydantic import BaseModel
 
-from models import CalibrationParams
-from utils.image_cache import get_cached_processed_image
-from utils.linecut_extraction import (
+from xscattering_backend.cache.image_cache import get_cached_processed_image
+from xscattering_backend.cache.q_matrix_cache import get_or_compute_q_matrices
+from xscattering_backend.config.models import SingleLinecutRequest
+from xscattering_backend.utils.linecut_extraction import (
     extract_horizontal_linecut,
     extract_inclined_linecut,
     extract_vertical_linecut,
 )
-from utils.q_matrix_cache import get_or_compute_q_matrices
 
 router = APIRouter()
-
-
-class SingleLinecutRequest(BaseModel):
-    """Request body for single linecut extraction."""
-
-    scan_uri: str
-    calibration: CalibrationParams
-    linecut_type: Literal["horizontal", "vertical", "inclined"]
-
-    # For horizontal linecuts
-    position: Optional[float] = None  # q_y position
-    width: Optional[float] = None  # Width in q-space
-
-    # For inclined linecuts
-    q_x_position: Optional[float] = None
-    q_y_position: Optional[float] = None
-    angle: Optional[float] = None  # Degrees
-    q_width: Optional[float] = None
-
-    # Optional mask
-    mask_uri: Optional[str] = None
 
 
 @router.post("/extract-linecut")

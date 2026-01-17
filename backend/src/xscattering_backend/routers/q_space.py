@@ -2,13 +2,13 @@ import msgpack
 from fastapi import APIRouter, Query
 from fastapi.responses import Response
 
-from utils.q_space import compute_q_matrices
+from xscattering_backend.utils.q_space import compute_q_matrices
 
 router = APIRouter()
 
 
-@router.get("/q-vectors")
-def q_vectors(
+@router.get("/q-space")
+def q_space(
     # Calibration parameters
     sample_detector_distance: float = Query(
         ...,

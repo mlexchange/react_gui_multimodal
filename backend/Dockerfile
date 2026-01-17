@@ -40,4 +40,4 @@ EXPOSE 8000
 # uvicorn is the ASGI server that will run your FastAPI app
 # --host 0.0.0.0 makes the server available to all network interfaces
 # --port 8000 specifies the port the server will listen on
-CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uv", "run", "uvicorn", "xscattering_backend.main:app", "--host", "0.0.0.0", "--port", "8000"]

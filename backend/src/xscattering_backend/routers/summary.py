@@ -7,10 +7,17 @@ import numpy as np
 from fastapi import APIRouter
 from fastapi.responses import Response
 
-from utils.scans import get_scans_from_folder
-from utils.tiled_client import get_tiled_client, get_tiled_base_uri, get_tiled_client_for_uri
-from routers.websocket import send_progress_update
+from xscattering_backend.cache.tiled_cache import (
+    get_tiled_base_uri,
+    get_tiled_client,
+    get_tiled_client_for_uri,
+)
+from xscattering_backend.config.logging import get_logger
+from xscattering_backend.config.settings import get_config
+from xscattering_backend.routers.websocket import send_progress_update
+from xscattering_backend.utils.scans import get_scans_from_folder
 
+logger = get_logger(__name__)
 router = APIRouter()
 
 
@@ -36,7 +43,7 @@ def process_single_image(args):
 
         return index, max_intensity, avg_intensity, scan_name, scan_uri, True
     except Exception as e:
-        print(f"Error processing scan {index} ({scan_uri}): {str(e)}")
+        logger.warning(f"Error processing scan {index} ({scan_uri}): {str(e)}")
         return index, 0.0, 0.0, f"Error: {scan_uri}", scan_uri, False
 
 
@@ -70,7 +77,8 @@ async def create_summary(container_path: str):
 
     # Process images with a thread pool
     processed_count = 0
-    max_workers = 16  # Adjust based on your server capabilities
+    config = get_config()
+    max_workers = config["batch_max_workers"]
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         # Submit all tasks
@@ -109,4 +117,4 @@ async def create_summary(container_path: str):
     # Pack data using msgpack
     packed_data = msgpack.packb(serializable_data, use_bin_type=True)
 
-    return Response(content=packed_data, media_type="application/octet-stream")
+    return Response(content=packed_data, media_type="application/x-msgpack")

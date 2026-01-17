@@ -83,7 +83,7 @@ export default function useScattering() {
 
     try {
       // Create the URL with calibration parameters
-      const url = new URL('/api/q-vectors', window.location.origin);
+      const url = new URL('/api/q-space', window.location.origin);
 
       // Add all calibration parameters to the URL
       Object.entries(calibrationParams).forEach(([key, value]) => {

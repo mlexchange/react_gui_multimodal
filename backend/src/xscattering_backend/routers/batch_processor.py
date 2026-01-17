@@ -13,19 +13,24 @@ from typing import Optional
 import msgpack
 from fastapi import APIRouter
 from fastapi.responses import Response
-from pydantic import BaseModel
 
-from models import CalibrationParams
-from routers.websocket import send_progress_update
-from utils.azimuthal_integration import create_azimuthal_integrator, integrate_1d
-from utils.image_cache import get_cached_processed_image
-from utils.linecut_extraction import (
+from xscattering_backend.cache.image_cache import get_cached_processed_image
+from xscattering_backend.config.logging import get_logger
+from xscattering_backend.config.models import BatchAllRequest
+from xscattering_backend.config.settings import get_config
+from xscattering_backend.routers.websocket import send_progress_update
+from xscattering_backend.utils.azimuthal_integration import (
+    create_azimuthal_integrator,
+    integrate_1d,
+)
+from xscattering_backend.utils.linecut_extraction import (
     extract_horizontal_linecut,
     extract_inclined_linecut,
     extract_vertical_linecut,
 )
-from utils.q_space import compute_q_matrices
+from xscattering_backend.utils.q_space import compute_q_matrices
 
+logger = get_logger(__name__)
 router = APIRouter()
 
 
@@ -36,53 +41,6 @@ router = APIRouter()
 # Track active batch jobs for cancellation
 # Maps batch_id -> cancelled flag
 ACTIVE_BATCHES: dict[str, bool] = {}
-
-
-# ============================================================================
-# Pydantic Models
-# ============================================================================
-
-
-class HorizontalLinecutParams(BaseModel):
-    """Parameters for horizontal linecut extraction."""
-
-    position: float  # q_y position
-    width: float = 0.0  # Width in q-space
-
-
-class VerticalLinecutParams(BaseModel):
-    """Parameters for vertical linecut extraction."""
-
-    position: float  # q_x position
-    width: float = 0.0  # Width in q-space
-
-
-class InclinedLinecutParams(BaseModel):
-    """Parameters for inclined linecut extraction."""
-
-    q_x_position: float
-    q_y_position: float
-    angle: float  # Degrees
-    q_width: float = 0.0
-
-
-class AzimuthalParams(BaseModel):
-    """Parameters for azimuthal integration."""
-
-    azimuth_range: tuple[float, float] = (-180, 180)
-    q_range: Optional[tuple[float, float]] = None
-
-
-class BatchAllRequest(BaseModel):
-    """Request body for unified batch processing of all linecut types."""
-
-    scan_uris: list[str]
-    calibration: CalibrationParams
-    horizontal_linecuts: list[HorizontalLinecutParams] = []
-    vertical_linecuts: list[VerticalLinecutParams] = []
-    inclined_linecuts: list[InclinedLinecutParams] = []
-    azimuthal_integrations: list[AzimuthalParams] = []
-    mask_uri: Optional[str] = None  # Optional detector mask URI or mask_id
 
 
 # ============================================================================
@@ -289,7 +247,7 @@ def process_scan_for_batch(
 
     # Check if batch was cancelled before processing
     if ACTIVE_BATCHES.get(batch_id, False):
-        print(f"[BATCH {batch_id[:8]}] Skipping {scan_name} - batch cancelled")
+        logger.info(f"Batch {batch_id[:8]}: Skipping {scan_name} - batch cancelled")
         return {
             "scan_uri": scan_uri,
             "scan_name": scan_name,
@@ -301,7 +259,7 @@ def process_scan_for_batch(
             "error_message": "Batch cancelled",
         }
 
-    print(f"[BATCH {batch_id[:8]}] Processing {scan_name}...")
+    logger.debug(f"Batch {batch_id[:8]}: Processing {scan_name}...")
     result = process_scan_all_linecuts(
         scan_uri,
         calibration,
@@ -313,7 +271,7 @@ def process_scan_for_batch(
         mask_uri=mask_uri,
     )
     status = "OK" if result.get("success", False) else "FAILED"
-    print(f"[BATCH {batch_id[:8]}] Completed {scan_name} - {status}")
+    logger.debug(f"Batch {batch_id[:8]}: Completed {scan_name} - {status}")
     return result
 
 
@@ -332,7 +290,7 @@ async def cancel_batch(batch_id: str):
     but no new scans will start processing.
     """
     if batch_id in ACTIVE_BATCHES:
-        print(f"[BATCH {batch_id[:8]}] Cancel requested by user")
+        logger.info(f"Batch {batch_id[:8]}: Cancel requested by user")
         ACTIVE_BATCHES[batch_id] = True
         await send_progress_update(
             -1,  # Special value indicating cancellation
@@ -340,7 +298,7 @@ async def cancel_batch(batch_id: str):
             batch_id=batch_id,
         )
         return {"status": "cancelled", "batch_id": batch_id}
-    print(f"[BATCH {batch_id[:8]}] Cancel requested but batch not found")
+    logger.warning(f"Batch {batch_id[:8]}: Cancel requested but batch not found")
     return {"status": "not_found", "batch_id": batch_id}
 
 
@@ -375,15 +333,13 @@ async def batch_all(request: BatchAllRequest):
         + len(request.azimuthal_integrations)
     )
 
-    print(f"\n{'='*60}")
-    print(f"[BATCH {batch_id[:8]}] === BATCH PROCESSING STARTED ===")
-    print(f"[BATCH {batch_id[:8]}] Scans: {total}")
-    print(f"[BATCH {batch_id[:8]}] Horizontal linecuts: {len(request.horizontal_linecuts)}")
-    print(f"[BATCH {batch_id[:8]}] Vertical linecuts: {len(request.vertical_linecuts)}")
-    print(f"[BATCH {batch_id[:8]}] Inclined linecuts: {len(request.inclined_linecuts)}")
-    print(f"[BATCH {batch_id[:8]}] Azimuthal integrations: {len(request.azimuthal_integrations)}")
-    print(f"[BATCH {batch_id[:8]}] Total operations per scan: {total_linecuts}")
-    print(f"{'='*60}")
+    logger.info(
+        f"Batch {batch_id[:8]}: STARTED - {total} scans, "
+        f"{len(request.horizontal_linecuts)} horizontal, "
+        f"{len(request.vertical_linecuts)} vertical, "
+        f"{len(request.inclined_linecuts)} inclined, "
+        f"{len(request.azimuthal_integrations)} azimuthal"
+    )
 
     batch_start_time = time.time()
 
@@ -416,7 +372,8 @@ async def batch_all(request: BatchAllRequest):
     processed_count = 0
     was_cancelled = False
 
-    max_workers = 16
+    config = get_config()
+    max_workers = config["batch_max_workers"]
 
     # Get mask_uri from request
     mask_uri = request.mask_uri
@@ -474,16 +431,20 @@ async def batch_all(request: BatchAllRequest):
         processing_time = time.time() - batch_start_time
 
         if was_cancelled:
-            print(f"[BATCH {batch_id[:8]}] Batch CANCELLED after {processed_count}/{total} scans")
-            print(f"[BATCH {batch_id[:8]}] Processing time before cancel: {processing_time:.2f}s")
+            logger.info(
+                f"Batch {batch_id[:8]}: CANCELLED after {processed_count}/{total} scans "
+                f"({processing_time:.2f}s)"
+            )
             await send_progress_update(
                 progress,
                 f"Batch cancelled after {processed_count}/{total} scans",
                 batch_id=batch_id,
             )
         else:
-            print(f"[BATCH {batch_id[:8]}] All scans processed: {successful_scans} OK, {failed_scans} failed")
-            print(f"[BATCH {batch_id[:8]}] Processing time: {processing_time:.2f}s")
+            logger.info(
+                f"Batch {batch_id[:8]}: COMPLETE - {successful_scans} OK, "
+                f"{failed_scans} failed ({processing_time:.2f}s)"
+            )
             await send_progress_update(
                 100,
                 f"Batch complete: {successful_scans} scans successful, {failed_scans} failed",
@@ -498,7 +459,7 @@ async def batch_all(request: BatchAllRequest):
     uri_to_result = {r["scan_uri"]: r for r in scan_results}
     ordered_results = [uri_to_result[uri] for uri in request.scan_uris if uri in uri_to_result]
 
-    print(f"[BATCH {batch_id[:8]}] Reorganizing results...")
+    logger.debug(f"Batch {batch_id[:8]}: Reorganizing results...")
     reorg_start_time = time.time()
 
     # Reorganize results by linecut type and ID
@@ -581,7 +542,7 @@ async def batch_all(request: BatchAllRequest):
             }
 
     reorg_time = time.time() - reorg_start_time
-    print(f"[BATCH {batch_id[:8]}] Result reorganization: {reorg_time:.2f}s")
+    logger.debug(f"Batch {batch_id[:8]}: Result reorganization: {reorg_time:.2f}s")
 
     # Report actual processed count (may be less than total if cancelled)
     actual_processed = len(ordered_results)
@@ -600,12 +561,9 @@ async def batch_all(request: BatchAllRequest):
     total_time = time.time() - batch_start_time
     response_size_kb = len(packed_data) / 1024
 
-    print(f"[BATCH {batch_id[:8]}] Response size: {response_size_kb:.1f} KB")
-    print(f"[BATCH {batch_id[:8]}] Total batch time: {total_time:.2f}s")
-    if was_cancelled:
-        print(f"[BATCH {batch_id[:8]}] === BATCH CANCELLED ({actual_processed}/{total} scans) ===")
-    else:
-        print(f"[BATCH {batch_id[:8]}] === BATCH PROCESSING COMPLETE ===")
-    print(f"{'='*60}\n")
+    logger.debug(
+        f"Batch {batch_id[:8]}: Response {response_size_kb:.1f} KB, "
+        f"total time {total_time:.2f}s"
+    )
 
     return Response(content=packed_data, media_type="application/x-msgpack")

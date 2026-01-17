@@ -5,8 +5,11 @@ import numpy as np
 from fastapi import APIRouter, Query
 from fastapi.responses import Response
 
-from utils.azimuthal_integration import create_azimuthal_integrator, integrate_1d
-from utils.image_cache import get_cached_processed_image
+from xscattering_backend.cache.image_cache import get_cached_processed_image
+from xscattering_backend.utils.azimuthal_integration import (
+    create_azimuthal_integrator,
+    integrate_1d,
+)
 
 router = APIRouter()
 

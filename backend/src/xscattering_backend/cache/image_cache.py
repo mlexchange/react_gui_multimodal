@@ -12,12 +12,16 @@ This module provides a centralized cache that:
 import threading
 import urllib.parse as urlparse
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 
-from utils.scans import get_processed_image
-from utils.tiled_client import get_tiled_base_uri, get_tiled_client_for_uri
+from xscattering_backend.cache.tiled_cache import get_tiled_base_uri, get_tiled_client_for_uri
+from xscattering_backend.config.logging import get_logger
+from xscattering_backend.config.settings import get_config
+from xscattering_backend.utils.scans import get_processed_image
+
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -98,7 +102,8 @@ def _load_mask_array(mask_uri: str) -> Optional[np.ndarray]:
         Mask array or None if not found
     """
     # Import here to avoid circular imports
-    from utils.mask_manager import get_cached_mask, load_mask_from_tiled
+    from xscattering_backend.utils.mask_loader import load_mask_from_tiled
+    from xscattering_backend.cache.mask_cache import get_cached_mask
 
     # Check if it's already cached (uploaded or previously loaded)
     mask = get_cached_mask(mask_uri)
@@ -110,7 +115,7 @@ def _load_mask_array(mask_uri: str) -> Optional[np.ndarray]:
         tiled_base_uri = get_tiled_base_uri()
         return load_mask_from_tiled(mask_uri, tiled_base_uri)
     except Exception as e:
-        print(f"[WARN] Could not load mask '{mask_uri}': {e}")
+        logger.warning(f"Could not load mask '{mask_uri}': {e}")
         return None
 
 
@@ -146,7 +151,9 @@ def _fetch_and_process_image(
             # Validate mask shape matches image shape
             img_shape = np.squeeze(image_array).shape
             if mask_array.shape != img_shape:
-                print(f"[WARN] Mask shape {mask_array.shape} doesn't match image shape {img_shape}")
+                logger.warning(
+                    f"Mask shape {mask_array.shape} doesn't match image shape {img_shape}"
+                )
                 mask_array = None
 
     # Apply processing (converts to float32, masks negatives/NaN, applies detector mask)
@@ -160,12 +167,15 @@ def _fetch_and_process_image(
 
 
 # Cache for processed images - keyed by scan_uri
-# maxsize=50 balances memory usage with cache hits
 # Using a wrapper because lru_cache doesn't work well with dataclasses as return values
 _image_cache: dict[str, ProcessedImageData] = {}
-_cache_order: list[str] = []  # For LRU tracking
-_max_cache_size = 50
+_cache_order: List[str] = []  # For LRU tracking
 _cache_lock = threading.Lock()  # Thread safety for concurrent access
+
+
+def _get_max_cache_size() -> int:
+    """Get the maximum image cache size from configuration."""
+    return get_config()["cache_image_size"]
 
 
 def get_cached_processed_image(
@@ -199,6 +209,8 @@ def get_cached_processed_image(
     if bypass_cache:
         return _fetch_and_process_image(scan_uri, mask_uri)
 
+    max_cache_size = _get_max_cache_size()
+
     # Check cache with lock
     with _cache_lock:
         if cache_key in _image_cache:
@@ -206,10 +218,10 @@ def get_cached_processed_image(
             if cache_key in _cache_order:
                 _cache_order.remove(cache_key)
             _cache_order.append(cache_key)
-            print(f"[CACHE HIT] {cache_key}")
+            logger.debug(f"Image cache hit: {cache_key}")
             return _image_cache[cache_key]
 
-    print(f"[CACHE MISS] {cache_key}")
+    logger.debug(f"Image cache miss: {cache_key}")
 
     # Cache miss - fetch and process (outside lock to allow concurrent fetches)
     processed = _fetch_and_process_image(scan_uri, mask_uri)
@@ -222,10 +234,10 @@ def get_cached_processed_image(
             _cache_order.append(cache_key)
 
             # Enforce cache size limit (LRU eviction)
-            while len(_cache_order) > _max_cache_size:
+            while len(_cache_order) > max_cache_size:
                 oldest_key = _cache_order.pop(0)
                 if oldest_key in _image_cache:
                     del _image_cache[oldest_key]
-                print(f"[CACHE EVICT] {oldest_key}")
+                logger.debug(f"Image cache evict: {oldest_key}")
 
     return processed

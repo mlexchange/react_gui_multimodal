@@ -4,8 +4,10 @@ import msgpack
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
 
-from utils.image_cache import get_cached_processed_image
+from xscattering_backend.cache.image_cache import get_cached_processed_image
+from xscattering_backend.config.logging import get_logger
 
+logger = get_logger(__name__)
 router = APIRouter()
 
 
@@ -55,9 +57,15 @@ async def fetch_scan_image(
             "mask_uri": mask_uri,
         })
 
-        return Response(content=packed_data, media_type="application/octet-stream")
+        return Response(content=packed_data, media_type="application/x-msgpack")
 
+    except ValueError as e:
+        logger.warning(f"Invalid request for scan {scan_uri}: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except FileNotFoundError as e:
+        logger.warning(f"Scan not found {scan_uri}: {e}")
+        raise HTTPException(status_code=404, detail=f"Scan not found: {scan_uri}")
     except Exception as e:
         error_msg = f"Failed to load scan {scan_uri}: {str(e)}"
-        print(f"[ERROR] {error_msg}")
+        logger.error(error_msg)
         raise HTTPException(status_code=500, detail=error_msg)

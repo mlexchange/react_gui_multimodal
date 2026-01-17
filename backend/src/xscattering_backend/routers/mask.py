@@ -10,22 +10,15 @@ from typing import Optional
 import msgpack
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response
-from pydantic import BaseModel
 
-from utils.mask_manager import (
+from xscattering_backend.cache.tiled_cache import get_tiled_base_uri, get_tiled_client_for_uri
+from xscattering_backend.config.models import MaskResolutionResponse
+from xscattering_backend.utils.mask_loader import (
     load_mask_from_bytes,
     load_mask_from_tiled,
 )
-from utils.tiled_client import get_tiled_base_uri, get_tiled_client_for_uri
 
 router = APIRouter()
-
-
-class MaskResolutionResponse(BaseModel):
-    found: bool
-    mask_uri: Optional[str] = None
-    mask_name: Optional[str] = None
-    message: str
 
 
 @router.get("/resolve-mask", response_model=MaskResolutionResponse)
@@ -176,7 +169,7 @@ async def upload_mask(
             "status": status,
         })
 
-        return Response(content=packed_data, media_type="application/octet-stream")
+        return Response(content=packed_data, media_type="application/x-msgpack")
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -247,7 +240,7 @@ async def load_mask_from_tiled_endpoint(
             "status": status,
         })
 
-        return Response(content=packed_data, media_type="application/octet-stream")
+        return Response(content=packed_data, media_type="application/x-msgpack")
 
     except Exception as e:
         raise HTTPException(

@@ -1,10 +1,9 @@
-import urllib.parse as urlparse
-
-from utils.tiled_client import get_tiled_client_for_uri
+import numpy as np
 from fastapi import HTTPException
 from tiled.client.container import Container
 from tiled.structures.core import StructureFamily
-import numpy as np
+
+from xscattering_backend.cache.tiled_cache import get_tiled_client_for_uri
 
 
 def trim_base_from_uri(uri_to_trim: str, tiled_base_uri: str) -> str:

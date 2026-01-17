@@ -1,12 +1,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import (
+
+from xscattering_backend.config.logging import setup_logging
+from xscattering_backend.config.settings import get_config, validate_config_on_startup
+from xscattering_backend.routers import (
     azimuthal_integrator,
     batch_processor,
     fetch_scan_image,
     linecut,
     mask,
-    q_vectors,
+    q_space,
     summary,
     websocket,
 )
@@ -27,7 +30,7 @@ app.add_middleware(
 app.include_router(summary.router, prefix="/api", tags=["Summary"])
 app.include_router(fetch_scan_image.router, prefix="/api", tags=["Scan Image"])
 app.include_router(azimuthal_integrator.router, prefix="/api", tags=["Azimuthal Integrator"])
-app.include_router(q_vectors.router, prefix="/api", tags=["Q Vectors"])
+app.include_router(q_space.router, prefix="/api", tags=["Q Space"])
 app.include_router(batch_processor.router, prefix="/api", tags=["Batch Processor"])
 app.include_router(linecut.router, prefix="/api", tags=["Linecut"])
 app.include_router(mask.router, prefix="/api", tags=["Mask"])
@@ -45,7 +48,17 @@ def main():
     """CLI entry point to run the server."""
     import uvicorn
 
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    # Setup logging and validate configuration before starting
+    setup_logging()
+    validate_config_on_startup()
+
+    config = get_config()
+    uvicorn.run(
+        "xscattering_backend.main:app",
+        host=config["backend_host"],
+        port=config["backend_port"],
+        reload=config["development"],
+    )
 
 
 if __name__ == "__main__":
