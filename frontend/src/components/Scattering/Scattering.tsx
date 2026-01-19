@@ -94,6 +94,8 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     maskData,
     maskShape,
     updateMaskData,
+    showMaskOverlay,
+    setShowMaskOverlay,
     restoreState: restoreScatteringState,
   } = useScattering();
 
@@ -120,6 +122,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     setNormalizationMode,
     showQSpaceAxes,
     setShowQSpaceAxes,
+    resetQSpaceAxes,
     mainTransformDataFunction,
     restoreSettings: restoreDisplaySettings,
   } = useDataTransformation();
@@ -364,6 +367,17 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     setLeftImageIndex,
     setRightImageIndex,
   ]);
+
+  // ========== RESET Q-SPACE AXES ON EXPERIMENT TYPE CHANGE ==========
+  // Track previous experiment type to detect changes
+  const prevExperimentTypeRef = useRef(experimentType);
+  useEffect(() => {
+    if (prevExperimentTypeRef.current !== experimentType) {
+      // Reset Q-space axes toggle when experiment type changes
+      resetQSpaceAxes();
+      prevExperimentTypeRef.current = experimentType;
+    }
+  }, [experimentType, resetQSpaceAxes]);
 
   // ========== AUTO-SAVE SESSION ==========
   // Trigger auto-save whenever persistable state changes
@@ -785,6 +799,8 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                     experimentType={experimentType}
                     showQSpaceAxes={showQSpaceAxes}
                     setShowQSpaceAxes={setShowQSpaceAxes}
+                    showMaskOverlay={showMaskOverlay}
+                    setShowMaskOverlay={setShowMaskOverlay}
                     onGisaxsPixelQUpdate={setGisaxsQMatrices}
                   />
               </div>

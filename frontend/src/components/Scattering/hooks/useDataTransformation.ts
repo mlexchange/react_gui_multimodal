@@ -29,6 +29,13 @@ export default function useDataTransformation() {
         setShowQSpaceAxes(settings.showQSpaceAxes ?? false);
     }, []);
 
+    /**
+     * Reset Q-space axes toggle (used when experiment type changes)
+     */
+    const resetQSpaceAxes = useCallback(() => {
+        setShowQSpaceAxes(false);
+    }, []);
+
 
     const mainTransformDataFunction = useCallback((
         data1: number[][],
@@ -314,6 +321,7 @@ export default function useDataTransformation() {
         setNormalizationMode,
         showQSpaceAxes,
         setShowQSpaceAxes,
+        resetQSpaceAxes,
         mainTransformDataFunction,
         restoreSettings
     }

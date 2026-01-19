@@ -49,6 +49,7 @@ export default function useScattering() {
   const [maskUri, setMaskUri] = useState<string | null>(null);
   const [maskData, setMaskData] = useState<Uint8Array | null>(null);
   const [maskShape, setMaskShape] = useState<[number, number] | null>(null);
+  const [showMaskOverlay, setShowMaskOverlay] = useState(false);
 
   // Callback to update mask data and shape together
   const updateMaskData = useCallback((data: Uint8Array | null, shape: [number, number] | null) => {
@@ -65,6 +66,38 @@ export default function useScattering() {
   // Q-matrix state (replacing vector state)
   const [qXMatrix, setQXMatrix] = useState<number[][]>([]);
   const [qYMatrix, setQYMatrix] = useState<number[][]>([]);
+
+  // Track previous experiment type to detect changes
+  const prevExperimentType = useRef(experimentType);
+
+  // Clear calibration-related state when experiment type changes
+  useEffect(() => {
+    // Skip on initial render (when previous matches current)
+    if (prevExperimentType.current === experimentType) {
+      return;
+    }
+
+    console.log(`Experiment type changed from ${prevExperimentType.current} to ${experimentType}, clearing calibration state`);
+
+    // Clear Q matrices
+    setQXMatrix([]);
+    setQYMatrix([]);
+
+    // Clear calibration parameters
+    setCalibrationParams(null);
+
+    // Clear mask
+    setMaskUri(null);
+    setMaskData(null);
+    setMaskShape(null);
+    setShowMaskOverlay(false);
+
+    // Clear selected linecuts
+    setSelectedLinecuts([]);
+
+    // Update ref to current value
+    prevExperimentType.current = experimentType;
+  }, [experimentType]);
 
   /**
    * Fetch q-matrices from the server (SAXS only)
@@ -274,6 +307,8 @@ export default function useScattering() {
     maskData,
     maskShape,
     updateMaskData,
+    showMaskOverlay,
+    setShowMaskOverlay,
 
     // Session restoration
     restoreState,

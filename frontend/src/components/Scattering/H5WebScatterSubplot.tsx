@@ -97,6 +97,8 @@ interface H5WebScatterSubplotProps {
   experimentType?: string;
   showQSpaceAxes: boolean;
   setShowQSpaceAxes: (value: boolean) => void;
+  showMaskOverlay: boolean;
+  setShowMaskOverlay: (value: boolean) => void;
   onGisaxsPixelQUpdate?: (qipMatrix: number[][], qoopMatrix: number[][]) => void;
 }
 
@@ -135,6 +137,8 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
   experimentType = 'SAXS',
   showQSpaceAxes,
   setShowQSpaceAxes,
+  showMaskOverlay,
+  setShowMaskOverlay,
   onGisaxsPixelQUpdate,
 }) => {
   // Raw data from fetch (pixel space images)
@@ -157,7 +161,6 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
   const [flipYAxis, setFlipYAxis] = useState(false);
   const [showGrid, setShowGrid] = useState(false);
   const [showOverlays, setShowOverlays] = useState(true);
-  const [showMaskOverlay, setShowMaskOverlay] = useState(true);
   const [customDomain, setCustomDomain] = useState<CustomDomain>([null, null]);
 
   // Determine if q-space toggle is enabled (calibration must be set with valid q-matrices)
