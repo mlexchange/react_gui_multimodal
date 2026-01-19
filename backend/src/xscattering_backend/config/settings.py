@@ -42,6 +42,8 @@ def get_config() -> dict:
             Maximum number of processed images to cache. Default: 50.
         CACHE_QSPACE_SIZE : int
             Maximum number of Q-space matrices to cache. Default: 20.
+        CACHE_GISAXS_SIZE : int
+            Maximum number of GISAXS transforms to cache. Default: 20.
         CACHE_MASK_SIZE : int
             Maximum number of masks to cache (per cache type). Default: 50.
         CACHE_TILED_URIS : int
@@ -87,6 +89,7 @@ def get_config() -> dict:
         # Cache sizes
         "cache_image_size": int(os.getenv("CACHE_IMAGE_SIZE", "50")),
         "cache_qspace_size": int(os.getenv("CACHE_QSPACE_SIZE", "20")),
+        "cache_gisaxs_size": int(os.getenv("CACHE_GISAXS_SIZE", "20")),
         "cache_mask_size": int(os.getenv("CACHE_MASK_SIZE", "50")),
         "cache_tiled_uris": int(os.getenv("CACHE_TILED_URIS", "4")),
         # Thread pool

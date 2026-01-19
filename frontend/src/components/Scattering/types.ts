@@ -83,6 +83,17 @@ export function isCalibrationComplete(params: CalibrationParams | null): boolean
     });
 }
 
+/**
+ * Check if GISAXS-specific calibration is complete (includes incident_angle)
+ * @param params - CalibrationParams object or null
+ * @returns true if base calibration is complete AND incident_angle is set
+ */
+export function isGisaxsCalibrationComplete(params: CalibrationParams | null): boolean {
+    if (!isCalibrationComplete(params)) return false;
+    const incidentAngle = params?.incident_angle;
+    return incidentAngle !== undefined && !isNaN(incidentAngle);
+}
+
 
 export interface TransformDataFunction {
       /**

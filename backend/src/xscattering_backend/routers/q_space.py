@@ -1,14 +1,22 @@
+"""
+SAXS Q-space endpoint.
+
+This endpoint computes qx/qy matrices for SAXS experiments only.
+For GISAXS, Q matrices (qip/qoop) are returned by the /fetch-scan-image
+endpoint as part of the image transformation.
+"""
+
 import msgpack
 from fastapi import APIRouter, Query
 from fastapi.responses import Response
 
-from xscattering_backend.utils.q_space import compute_q_matrices
+from xscattering_backend.utils.q_space import compute_saxs_q_matrices
 
 router = APIRouter()
 
 
 @router.get("/q-space")
-def q_space(
+def get_saxs_q_matrices(
     # Calibration parameters
     sample_detector_distance: float = Query(
         ...,
@@ -33,18 +41,16 @@ def q_space(
     tilt_plan_rotation: float = Query(
         default=0.0, description="Rotation of tilt plane in degrees"
     ),
-    # GISAXS-specific parameters
-    experiment_type: str = Query(
-        default="SAXS", description="Experiment type: 'SAXS' or 'GISAXS'"
-    ),
-    incident_angle: float = Query(
-        default=0.0, description="Incident angle in degrees (for GISAXS)"
-    ),
     # Image dimensions
     image_height: int = Query(..., description="Height of the image in pixels"),
     image_width: int = Query(..., description="Width of the image in pixels"),
 ):
-    # Build calibration dict from query parameters
+    """
+    Compute SAXS Q-matrices (qx, qy) for the given calibration and image dimensions.
+
+    This endpoint is for SAXS experiments only. For GISAXS, use /fetch-scan-image
+    which returns the transformed Q-space image along with qip/qoop matrices.
+    """
     calibration = {
         "sample_detector_distance": sample_detector_distance,
         "beam_center_x": beam_center_x,
@@ -54,12 +60,10 @@ def q_space(
         "wavelength": wavelength,
         "tilt": tilt,
         "tilt_plan_rotation": tilt_plan_rotation,
-        "experiment_type": experiment_type,
-        "incident_angle": incident_angle,
     }
 
-    # Compute Q matrices using shared utility
-    q_x, q_y = compute_q_matrices(
+    # Compute SAXS Q matrices
+    q_x, q_y = compute_saxs_q_matrices(
         image_shape=(image_height, image_width),
         calibration=calibration,
         invert_qy=True,

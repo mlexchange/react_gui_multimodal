@@ -379,3 +379,253 @@ def extract_inclined_linecut(
     intensities = np.divide(value_sum, value_count, out=np.zeros_like(value_sum), where=value_count > 0)
 
     return path_distances, intensities
+
+
+# =============================================================================
+# GISAXS Linecut Extraction (from transformed Q-space grid)
+# =============================================================================
+
+
+def extract_gisaxs_horizontal_linecut(
+    transformed_image: np.ndarray,
+    qip_values: np.ndarray,
+    qoop_values: np.ndarray,
+    qoop_position: float,
+    qoop_width: float = 0.0,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Extract horizontal linecut from GISAXS Q-space image.
+
+    Returns intensity vs in-plane Q (qip) at fixed out-of-plane Q (qoop).
+    Since the transformed image is on a regular grid, this is simple array slicing.
+
+    Args:
+        transformed_image: 2D intensity array on Q-grid (npt_oop, npt_ip)
+        qip_values: 1D array of in-plane Q values (length npt_ip)
+        qoop_values: 1D array of out-of-plane Q values (length npt_oop)
+        qoop_position: Out-of-plane Q position for the linecut
+        qoop_width: Width in Q-space units for averaging (0 = single row)
+
+    Returns:
+        (qip_values, intensities) tuple - intensity vs in-plane Q
+    """
+    if len(qoop_values) == 0 or len(qip_values) == 0:
+        return np.array([]), np.array([])
+
+    # Find index for qoop position
+    qoop_idx = int(np.argmin(np.abs(qoop_values - qoop_position)))
+
+    if qoop_width <= 0:
+        intensities = np.nan_to_num(transformed_image[qoop_idx, :], nan=0.0)
+    else:
+        # Calculate index width from Q width
+        dq = np.abs(qoop_values[1] - qoop_values[0]) if len(qoop_values) > 1 else 1.0
+        idx_width = max(1, int(qoop_width / dq / 2))
+
+        start_idx = max(0, qoop_idx - idx_width)
+        end_idx = min(len(qoop_values), qoop_idx + idx_width + 1)
+
+        slice_data = transformed_image[start_idx:end_idx, :]
+        intensities = np.nanmean(slice_data, axis=0)
+        intensities = np.nan_to_num(intensities, nan=0.0)
+
+    return qip_values.copy(), intensities
+
+
+def extract_gisaxs_vertical_linecut(
+    transformed_image: np.ndarray,
+    qip_values: np.ndarray,
+    qoop_values: np.ndarray,
+    qip_position: float,
+    qip_width: float = 0.0,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Extract vertical linecut from GISAXS Q-space image.
+
+    Returns intensity vs out-of-plane Q (qoop) at fixed in-plane Q (qip).
+    Since the transformed image is on a regular grid, this is simple array slicing.
+
+    Args:
+        transformed_image: 2D intensity array on Q-grid (npt_oop, npt_ip)
+        qip_values: 1D array of in-plane Q values (length npt_ip)
+        qoop_values: 1D array of out-of-plane Q values (length npt_oop)
+        qip_position: In-plane Q position for the linecut
+        qip_width: Width in Q-space units for averaging (0 = single column)
+
+    Returns:
+        (qoop_values, intensities) tuple - intensity vs out-of-plane Q
+    """
+    if len(qoop_values) == 0 or len(qip_values) == 0:
+        return np.array([]), np.array([])
+
+    # Find index for qip position
+    qip_idx = int(np.argmin(np.abs(qip_values - qip_position)))
+
+    if qip_width <= 0:
+        intensities = np.nan_to_num(transformed_image[:, qip_idx], nan=0.0)
+    else:
+        # Calculate index width from Q width
+        dq = np.abs(qip_values[1] - qip_values[0]) if len(qip_values) > 1 else 1.0
+        idx_width = max(1, int(qip_width / dq / 2))
+
+        start_idx = max(0, qip_idx - idx_width)
+        end_idx = min(len(qip_values), qip_idx + idx_width + 1)
+
+        slice_data = transformed_image[:, start_idx:end_idx]
+        intensities = np.nanmean(slice_data, axis=1)
+        intensities = np.nan_to_num(intensities, nan=0.0)
+
+    return qoop_values.copy(), intensities
+
+
+def extract_gisaxs_inclined_linecut(
+    transformed_image: np.ndarray,
+    qip_values: np.ndarray,
+    qoop_values: np.ndarray,
+    qip_position: float,
+    qoop_position: float,
+    angle: float,
+    q_width: float = 0.0,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Extract inclined linecut from GISAXS Q-space image.
+
+    Uses bilinear interpolation along the line through (qip_position, qoop_position)
+    at the given angle. Returns (q_path, intensities) where q_path is the distance
+    along the linecut path in Q-space units.
+
+    Since the Q-space grid is uniform, this is simpler than the pixel-space version.
+
+    Args:
+        transformed_image: 2D intensity array on Q-grid (npt_oop, npt_ip)
+        qip_values: 1D array of in-plane Q values (length npt_ip)
+        qoop_values: 1D array of out-of-plane Q values (length npt_oop)
+        qip_position: Center in-plane Q position
+        qoop_position: Center out-of-plane Q position
+        angle: Angle in degrees (0 = horizontal along qip, 90 = vertical along qoop)
+        q_width: Width in Q-space units for averaging
+
+    Returns:
+        (q_path, intensities) tuple - q_path is distance along the linecut
+    """
+    if len(qoop_values) == 0 or len(qip_values) == 0:
+        return np.array([]), np.array([])
+
+    npt_oop, npt_ip = transformed_image.shape
+
+    # Q-space step sizes
+    dq_ip = np.abs(qip_values[1] - qip_values[0]) if len(qip_values) > 1 else 1.0
+    dq_oop = np.abs(qoop_values[1] - qoop_values[0]) if len(qoop_values) > 1 else 1.0
+
+    # Q-space bounds
+    qip_min, qip_max = qip_values.min(), qip_values.max()
+    qoop_min, qoop_max = qoop_values.min(), qoop_values.max()
+
+    # Direction vector in Q-space
+    angle_rad = np.radians(angle)
+    dir_qip = np.cos(angle_rad)
+    dir_qoop = np.sin(angle_rad)
+
+    # Find line extent within Q-space bounds
+    t_min = float("-inf")
+    t_max = float("inf")
+
+    # Intersection with qip boundaries
+    if dir_qip != 0:
+        t1 = (qip_min - qip_position) / dir_qip
+        t2 = (qip_max - qip_position) / dir_qip
+        if dir_qip > 0:
+            t_min = max(t_min, t1)
+            t_max = min(t_max, t2)
+        else:
+            t_min = max(t_min, t2)
+            t_max = min(t_max, t1)
+
+    # Intersection with qoop boundaries
+    if dir_qoop != 0:
+        t1 = (qoop_min - qoop_position) / dir_qoop
+        t2 = (qoop_max - qoop_position) / dir_qoop
+        if dir_qoop > 0:
+            t_min = max(t_min, t1)
+            t_max = min(t_max, t2)
+        else:
+            t_min = max(t_min, t2)
+            t_max = min(t_max, t1)
+
+    if t_min > t_max:
+        return np.array([]), np.array([])
+
+    # Sample along the line in Q-space
+    # Use step size as the smaller of the two Q-space resolutions
+    step_size = min(dq_ip, dq_oop)
+    total_length = t_max - t_min
+    num_points = max(2, int(np.ceil(total_length / step_size)))
+
+    t_values = np.linspace(t_min, t_max, num_points)
+    q_path = t_values - t_min  # Distance from start
+
+    # Q-space coordinates along the line
+    sample_qip = qip_position + t_values * dir_qip
+    sample_qoop = qoop_position + t_values * dir_qoop
+
+    # Convert Q-space coordinates to array indices
+    # qip_values might be increasing or decreasing, handle both cases
+    qip_increasing = qip_values[-1] > qip_values[0] if len(qip_values) > 1 else True
+    qoop_increasing = qoop_values[-1] > qoop_values[0] if len(qoop_values) > 1 else True
+
+    if qip_increasing:
+        idx_ip = (sample_qip - qip_values[0]) / dq_ip
+    else:
+        idx_ip = (qip_values[0] - sample_qip) / dq_ip
+
+    if qoop_increasing:
+        idx_oop = (sample_qoop - qoop_values[0]) / dq_oop
+    else:
+        idx_oop = (qoop_values[0] - sample_qoop) / dq_oop
+
+    # Perpendicular direction for width averaging
+    perp_qip = -dir_qoop
+    perp_qoop = dir_qip
+
+    # Width averaging
+    if q_width > 0:
+        half_width = q_width / 2
+        w_offsets = np.arange(-half_width, half_width + step_size / 2, step_size / 2)
+    else:
+        w_offsets = np.array([0.0])
+
+    # Create 2D grids of sample indices (num_points x num_offsets)
+    offset_qip = perp_qip * w_offsets[np.newaxis, :]
+    offset_qoop = perp_qoop * w_offsets[np.newaxis, :]
+
+    sample_idx_ip = idx_ip[:, np.newaxis] + offset_qip / dq_ip
+    sample_idx_oop = idx_oop[:, np.newaxis] + offset_qoop / dq_oop
+
+    # Round to integer indices for sampling
+    pixel_ip = np.round(sample_idx_ip).astype(np.int32)
+    pixel_oop = np.round(sample_idx_oop).astype(np.int32)
+
+    # Create mask for valid coordinates
+    valid_mask = (
+        (pixel_ip >= 0) & (pixel_ip < npt_ip) & (pixel_oop >= 0) & (pixel_oop < npt_oop)
+    )
+
+    # Clip coordinates for safe indexing
+    pixel_ip_clipped = np.clip(pixel_ip, 0, npt_ip - 1)
+    pixel_oop_clipped = np.clip(pixel_oop, 0, npt_oop - 1)
+
+    # Extract values
+    values = transformed_image[pixel_oop_clipped, pixel_ip_clipped]
+
+    # Apply validity mask and NaN mask
+    valid_values = valid_mask & ~np.isnan(values)
+    values = np.where(valid_values, values, 0.0)
+
+    # Compute mean along width axis
+    value_sum = np.sum(values, axis=1)
+    value_count = np.sum(valid_values, axis=1)
+    intensities = np.divide(
+        value_sum, value_count, out=np.zeros_like(value_sum), where=value_count > 0
+    )
+
+    return q_path, intensities

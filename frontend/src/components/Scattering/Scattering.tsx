@@ -88,6 +88,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     isCalibrationSet,
     qXMatrix,
     qYMatrix,
+    setGisaxsQMatrices,
     maskUri,
     setMaskUri,
     maskData,
@@ -784,6 +785,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                     experimentType={experimentType}
                     showQSpaceAxes={showQSpaceAxes}
                     setShowQSpaceAxes={setShowQSpaceAxes}
+                    onGisaxsPixelQUpdate={setGisaxsQMatrices}
                   />
               </div>
           </ContentCard>

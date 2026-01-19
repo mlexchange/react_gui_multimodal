@@ -14,7 +14,11 @@ from xscattering_backend.utils.mask_loader import (
     load_mask_from_tiled,
     normalize_mask,
 )
-from xscattering_backend.utils.q_space import compute_q_matrices
+from xscattering_backend.utils.q_space import (
+    compute_saxs_q_matrices,
+    transform_gisaxs_to_qspace,
+    GISAXSTransformResult,
+)
 from xscattering_backend.utils.scans import (
     ensure_2d_image,
     get_processed_image,
@@ -33,8 +37,10 @@ __all__ = [
     "load_mask_from_bytes",
     "load_mask_from_tiled",
     "normalize_mask",
-    # Q-space
-    "compute_q_matrices",
+    # Q-space (SAXS and GISAXS)
+    "compute_saxs_q_matrices",
+    "transform_gisaxs_to_qspace",
+    "GISAXSTransformResult",
     # Scans
     "get_scans_from_folder",
     "get_processed_image",

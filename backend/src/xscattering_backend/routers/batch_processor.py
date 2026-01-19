@@ -24,11 +24,14 @@ from xscattering_backend.utils.azimuthal_integration import (
     integrate_1d,
 )
 from xscattering_backend.utils.linecut_extraction import (
+    extract_gisaxs_horizontal_linecut,
+    extract_gisaxs_inclined_linecut,
+    extract_gisaxs_vertical_linecut,
     extract_horizontal_linecut,
     extract_inclined_linecut,
     extract_vertical_linecut,
 )
-from xscattering_backend.utils.q_space import compute_q_matrices
+from xscattering_backend.utils.q_space import compute_saxs_q_matrices
 
 logger = get_logger(__name__)
 router = APIRouter()
@@ -64,6 +67,9 @@ def process_scan_all_linecuts(
     This function fetches the image ONCE and applies all linecut operations,
     optimizing I/O by avoiding redundant image fetches.
 
+    For GISAXS experiments, linecuts are extracted from the transformed Q-space
+    image. Azimuthal integration is skipped for GISAXS.
+
     Args:
         scan_uri: URI of the scan to process
         calibration: Calibration parameters dict
@@ -78,6 +84,8 @@ def process_scan_all_linecuts(
         Dict with results organized by type and linecut ID
     """
     scan_name = scan_uri.split("/")[-1]
+    experiment_type = calibration.get("experiment_type", "SAXS")
+
     results = {
         "scan_uri": scan_uri,
         "scan_name": scan_name,
@@ -88,143 +96,293 @@ def process_scan_all_linecuts(
     }
 
     try:
-        # Fetch image (bypass cache for batch processing to avoid thrashing)
-        # Mask is applied during processing - masked pixels become NaN
-        processed_image = get_cached_processed_image(
-            scan_uri.lstrip("/"),
-            mask_uri=mask_uri,
-            bypass_cache=bypass_cache,
-        )
-        image_array = processed_image.array
-
-        # Compute Q matrices ONCE (for linecuts)
-        q_x_matrix, q_y_matrix = compute_q_matrices(image_array.shape, calibration)
-
-        # Process horizontal linecuts
-        for linecut in horizontal_linecuts:
-            linecut_id = linecut["id"]
-            try:
-                q_values, intensities = extract_horizontal_linecut(
-                    image_array,
-                    q_x_matrix,
-                    q_y_matrix,
-                    linecut["position"],
-                    linecut.get("width", 0.0),
-                )
-                results["horizontal"][linecut_id] = {
-                    "q_values": q_values.tolist(),
-                    "intensities": intensities.tolist(),
-                    "success": True,
-                    "error_message": None,
-                }
-            except Exception as e:
-                results["horizontal"][linecut_id] = {
+        if experiment_type == "GISAXS":
+            # Use GISAXS-specific processing
+            _process_gisaxs_linecuts(
+                results,
+                scan_uri,
+                calibration,
+                horizontal_linecuts,
+                vertical_linecuts,
+                inclined_linecuts,
+                mask_uri,
+            )
+            # Skip azimuthal integration for GISAXS
+            for integration in azimuthal_integrations:
+                results["azimuthal"][integration["id"]] = {
                     "q_values": [],
                     "intensities": [],
                     "success": False,
-                    "error_message": str(e),
+                    "error_message": "Azimuthal integration not supported for GISAXS",
                 }
-
-        # Process vertical linecuts
-        for linecut in vertical_linecuts:
-            linecut_id = linecut["id"]
-            try:
-                q_values, intensities = extract_vertical_linecut(
-                    image_array,
-                    q_x_matrix,
-                    q_y_matrix,
-                    linecut["position"],
-                    linecut.get("width", 0.0),
-                )
-                results["vertical"][linecut_id] = {
-                    "q_values": q_values.tolist(),
-                    "intensities": intensities.tolist(),
-                    "success": True,
-                    "error_message": None,
-                }
-            except Exception as e:
-                results["vertical"][linecut_id] = {
-                    "q_values": [],
-                    "intensities": [],
-                    "success": False,
-                    "error_message": str(e),
-                }
-
-        # Process inclined linecuts
-        for linecut in inclined_linecuts:
-            linecut_id = linecut["id"]
-            try:
-                q_values, intensities = extract_inclined_linecut(
-                    image_array,
-                    q_x_matrix,
-                    q_y_matrix,
-                    linecut["q_x_position"],
-                    linecut["q_y_position"],
-                    linecut["angle"],
-                    linecut.get("q_width", 0.0),
-                )
-                results["inclined"][linecut_id] = {
-                    "q_values": q_values.tolist(),
-                    "intensities": intensities.tolist(),
-                    "success": True,
-                    "error_message": None,
-                }
-            except Exception as e:
-                results["inclined"][linecut_id] = {
-                    "q_values": [],
-                    "intensities": [],
-                    "success": False,
-                    "error_message": str(e),
-                }
-
-        # Process azimuthal integrations
-        # Create integrator ONCE (if needed)
-        ai = None
-        for integration in azimuthal_integrations:
-            integration_id = integration["id"]
-            try:
-                # Lazy create integrator
-                if ai is None:
-                    ai = create_azimuthal_integrator(
-                        sample_detector_distance=calibration["sample_detector_distance"],
-                        beam_center_x=calibration["beam_center_x"],
-                        beam_center_y=calibration["beam_center_y"],
-                        pixel_size_x=calibration["pixel_size_x"],
-                        pixel_size_y=calibration["pixel_size_y"],
-                        wavelength=calibration["wavelength"],
-                        tilt=calibration.get("tilt", 0.0),
-                        tilt_plan_rotation=calibration.get("tilt_plan_rotation", 0.0),
-                    )
-
-                azimuth_range = integration.get("azimuth_range", (-180, 180))
-                q_range = integration.get("q_range")
-
-                q_values, intensities = integrate_1d(
-                    ai, image_array, azimuth_range=azimuth_range, q_range=q_range
-                )
-                results["azimuthal"][integration_id] = {
-                    "q_values": q_values.tolist(),
-                    "intensities": intensities.tolist(),
-                    "success": True,
-                    "error_message": None,
-                }
-            except Exception as e:
-                results["azimuthal"][integration_id] = {
-                    "q_values": [],
-                    "intensities": [],
-                    "success": False,
-                    "error_message": str(e),
-                }
+        else:
+            # Use standard SAXS processing
+            _process_saxs_linecuts(
+                results,
+                scan_uri,
+                calibration,
+                horizontal_linecuts,
+                vertical_linecuts,
+                inclined_linecuts,
+                azimuthal_integrations,
+                bypass_cache,
+                mask_uri,
+            )
 
         results["success"] = True
         results["error_message"] = None
 
     except Exception as e:
-        # Image fetch failed - mark all linecuts as failed
+        # Image fetch or transform failed - mark all linecuts as failed
         results["success"] = False
         results["error_message"] = str(e)
 
     return results
+
+
+def _process_saxs_linecuts(
+    results: dict,
+    scan_uri: str,
+    calibration: dict,
+    horizontal_linecuts: list[dict],
+    vertical_linecuts: list[dict],
+    inclined_linecuts: list[dict],
+    azimuthal_integrations: list[dict],
+    bypass_cache: bool,
+    mask_uri: Optional[str],
+) -> None:
+    """Process linecuts for SAXS experiment from pixel-space image."""
+    # Fetch image (bypass cache for batch processing to avoid thrashing)
+    processed_image = get_cached_processed_image(
+        scan_uri.lstrip("/"),
+        mask_uri=mask_uri,
+        bypass_cache=bypass_cache,
+    )
+    image_array = processed_image.array
+
+    # Compute SAXS Q matrices ONCE
+    q_x_matrix, q_y_matrix = compute_saxs_q_matrices(image_array.shape, calibration)
+
+    # Process horizontal linecuts
+    for linecut in horizontal_linecuts:
+        linecut_id = linecut["id"]
+        try:
+            q_values, intensities = extract_horizontal_linecut(
+                image_array,
+                q_x_matrix,
+                q_y_matrix,
+                linecut["position"],
+                linecut.get("width", 0.0),
+            )
+            results["horizontal"][linecut_id] = {
+                "q_values": q_values.tolist(),
+                "intensities": intensities.tolist(),
+                "success": True,
+                "error_message": None,
+            }
+        except Exception as e:
+            results["horizontal"][linecut_id] = {
+                "q_values": [],
+                "intensities": [],
+                "success": False,
+                "error_message": str(e),
+            }
+
+    # Process vertical linecuts
+    for linecut in vertical_linecuts:
+        linecut_id = linecut["id"]
+        try:
+            q_values, intensities = extract_vertical_linecut(
+                image_array,
+                q_x_matrix,
+                q_y_matrix,
+                linecut["position"],
+                linecut.get("width", 0.0),
+            )
+            results["vertical"][linecut_id] = {
+                "q_values": q_values.tolist(),
+                "intensities": intensities.tolist(),
+                "success": True,
+                "error_message": None,
+            }
+        except Exception as e:
+            results["vertical"][linecut_id] = {
+                "q_values": [],
+                "intensities": [],
+                "success": False,
+                "error_message": str(e),
+            }
+
+    # Process inclined linecuts
+    for linecut in inclined_linecuts:
+        linecut_id = linecut["id"]
+        try:
+            q_values, intensities = extract_inclined_linecut(
+                image_array,
+                q_x_matrix,
+                q_y_matrix,
+                linecut["q_x_position"],
+                linecut["q_y_position"],
+                linecut["angle"],
+                linecut.get("q_width", 0.0),
+            )
+            results["inclined"][linecut_id] = {
+                "q_values": q_values.tolist(),
+                "intensities": intensities.tolist(),
+                "success": True,
+                "error_message": None,
+            }
+        except Exception as e:
+            results["inclined"][linecut_id] = {
+                "q_values": [],
+                "intensities": [],
+                "success": False,
+                "error_message": str(e),
+            }
+
+    # Process azimuthal integrations
+    ai = None
+    for integration in azimuthal_integrations:
+        integration_id = integration["id"]
+        try:
+            # Lazy create integrator
+            if ai is None:
+                ai = create_azimuthal_integrator(
+                    sample_detector_distance=calibration["sample_detector_distance"],
+                    beam_center_x=calibration["beam_center_x"],
+                    beam_center_y=calibration["beam_center_y"],
+                    pixel_size_x=calibration["pixel_size_x"],
+                    pixel_size_y=calibration["pixel_size_y"],
+                    wavelength=calibration["wavelength"],
+                    tilt=calibration.get("tilt", 0.0),
+                    tilt_plan_rotation=calibration.get("tilt_plan_rotation", 0.0),
+                )
+
+            azimuth_range = integration.get("azimuth_range", (-180, 180))
+            q_range = integration.get("q_range")
+
+            q_values, intensities = integrate_1d(
+                ai, image_array, azimuth_range=azimuth_range, q_range=q_range
+            )
+            results["azimuthal"][integration_id] = {
+                "q_values": q_values.tolist(),
+                "intensities": intensities.tolist(),
+                "success": True,
+                "error_message": None,
+            }
+        except Exception as e:
+            results["azimuthal"][integration_id] = {
+                "q_values": [],
+                "intensities": [],
+                "success": False,
+                "error_message": str(e),
+            }
+
+
+def _process_gisaxs_linecuts(
+    results: dict,
+    scan_uri: str,
+    calibration: dict,
+    horizontal_linecuts: list[dict],
+    vertical_linecuts: list[dict],
+    inclined_linecuts: list[dict],
+    mask_uri: Optional[str],
+) -> None:
+    """
+    Process linecuts for GISAXS experiment from transformed Q-space image.
+
+    Uses cached GISAXS transform which bins detector pixels into a regular
+    qip/qoop grid. All linecuts are extracted from this transformed image.
+    """
+    from xscattering_backend.cache.gisaxs_cache import get_or_compute_gisaxs_transform
+
+    # Get the cached GISAXS transform
+    gisaxs_result = get_or_compute_gisaxs_transform(
+        scan_uri.lstrip("/"),
+        calibration,
+        mask_uri=mask_uri,
+    )
+
+    transformed_image = gisaxs_result.transformed_image
+    qip_values = gisaxs_result.qip_values
+    qoop_values = gisaxs_result.qoop_values
+
+    # Process horizontal linecuts (constant qoop, returns qip vs intensity)
+    for linecut in horizontal_linecuts:
+        linecut_id = linecut["id"]
+        try:
+            q_values, intensities = extract_gisaxs_horizontal_linecut(
+                transformed_image,
+                qip_values,
+                qoop_values,
+                linecut["position"],  # qoop position
+                linecut.get("width", 0.0),  # qoop width
+            )
+            results["horizontal"][linecut_id] = {
+                "q_values": q_values.tolist(),
+                "intensities": intensities.tolist(),
+                "success": True,
+                "error_message": None,
+            }
+        except Exception as e:
+            results["horizontal"][linecut_id] = {
+                "q_values": [],
+                "intensities": [],
+                "success": False,
+                "error_message": str(e),
+            }
+
+    # Process vertical linecuts (constant qip, returns qoop vs intensity)
+    for linecut in vertical_linecuts:
+        linecut_id = linecut["id"]
+        try:
+            q_values, intensities = extract_gisaxs_vertical_linecut(
+                transformed_image,
+                qip_values,
+                qoop_values,
+                linecut["position"],  # qip position
+                linecut.get("width", 0.0),  # qip width
+            )
+            results["vertical"][linecut_id] = {
+                "q_values": q_values.tolist(),
+                "intensities": intensities.tolist(),
+                "success": True,
+                "error_message": None,
+            }
+        except Exception as e:
+            results["vertical"][linecut_id] = {
+                "q_values": [],
+                "intensities": [],
+                "success": False,
+                "error_message": str(e),
+            }
+
+    # Process inclined linecuts (enabled for GISAXS on transformed Q-grid)
+    for linecut in inclined_linecuts:
+        linecut_id = linecut["id"]
+        try:
+            q_values, intensities = extract_gisaxs_inclined_linecut(
+                transformed_image,
+                qip_values,
+                qoop_values,
+                linecut["q_x_position"],  # qip position
+                linecut["q_y_position"],  # qoop position
+                linecut["angle"],
+                linecut.get("q_width", 0.0),
+            )
+            results["inclined"][linecut_id] = {
+                "q_values": q_values.tolist(),
+                "intensities": intensities.tolist(),
+                "success": True,
+                "error_message": None,
+            }
+        except Exception as e:
+            results["inclined"][linecut_id] = {
+                "q_values": [],
+                "intensities": [],
+                "success": False,
+                "error_message": str(e),
+            }
 
 
 def process_scan_for_batch(
@@ -309,6 +467,10 @@ async def batch_all(request: BatchAllRequest):
 
     This endpoint is optimized to fetch each image only ONCE and apply all
     linecut operations (horizontal, vertical, inclined) and azimuthal integrations.
+
+    For GISAXS experiments, linecuts are extracted from the transformed Q-space
+    image. Inclined linecuts are enabled for GISAXS. Azimuthal integration is
+    skipped for GISAXS.
 
     For N scans with H horizontal, V vertical, I inclined linecuts, and A azimuthal
     integrations, this endpoint fetches N images instead of N*(H+V+I+A) fetches

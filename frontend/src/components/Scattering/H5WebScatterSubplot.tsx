@@ -40,11 +40,15 @@ import {
   AzimuthalIntegration,
   AzimuthalData,
   OperationType,
+  isGisaxsCalibrationComplete,
 } from './types';
 import { getArrayMinMax } from './utils/getArrayMinAndMax';
 import { calculateDifferenceArray } from './utils/calculateDifferenceArray';
 import { calculateDivisionArray } from './utils/calculateDivisionArray';
-import { fetchWithCache } from './services/scatteringImageCache';
+import {
+  fetchWithCache,
+  type GISAXSTransformedData,
+} from './services/scatteringImageCache';
 
 // Props interface - same as ScatterSubplot for compatibility
 interface H5WebScatterSubplotProps {
@@ -93,6 +97,7 @@ interface H5WebScatterSubplotProps {
   experimentType?: string;
   showQSpaceAxes: boolean;
   setShowQSpaceAxes: (value: boolean) => void;
+  onGisaxsPixelQUpdate?: (qipMatrix: number[][], qoopMatrix: number[][]) => void;
 }
 
 const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
@@ -130,10 +135,15 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
   experimentType = 'SAXS',
   showQSpaceAxes,
   setShowQSpaceAxes,
+  onGisaxsPixelQUpdate,
 }) => {
-  // Raw data from fetch
+  // Raw data from fetch (pixel space images)
   const [leftArray, setLeftArray] = useState<number[][]>([]);
   const [rightArray, setRightArray] = useState<number[][]>([]);
+
+  // GISAXS-specific data (only present for GISAXS experiments)
+  const [leftGisaxsTransformed, setLeftGisaxsTransformed] = useState<GISAXSTransformedData | null>(null);
+  const [rightGisaxsTransformed, setRightGisaxsTransformed] = useState<GISAXSTransformedData | null>(null);
 
   // Toolbar state
   const [scaleType, setScaleType] = useState<ColorScaleType>(
@@ -173,6 +183,25 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
     }
   }, [operationType]);
 
+  // Build GISAXS calibration params for fetch (if applicable)
+  // Returns null if GISAXS calibration is incomplete (including missing incident_angle)
+  const gisaxsCalibration = useMemo(() => {
+    if (experimentType !== 'GISAXS') return null;
+    // Don't return calibration unless GISAXS-specific requirements are met
+    if (!isGisaxsCalibrationComplete(calibrationParams)) return null;
+    return {
+      sample_detector_distance: calibrationParams!.sample_detector_distance,
+      beam_center_x: calibrationParams!.beam_center_x,
+      beam_center_y: calibrationParams!.beam_center_y,
+      pixel_size_x: calibrationParams!.pixel_size_x,
+      pixel_size_y: calibrationParams!.pixel_size_y,
+      wavelength: calibrationParams!.wavelength,
+      incident_angle: calibrationParams!.incident_angle,
+      tilt: calibrationParams!.tilt,
+      tilt_plan_rotation: calibrationParams!.tilt_plan_rotation,
+    };
+  }, [experimentType, calibrationParams]);
+
   // Fetch images when indices change
   useEffect(() => {
     if (typeof leftImageIndex !== 'number' || typeof rightImageIndex !== 'number') {
@@ -194,11 +223,11 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
     setIsLoadingImages?.(true);
 
     Promise.all([
-      fetchWithCache(leftScanUri, maskUri),
-      fetchWithCache(rightScanUri, maskUri)
+      fetchWithCache(leftScanUri, maskUri, experimentType, gisaxsCalibration),
+      fetchWithCache(rightScanUri, maskUri, experimentType, gisaxsCalibration)
     ])
       .then(([leftProcessed, rightProcessed]) => {
-        // Use image data
+        // Use image data (pixel space)
         const imageArray1 = leftProcessed.array;
         const imageArray2 = rightProcessed.array;
 
@@ -208,9 +237,21 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
         setImageData1(imageArray1);
         setImageData2(imageArray2);
 
-        // Store raw arrays
+        // Store raw arrays (pixel space)
         setLeftArray(imageArray1);
         setRightArray(imageArray2);
+
+        // Store GISAXS-specific data if present
+        setLeftGisaxsTransformed(leftProcessed.gisaxsTransformed ?? null);
+        setRightGisaxsTransformed(rightProcessed.gisaxsTransformed ?? null);
+        // Use pixel Q from left image (same for both since same calibration)
+        const pixelQ = leftProcessed.gisaxsPixelQ ?? null;
+
+        // Notify parent of GISAXS pixel Q data for linecut slider ranges
+        // This ensures sliders use the same pyFAI-calculated Q values as the image
+        if (pixelQ && onGisaxsPixelQUpdate) {
+          onGisaxsPixelQUpdate(pixelQ.qipMatrix, pixelQ.qoopMatrix);
+        }
 
         setIsLoadingImages?.(false);
         notifications.hide('loading-images');
@@ -236,17 +277,58 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
     setImageData2,
     setIsLoadingImages,
     maskUri,
+    experimentType,
+    gisaxsCalibration,
+    onGisaxsPixelQUpdate,
   ]);
+
+  // Select which arrays to use based on experiment type and Q-space toggle
+  const displayArrays = useMemo(() => {
+    // For GISAXS in Q-space mode, use transformed images if available
+    if (experimentType === 'GISAXS' && showQSpaceAxes && leftGisaxsTransformed && rightGisaxsTransformed) {
+      return {
+        left: leftGisaxsTransformed.array,
+        right: rightGisaxsTransformed.array,
+      };
+    }
+    // Otherwise use pixel-space images
+    return {
+      left: leftArray,
+      right: rightArray,
+    };
+  }, [experimentType, showQSpaceAxes, leftArray, rightArray, leftGisaxsTransformed, rightGisaxsTransformed]);
+
+  // Mask is only shown in pixel-space view (not in Q-space view)
+  // For GISAXS Q-space, the mask is already applied to the image (NaN values)
+  const displayMask = useMemo(() => {
+    // Don't show mask overlay in Q-space view
+    if (showQSpaceAxes) {
+      return { data: null, shape: null };
+    }
+    // Show pixel-space mask for pixel view
+    return {
+      data: maskData ?? null,
+      shape: maskShape ?? null,
+    };
+  }, [showQSpaceAxes, maskData, maskShape]);
+
+  // Determine if overlays should actually be rendered
+  // Disable for GISAXS pixel-space (constant-Q lines are curved in pixel coordinates)
+  const shouldShowOverlays = useMemo(() => {
+    if (!showOverlays) return false;
+    if (experimentType === 'GISAXS' && !showQSpaceAxes) return false;
+    return true;
+  }, [showOverlays, experimentType, showQSpaceAxes]);
 
   // Transform data based on settings
   const transformedData = useMemo(() => {
-    if (leftArray.length === 0 || rightArray.length === 0) {
+    if (displayArrays.left.length === 0 || displayArrays.right.length === 0) {
       return null;
     }
 
     const { array1, array2 } = mainTransformDataFunction(
-      leftArray,
-      rightArray,
+      displayArrays.left,
+      displayArrays.right,
       isLogScale,
       lowerPercentile,
       upperPercentile,
@@ -258,8 +340,7 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
 
     return { array1, array2, diff };
   }, [
-    leftArray,
-    rightArray,
+    displayArrays,
     isLogScale,
     lowerPercentile,
     upperPercentile,
@@ -590,13 +671,15 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
           Icon={StackIcon}
           value={showOverlays}
           onToggle={() => setShowOverlays(!showOverlays)}
+          disabled={experimentType === 'GISAXS' && !showQSpaceAxes}
         />
         <ToggleBtn
           label="Mask"
           Icon={MaskHappyIcon}
           value={showMaskOverlay}
           onToggle={() => setShowMaskOverlay(!showMaskOverlay)}
-          disabled={!maskData}
+          // Disable mask in Q-space (already applied as NaN) or when no mask loaded
+          disabled={!maskData || showQSpaceAxes}
         />
         <Separator />
 
@@ -627,10 +710,11 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
           flipXAxis={flipXAxis}
           flipYAxis={flipYAxis}
           showGrid={showGrid}
-          linecuts={showOverlays ? leftImageLinecuts : []}
-          inclinedLinecuts={showOverlays ? leftInclinedLinecuts : []}
+          linecuts={leftImageLinecuts}
+          inclinedLinecuts={leftInclinedLinecuts}
           inclinedPixelWidthCalculator={calculateInclinedPixelWidth}
-          azimuthalIntegrations={showOverlays ? leftAzimuthalIntegrations : []}
+          azimuthalIntegrations={leftAzimuthalIntegrations}
+          showOverlays={shouldShowOverlays}
           qMagnitudeMatrix={qMagnitudeMatrix}
           beamCenterX={calibrationParams?.beam_center_x}
           beamCenterY={calibrationParams?.beam_center_y}
@@ -641,9 +725,11 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
           qXMatrix={qXMatrix}
           qYMatrix={qYMatrix}
           experimentType={experimentType}
-          maskData={maskData}
-          maskShape={maskShape}
+          maskData={displayMask.data}
+          maskShape={displayMask.shape}
           showMaskOverlay={showMaskOverlay}
+          gisaxsQipValues={leftGisaxsTransformed?.qipValues}
+          gisaxsQoopValues={leftGisaxsTransformed?.qoopValues}
         />
         <HeatmapPanel
           header={rightHeader}
@@ -657,10 +743,11 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
           flipXAxis={flipXAxis}
           flipYAxis={flipYAxis}
           showGrid={showGrid}
-          linecuts={showOverlays ? rightImageLinecuts : []}
-          inclinedLinecuts={showOverlays ? rightInclinedLinecuts : []}
+          linecuts={rightImageLinecuts}
+          inclinedLinecuts={rightInclinedLinecuts}
           inclinedPixelWidthCalculator={calculateInclinedPixelWidth}
-          azimuthalIntegrations={showOverlays ? rightAzimuthalIntegrations : []}
+          azimuthalIntegrations={rightAzimuthalIntegrations}
+          showOverlays={shouldShowOverlays}
           qMagnitudeMatrix={qMagnitudeMatrix}
           beamCenterX={calibrationParams?.beam_center_x}
           beamCenterY={calibrationParams?.beam_center_y}
@@ -671,9 +758,11 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
           qXMatrix={qXMatrix}
           qYMatrix={qYMatrix}
           experimentType={experimentType}
-          maskData={maskData}
-          maskShape={maskShape}
+          maskData={displayMask.data}
+          maskShape={displayMask.shape}
           showMaskOverlay={showMaskOverlay}
+          gisaxsQipValues={rightGisaxsTransformed?.qipValues}
+          gisaxsQoopValues={rightGisaxsTransformed?.qoopValues}
         />
         <HeatmapPanel
           header={comparisonHeader ?? <span className="font-medium">{comparisonLabel}</span>}
@@ -693,6 +782,8 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
           qXMatrix={qXMatrix}
           qYMatrix={qYMatrix}
           experimentType={experimentType}
+          gisaxsQipValues={leftGisaxsTransformed?.qipValues}
+          gisaxsQoopValues={leftGisaxsTransformed?.qoopValues}
         />
       </div>
     </div>

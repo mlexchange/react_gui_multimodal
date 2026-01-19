@@ -72,6 +72,10 @@ export interface HeatmapPanelProps {
   maskData?: Uint8Array | null;
   maskShape?: [number, number] | null;
   showMaskOverlay?: boolean;
+  showOverlays?: boolean;  // Controls visibility of linecut/azimuthal overlays
+  // GISAXS-specific Q value arrays (for transformed Q-space images)
+  gisaxsQipValues?: number[];  // 1D array for X axis in Q-space mode
+  gisaxsQoopValues?: number[]; // 1D array for Y axis in Q-space mode
 }
 
 // ============================================================================
@@ -120,7 +124,12 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
   maskData,
   maskShape,
   showMaskOverlay = false,
+  showOverlays = true,
+  gisaxsQipValues,
+  gisaxsQoopValues,
 }) => {
+  // Check if we're in GISAXS Q-space mode with transformed data
+  const isGisaxsQSpace = experimentType?.toLowerCase() === 'gisaxs' && showQSpaceAxes && gisaxsQipValues && gisaxsQoopValues;
   // Compute axis labels based on experiment type
   const unit = 'nm\u207B\u00B9'; // nm⁻¹ with superscript
   const xAxisLabel = showQSpaceAxes
@@ -144,9 +153,24 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
     return rounded.toFixed(1);
   };
 
-  // formatTick functions that look up q-values from the matrices
+  // formatTick functions that look up q-values from the matrices or GISAXS arrays
   const formatXTick = useMemo(() => {
-    if (!showQSpaceAxes || !qXMatrix?.length || !qXMatrix[0]?.length) {
+    if (!showQSpaceAxes) {
+      return formatTickAsInteger;
+    }
+
+    // For GISAXS Q-space mode with transformed data, use 1D qip array
+    if (isGisaxsQSpace && gisaxsQipValues) {
+      return (pixelX: number) => {
+        const idx = Math.round(Math.max(0, Math.min(gisaxsQipValues.length - 1, pixelX)));
+        const qValue = gisaxsQipValues[idx];
+        if (qValue === undefined) return '';
+        return formatQValue(qValue);
+      };
+    }
+
+    // For SAXS or GISAXS pixel mode, use 2D matrix
+    if (!qXMatrix?.length || !qXMatrix[0]?.length) {
       return formatTickAsInteger;
     }
     return (pixelX: number) => {
@@ -155,10 +179,28 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
       if (qValue === undefined) return '';
       return formatQValue(qValue);
     };
-  }, [showQSpaceAxes, qXMatrix, cols]);
+  }, [showQSpaceAxes, qXMatrix, cols, isGisaxsQSpace, gisaxsQipValues]);
 
   const formatYTick = useMemo(() => {
-    if (!showQSpaceAxes || !qYMatrix?.length) {
+    if (!showQSpaceAxes) {
+      return formatTickAsInteger;
+    }
+
+    // For GISAXS Q-space mode with transformed data, use 1D qoop array
+    // pyFAI returns qoop_values sorted ascending: qoop_values[0] = most negative
+    // The transformed image row 0 corresponds to qoop_values[0]
+    // Axis labels directly map pixel index to qoop value (no inversion needed)
+    if (isGisaxsQSpace && gisaxsQoopValues) {
+      return (pixelY: number) => {
+        const idx = Math.round(Math.max(0, Math.min(gisaxsQoopValues.length - 1, pixelY)));
+        const qValue = gisaxsQoopValues[idx];
+        if (qValue === undefined) return '';
+        return formatQValue(qValue);
+      };
+    }
+
+    // For SAXS or GISAXS pixel mode, use 2D matrix
+    if (!qYMatrix?.length) {
       return formatTickAsInteger;
     }
     return (pixelY: number) => {
@@ -167,7 +209,7 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
       if (qValue === undefined) return '';
       return formatQValue(qValue);
     };
-  }, [showQSpaceAxes, qYMatrix, rows]);
+  }, [showQSpaceAxes, qYMatrix, rows, isGisaxsQSpace, gisaxsQoopValues]);
 
   // Y-axis flip: always flip=true so pixel 0 is at top (image convention)
   // User's flipYAxis toggle inverts this
@@ -223,6 +265,18 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
               const value = dataArray.get(yi, xi);
 
               if (showQSpaceAxes) {
+                // For GISAXS Q-space mode, use 1D arrays
+                if (isGisaxsQSpace && gisaxsQipValues && gisaxsQoopValues) {
+                  const qip = gisaxsQipValues[xi];
+                  const qoop = gisaxsQoopValues[yi];
+                  return (
+                    <div className="text-sm">
+                      <div>qip={qip?.toPrecision(4) ?? 'N/A'}, qoop={qoop?.toPrecision(4) ?? 'N/A'}</div>
+                      <div className="font-semibold">{value?.toPrecision(5)}</div>
+                    </div>
+                  );
+                }
+                // For SAXS or GISAXS pixel view with Q labels
                 const qx = qXMatrix?.[0]?.[xi];
                 const qy = qYMatrix?.[yi]?.[0];
                 return (
@@ -241,12 +295,14 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
               );
             }}
           />
-          <LinecutOverlay
-            linecuts={linecuts}
-            rows={rows}
-            cols={cols}
-          />
-          {inclinedPixelWidthCalculator && (
+          {showOverlays && linecuts.length > 0 && (
+            <LinecutOverlay
+              linecuts={linecuts}
+              rows={rows}
+              cols={cols}
+            />
+          )}
+          {showOverlays && inclinedPixelWidthCalculator && inclinedLinecuts.length > 0 && (
             <InclinedLinecutOverlay
               linecuts={inclinedLinecuts}
               rows={rows}
@@ -256,15 +312,17 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
               pixelWidthCalculator={inclinedPixelWidthCalculator}
             />
           )}
-          <AzimuthalSectorOverlay
-            integrations={azimuthalIntegrations}
-            qMagnitudeMatrix={qMagnitudeMatrix}
-            beamCenterX={beamCenterX}
-            beamCenterY={beamCenterY}
-            maxQValue={maxQValue}
-            imageWidth={cols}
-            imageHeight={rows}
-          />
+          {showOverlays && azimuthalIntegrations.length > 0 && (
+            <AzimuthalSectorOverlay
+              integrations={azimuthalIntegrations}
+              qMagnitudeMatrix={qMagnitudeMatrix}
+              beamCenterX={beamCenterX}
+              beamCenterY={beamCenterY}
+              maxQValue={maxQValue}
+              imageWidth={cols}
+              imageHeight={rows}
+            />
+          )}
           {showMaskOverlay && maskData && maskShape && (
             <MaskOverlay
               maskData={maskData}

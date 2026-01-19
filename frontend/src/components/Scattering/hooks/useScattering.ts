@@ -67,16 +67,21 @@ export default function useScattering() {
   const [qYMatrix, setQYMatrix] = useState<number[][]>([]);
 
   /**
-   * Fetch q-matrices from the server
-   * This fetches both q_x and q_y matrices based on current calibration parameters
-   * For GISAXS: returns qip (in-plane) and qoop (out-of-plane)
-   * For SAXS: returns standard qx and qy
+   * Fetch q-matrices from the server (SAXS only)
+   * For GISAXS, Q matrices come from the image fetch (pyFAI FiberIntegrator)
+   * For SAXS: fetches standard qx and qy from /api/q-space
    */
   const fetchQVectors = useCallback(async () => {
     // Don't fetch if calibration is not set
     if (!isCalibrationSet || !calibrationParams) {
       setQXMatrix([]);
       setQYMatrix([]);
+      return;
+    }
+
+    // For GISAXS, Q matrices come from the image fetch (setGisaxsQMatrices)
+    // This ensures consistency with the pyFAI FiberIntegrator calculations
+    if (experimentType === 'GISAXS') {
       return;
     }
 
@@ -114,9 +119,7 @@ export default function useScattering() {
         throw new Error('Invalid q-matrices response format');
       }
 
-      // Store the q-matrices
-      // For GISAXS: q_x = qip (in-plane), q_y = qoop (out-of-plane)
-      // For SAXS: q_x and q_y are standard coordinates
+      // Store the q-matrices (SAXS: q_x and q_y are standard coordinates)
       setQXMatrix(decodedData.q_x);
       setQYMatrix(decodedData.q_y);
 
@@ -124,6 +127,16 @@ export default function useScattering() {
       console.error('Error fetching q-matrices:', error);
     }
   }, [calibrationParams, experimentType, imageHeight, imageWidth, isCalibrationSet]);
+
+  /**
+   * Set Q matrices directly from GISAXS pixel Q data (from image fetch)
+   * This ensures the same pyFAI FiberIntegrator calculations are used for
+   * both the image display and the linecut sliders.
+   */
+  const setGisaxsQMatrices = useCallback((qipMatrix: number[][], qoopMatrix: number[][]) => {
+    setQXMatrix(qipMatrix);
+    setQYMatrix(qoopMatrix);
+  }, []);
 
   /**
    * Update calibration parameters and trigger q-matrix refresh
@@ -186,6 +199,7 @@ export default function useScattering() {
     // Q-matrices instead of Q-vectors
     qXMatrix,
     qYMatrix,
+    setGisaxsQMatrices,  // For GISAXS: set Q matrices from image fetch
 
     // Mask
     maskUri,

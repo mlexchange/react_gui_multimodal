@@ -12,10 +12,31 @@ const STORE_NAME = 'images';
 const MAX_ENTRIES = 25;
 
 /**
+ * GISAXS transformed image data.
+ */
+export interface GISAXSTransformedData {
+  array: number[][];
+  qipValues: number[];
+  qoopValues: number[];
+}
+
+/**
+ * GISAXS pixel-space Q matrices for axis labels and tooltips.
+ */
+export interface GISAXSPixelQData {
+  qipMatrix: number[][];
+  qoopMatrix: number[][];
+}
+
+/**
  * Processed image data.
  */
 export interface ProcessedImageData {
   array: number[][];
+
+  // GISAXS-specific data (only present for GISAXS with calibration)
+  gisaxsTransformed?: GISAXSTransformedData;
+  gisaxsPixelQ?: GISAXSPixelQData;
 }
 
 export interface CachedScatteringImage {
@@ -28,6 +49,21 @@ export interface CacheStats {
   count: number;
   totalSize: number;
   maxEntries: number;
+}
+
+/**
+ * Calibration parameters needed for GISAXS transform.
+ */
+export interface GISAXSCalibrationParams {
+  sample_detector_distance: number;
+  beam_center_x: number;
+  beam_center_y: number;
+  pixel_size_x: number;
+  pixel_size_y: number;
+  wavelength: number;
+  incident_angle: number;
+  tilt?: number;
+  tilt_plan_rotation?: number;
 }
 
 let dbInstance: IDBDatabase | null = null;
@@ -280,6 +316,20 @@ interface BackendImageResponse {
   shape: [number, number];
   dtype: string;
   scan_uri: string;
+  mask_uri?: string | null;
+
+  // GISAXS-specific fields (only present for GISAXS with calibration)
+  gisaxs_transformed?: {
+    image: Uint8Array;
+    shape: [number, number];
+    qip_values: number[];
+    qoop_values: number[];
+  };
+  gisaxs_pixel_q?: {
+    qip_matrix: Uint8Array;
+    qoop_matrix: Uint8Array;
+    shape: [number, number];
+  };
 }
 
 /**
@@ -288,9 +338,54 @@ interface BackendImageResponse {
 function deserializeBackendResponse(buffer: ArrayBuffer): ProcessedImageData {
   const decoded = unpack(new Uint8Array(buffer)) as BackendImageResponse;
 
-  return {
+  const result: ProcessedImageData = {
     array: reconstructFloat32Array(decoded.image, decoded.shape),
   };
+
+  // Add GISAXS-specific data if present
+  if (decoded.gisaxs_transformed) {
+    const transformed = decoded.gisaxs_transformed;
+    result.gisaxsTransformed = {
+      array: reconstructFloat32Array(transformed.image, transformed.shape),
+      qipValues: transformed.qip_values,
+      qoopValues: transformed.qoop_values,
+    };
+  }
+
+  if (decoded.gisaxs_pixel_q) {
+    const pixelQ = decoded.gisaxs_pixel_q;
+    result.gisaxsPixelQ = {
+      qipMatrix: reconstructFloat32Array(pixelQ.qip_matrix, pixelQ.shape),
+      qoopMatrix: reconstructFloat32Array(pixelQ.qoop_matrix, pixelQ.shape),
+    };
+  }
+
+  return result;
+}
+
+/**
+ * Create a cache key that includes relevant parameters.
+ * For GISAXS, includes calibration hash to invalidate on calibration change.
+ */
+function createCacheKey(
+  scanUri: string,
+  maskUri?: string | null,
+  experimentType?: string,
+  calibration?: GISAXSCalibrationParams | null
+): string {
+  let key = scanUri;
+
+  if (maskUri) {
+    key += `|mask=${maskUri}`;
+  }
+
+  // For GISAXS, include calibration hash since different calibration = different transform
+  if (experimentType === 'GISAXS' && calibration) {
+    const calibHash = `${calibration.sample_detector_distance}_${calibration.beam_center_x}_${calibration.beam_center_y}_${calibration.incident_angle}`;
+    key += `|gisaxs=${calibHash}`;
+  }
+
+  return key;
 }
 
 /**
@@ -299,13 +394,17 @@ function deserializeBackendResponse(buffer: ArrayBuffer): ProcessedImageData {
  *
  * @param scanUri - The scan URI to fetch
  * @param maskUri - Optional mask URI to apply (masked pixels become NaN)
+ * @param experimentType - 'SAXS' or 'GISAXS' (default: 'SAXS')
+ * @param calibration - Calibration parameters (required for GISAXS transform)
  */
 export async function fetchWithCache(
   scanUri: string,
-  maskUri?: string | null
+  maskUri?: string | null,
+  experimentType?: string,
+  calibration?: GISAXSCalibrationParams | null
 ): Promise<ProcessedImageData> {
-  // Create cache key that includes mask (different mask = different cached image)
-  const cacheKey = maskUri ? `${scanUri}|mask=${maskUri}` : scanUri;
+  // Create cache key that includes all relevant parameters
+  const cacheKey = createCacheKey(scanUri, maskUri, experimentType, calibration);
 
   // Try to get from cache first
   const cached = await getCachedImage(cacheKey);
@@ -316,8 +415,31 @@ export async function fetchWithCache(
   // Cache miss - fetch from server
   const url = new URL('/api/fetch-scan-image', window.location.origin);
   url.searchParams.append('scan_uri', scanUri);
+
   if (maskUri) {
     url.searchParams.append('mask_uri', maskUri);
+  }
+
+  // Add experiment type
+  if (experimentType) {
+    url.searchParams.append('experiment_type', experimentType);
+  }
+
+  // Add calibration params for GISAXS
+  if (experimentType === 'GISAXS' && calibration) {
+    url.searchParams.append('sample_detector_distance', String(calibration.sample_detector_distance));
+    url.searchParams.append('beam_center_x', String(calibration.beam_center_x));
+    url.searchParams.append('beam_center_y', String(calibration.beam_center_y));
+    url.searchParams.append('pixel_size_x', String(calibration.pixel_size_x));
+    url.searchParams.append('pixel_size_y', String(calibration.pixel_size_y));
+    url.searchParams.append('wavelength', String(calibration.wavelength));
+    url.searchParams.append('incident_angle', String(calibration.incident_angle));
+    if (calibration.tilt !== undefined) {
+      url.searchParams.append('tilt', String(calibration.tilt));
+    }
+    if (calibration.tilt_plan_rotation !== undefined) {
+      url.searchParams.append('tilt_plan_rotation', String(calibration.tilt_plan_rotation));
+    }
   }
 
   const response = await fetch(url.toString());
