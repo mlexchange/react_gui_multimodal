@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { unpack } from 'msgpackr';
 import { CalibrationParams, isCalibrationComplete } from '../types';
 
@@ -171,6 +171,73 @@ export default function useScattering() {
       fetchQVectors();
     }
   }, [fetchQVectors, imageHeight, imageWidth, experimentType, isCalibrationSet]);
+
+  // Track if we're currently restoring mask to prevent duplicate fetches
+  const isRestoringMask = useRef(false);
+
+  // Restore mask data when maskUri is set but maskData is null (e.g., after page refresh)
+  useEffect(() => {
+    // Skip if no maskUri, mask data already loaded, or currently restoring
+    if (!maskUri || maskData !== null || isRestoringMask.current) {
+      return;
+    }
+
+    isRestoringMask.current = true;
+
+    const restoreMask = async () => {
+      try {
+        // 1. Try backend cache first (works for ALL mask types)
+        const cacheUrl = new URL('/api/get-mask', window.location.origin);
+        cacheUrl.searchParams.set('mask_id', maskUri);
+
+        const cacheResponse = await fetch(cacheUrl.toString());
+        if (cacheResponse.ok) {
+          const buffer = await cacheResponse.arrayBuffer();
+          const data = unpack(new Uint8Array(buffer)) as {
+            mask_id: string;
+            shape: [number, number];
+            data: Uint8Array;
+          };
+          console.log(`Restored mask from backend cache: ${maskUri}`);
+          setMaskData(new Uint8Array(data.data));
+          setMaskShape(data.shape);
+          return;
+        }
+
+        // 2. For Tiled masks only: fallback to fetching from Tiled server
+        if (!maskUri.startsWith('uploaded_')) {
+          const tiledUrl = new URL('/api/load-mask-from-tiled', window.location.origin);
+          tiledUrl.searchParams.set('mask_uri', maskUri);
+
+          const tiledResponse = await fetch(tiledUrl.toString());
+          if (tiledResponse.ok) {
+            const buffer = await tiledResponse.arrayBuffer();
+            const data = unpack(new Uint8Array(buffer)) as {
+              mask_uri: string;
+              shape: [number, number];
+              data: Uint8Array;
+            };
+            console.log(`Restored mask from Tiled: ${maskUri}`);
+            setMaskData(new Uint8Array(data.data));
+            setMaskShape(data.shape);
+            return;
+          }
+        }
+
+        // 3. Both failed - clear the invalid URI
+        console.log('Mask not found in cache or Tiled, clearing');
+        setMaskUri(null);
+
+      } catch (error) {
+        console.error('Failed to restore mask:', error);
+        setMaskUri(null);
+      } finally {
+        isRestoringMask.current = false;
+      }
+    };
+
+    restoreMask();
+  }, [maskUri, maskData]);
 
   return {
     // Existing state

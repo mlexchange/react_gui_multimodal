@@ -11,6 +11,7 @@ import msgpack
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response
 
+from xscattering_backend.cache.mask_cache import get_cached_mask
 from xscattering_backend.cache.tiled_cache import get_tiled_base_uri, get_tiled_client_for_uri
 from xscattering_backend.config.models import MaskResponse
 from xscattering_backend.utils.mask_loader import (
@@ -103,6 +104,50 @@ async def resolve_mask(
             status_code=500,
             detail=f"Error resolving PONI mask: {str(e)}",
         )
+
+
+@router.get("/get-mask")
+async def get_mask(
+    mask_id: str = Query(..., description="Mask ID (uploaded_xxx or Tiled URI)"),
+) -> Response:
+    """
+    Get mask data from backend cache.
+
+    This endpoint retrieves a previously loaded mask from the cache.
+    Works for both uploaded masks (mask_id starts with 'uploaded_') and
+    Tiled masks (mask_id is the Tiled URI path).
+
+    Parameters
+    ----------
+    mask_id : str
+        For uploaded masks: the mask ID returned from /upload-mask (e.g., 'uploaded_abc123')
+        For Tiled masks: the mask URI path (e.g., 'calibration/masks/pilatus')
+
+    Returns
+    -------
+    Response
+        msgpack binary containing mask_id, shape, and data.
+        Returns 404 if mask is not in cache.
+    """
+    # Try direct lookup (works for uploaded_xxx masks)
+    mask_array = get_cached_mask(mask_id)
+
+    # For Tiled masks, also try with full cache key (handles key mismatch)
+    if mask_array is None and not mask_id.startswith("uploaded_"):
+        tiled_base_uri = get_tiled_base_uri()
+        full_key = f"{tiled_base_uri}:{mask_id}"
+        mask_array = get_cached_mask(full_key)
+
+    if mask_array is None:
+        raise HTTPException(status_code=404, detail="Mask not in cache")
+
+    packed_data = msgpack.packb({
+        "mask_id": mask_id,
+        "shape": list(mask_array.shape),
+        "data": mask_array.tobytes(),
+    })
+
+    return Response(content=packed_data, media_type="application/x-msgpack")
 
 
 @router.post("/upload-mask")
