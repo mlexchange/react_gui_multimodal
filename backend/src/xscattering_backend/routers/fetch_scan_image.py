@@ -17,18 +17,17 @@ async def fetch_scan_image(
     mask_uri: Optional[str] = Query(None, description="Optional mask URI or mask_id"),
 ):
     """
-    Get the processed image with all resolution levels for a single scan.
+    Get the processed image for a single scan.
 
     Args:
         scan_uri: The scan URI like "rawdata/NaCl_small/NaCl_1_10_sample_2_2m"
         mask_uri: Optional mask URI or mask_id for detector mask
 
     Returns:
-        msgpack binary containing all resolution levels:
-        - low: {image: bytes, shape: [h, w], factor: int, dtype: str}
-        - medium: {image: bytes, shape: [h, w], factor: int, dtype: str}
-        - full: {image: bytes, shape: [h, w], factor: int, dtype: str}
-        - original_shape: [height, width]
+        msgpack binary containing:
+        - image: bytes (float32 array data)
+        - shape: [height, width]
+        - dtype: str
         - scan_uri: string
         - mask_uri: string | null
     """
@@ -38,21 +37,11 @@ async def fetch_scan_image(
         # Get from cache (will fetch from Tiled and process if not cached)
         processed = get_cached_processed_image(scan_uri, mask_uri=mask_uri)
 
-        # Serialize each resolution level
-        def serialize_level(level):
-            return {
-                "image": level.array.tobytes(),
-                "shape": list(level.array.shape),
-                "factor": level.factor,
-                "dtype": str(level.array.dtype),
-            }
-
-        # Pack all data
+        # Pack image data
         packed_data = msgpack.packb({
-            "low": serialize_level(processed.low),
-            "medium": serialize_level(processed.medium),
-            "full": serialize_level(processed.full),
-            "original_shape": list(processed.original_shape),
+            "image": processed.array.tobytes(),
+            "shape": list(processed.shape),
+            "dtype": str(processed.array.dtype),
             "scan_uri": scan_uri,
             "mask_uri": mask_uri,
         })

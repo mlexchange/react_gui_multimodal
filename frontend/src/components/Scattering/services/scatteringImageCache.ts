@@ -1,9 +1,6 @@
 /**
  * IndexedDB-based cache service for scan images.
- * Caches processed resolution data from the backend.
- *
- * The backend now handles all resolution processing (downsampling).
- * This service simply stores and retrieves the pre-processed data.
+ * Caches processed image data from the backend.
  */
 
 import { unpack } from 'msgpackr';
@@ -15,25 +12,15 @@ const STORE_NAME = 'images';
 const MAX_ENTRIES = 25;
 
 /**
- * Resolution data for a single image at one resolution level.
- */
-export interface ResolutionLevel {
-  array: number[][];
-  factor: number;
-}
-
-/**
- * Processed image data with all resolution levels pre-computed.
+ * Processed image data.
  */
 export interface ProcessedImageData {
-  low: ResolutionLevel;
-  medium: ResolutionLevel;
-  full: ResolutionLevel;
+  array: number[][];
 }
 
 export interface CachedScatteringImage {
   scanUri: string;              // Primary key
-  resolutions: ProcessedImageData;
+  imageData: ProcessedImageData;
   cachedAt: number;             // Timestamp for LRU eviction
 }
 
@@ -96,7 +83,7 @@ export async function initializeCache(): Promise<IDBDatabase> {
  * Get a cached image by scan URI.
  * Returns null if not found.
  */
-export async function getCachedImage(scanUri: string): Promise<CachedScatteringImage | null> {
+export async function getCachedImage(scanUri: string): Promise<ProcessedImageData | null> {
   const db = await initializeCache();
 
   return new Promise((resolve, reject) => {
@@ -115,10 +102,11 @@ export async function getCachedImage(scanUri: string): Promise<CachedScatteringI
         console.log(`Cache HIT: ${scanUri}`);
         // Update cachedAt to mark as recently used (for LRU)
         updateCachedAt(scanUri).catch(console.error);
+        resolve(result.imageData);
       } else {
         console.log(`Cache MISS: ${scanUri}`);
+        resolve(null);
       }
-      resolve(result || null);
     };
   });
 }
@@ -152,7 +140,7 @@ async function updateCachedAt(scanUri: string): Promise<void> {
  */
 export async function cacheProcessedImage(
   scanUri: string,
-  resolutions: ProcessedImageData
+  imageData: ProcessedImageData
 ): Promise<void> {
   const db = await initializeCache();
 
@@ -165,7 +153,7 @@ export async function cacheProcessedImage(
 
     const cacheEntry: CachedScatteringImage = {
       scanUri,
-      resolutions,
+      imageData,
       cachedAt: Date.now(),
     };
 
@@ -285,53 +273,29 @@ export async function getCacheStats(): Promise<CacheStats> {
 }
 
 /**
- * Backend response format for a single resolution level.
- */
-interface BackendResolutionLevel {
-  image: Uint8Array;
-  shape: [number, number];
-  factor: number;
-  dtype: string;
-}
-
-/**
- * Backend response format containing all resolution levels.
+ * Backend response format for image data.
  */
 interface BackendImageResponse {
-  low: BackendResolutionLevel;
-  medium: BackendResolutionLevel;
-  full: BackendResolutionLevel;
-  original_shape: [number, number];
+  image: Uint8Array;
+  shape: [number, number];
+  dtype: string;
   scan_uri: string;
 }
 
 /**
- * Deserialize backend response containing all resolution levels.
- * The backend now handles all resolution processing.
+ * Deserialize backend response containing image data.
  */
 function deserializeBackendResponse(buffer: ArrayBuffer): ProcessedImageData {
   const decoded = unpack(new Uint8Array(buffer)) as BackendImageResponse;
 
   return {
-    low: {
-      array: reconstructFloat32Array(decoded.low.image, decoded.low.shape),
-      factor: decoded.low.factor,
-    },
-    medium: {
-      array: reconstructFloat32Array(decoded.medium.image, decoded.medium.shape),
-      factor: decoded.medium.factor,
-    },
-    full: {
-      array: reconstructFloat32Array(decoded.full.image, decoded.full.shape),
-      factor: decoded.full.factor,
-    },
+    array: reconstructFloat32Array(decoded.image, decoded.shape),
   };
 }
 
 /**
- * Fetch and cache an image with all resolution levels from backend.
- * Backend handles all resolution processing.
- * Returns processed resolution data ready for display.
+ * Fetch and cache an image from backend.
+ * Returns processed image data ready for display.
  *
  * @param scanUri - The scan URI to fetch
  * @param maskUri - Optional mask URI to apply (masked pixels become NaN)
@@ -346,7 +310,7 @@ export async function fetchWithCache(
   // Try to get from cache first
   const cached = await getCachedImage(cacheKey);
   if (cached) {
-    return cached.resolutions;
+    return cached;
   }
 
   // Cache miss - fetch from server
@@ -363,13 +327,13 @@ export async function fetchWithCache(
 
   const buffer = await response.arrayBuffer();
 
-  // Deserialize response with all resolution levels from backend
-  const resolutions = deserializeBackendResponse(buffer);
+  // Deserialize response from backend
+  const imageData = deserializeBackendResponse(buffer);
 
   // Cache the processed result asynchronously (don't block return)
-  cacheProcessedImage(cacheKey, resolutions).catch((error) => {
+  cacheProcessedImage(cacheKey, imageData).catch((error) => {
     console.error('Failed to cache image:', error);
   });
 
-  return resolutions;
+  return imageData;
 }

@@ -56,7 +56,7 @@ async def extract_linecut(request: SingleLinecutRequest) -> Response:
             request.scan_uri.lstrip("/"),
             mask_uri=request.mask_uri,
         )
-        image_array = processed_image.full.array
+        image_array = processed_image.array
 
         # Get Q-matrices (cached based on image shape + calibration)
         calibration_dict = request.calibration.model_dump()

@@ -80,7 +80,6 @@ const InclinedLinecutFig: React.FC<InclinedLinecutFigProps> = ({
             imageHeight,
             beam_center_x: beamCenterX,
             beam_center_y: beamCenterY,
-            factor: 1
         });
 
         if (!endpoints) return Array(dataLength).fill(0);

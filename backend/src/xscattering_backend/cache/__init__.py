@@ -2,7 +2,6 @@
 
 from xscattering_backend.cache.image_cache import (
     ProcessedImageData,
-    ResolutionLevel,
     get_cached_processed_image,
 )
 from xscattering_backend.cache.mask_cache import (
@@ -23,7 +22,6 @@ __all__ = [
     # Image cache
     "get_cached_processed_image",
     "ProcessedImageData",
-    "ResolutionLevel",
     # Mask cache
     "get_cached_mask",
     "cache_tiled_mask",

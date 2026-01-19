@@ -64,14 +64,14 @@ async def azimuthal_integration(
     Now uses direct scan URIs instead of folder_url + indices for more efficient access.
     """
 
-    # Get images from cache (uses full resolution for integration accuracy)
+    # Get images from cache
     # This reuses cached images if the user previously viewed them in the scatter subplot
     # Masked pixels are set to NaN, which pyFAI handles during integration
     processed_1 = get_cached_processed_image(left_scan_uri.lstrip("/"), mask_uri=mask_uri)
     processed_2 = get_cached_processed_image(right_scan_uri.lstrip("/"), mask_uri=mask_uri)
 
-    scatter_image_array_1 = processed_1.full.array
-    scatter_image_array_2 = processed_2.full.array
+    scatter_image_array_1 = processed_1.array
+    scatter_image_array_2 = processed_2.array
 
     # Build range tuples from individual parameters
     azimuth_range: Tuple[float, float] = (azimuth_start_deg, azimuth_end_deg)

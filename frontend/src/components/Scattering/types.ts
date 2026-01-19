@@ -31,24 +31,6 @@ export interface InclinedLinecut {
   type: 'inclined';
 }
 
-export interface GenerateLinecutParams {
-  linecut: Linecut;
-  currentArray: number[][];
-  factor: number | null;
-  imageWidth?: number;
-  imageHeight?: number;
-  units?: string;
-  qXMatrix?: number[][];
-  qYMatrix?: number[][];
-}
-
-export interface ResolutionDataType {
-    array1: number[][];
-    array2: number[][];
-    diff: number[][];
-    factor: number | null;
-  }
-
 export interface AzimuthalIntegration {
         id: number;
         qRange: [number, number] | null;  // q-range for integration

@@ -61,7 +61,6 @@ interface H5WebScatterSubplotProps {
   rightImageColorPalette: string[];
   setZoomedXPixelRange: (range: [number, number] | null) => void;
   setZoomedYPixelRange: (range: [number, number] | null) => void;
-  setResolutionMessage: (message: string) => void;
   isLogScale: boolean;
   lowerPercentile: number;
   upperPercentile: number;
@@ -199,19 +198,19 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
       fetchWithCache(rightScanUri, maskUri)
     ])
       .then(([leftProcessed, rightProcessed]) => {
-        // Use full resolution data
-        const fullArray1 = leftProcessed.full.array;
-        const fullArray2 = rightProcessed.full.array;
+        // Use image data
+        const imageArray1 = leftProcessed.array;
+        const imageArray2 = rightProcessed.array;
 
-        // Set dimensions and full resolution data for linecuts
-        setImageHeight(fullArray1.length);
-        setImageWidth(fullArray1[0].length);
-        setImageData1(fullArray1);
-        setImageData2(fullArray2);
+        // Set dimensions and data for linecuts
+        setImageHeight(imageArray1.length);
+        setImageWidth(imageArray1[0].length);
+        setImageData1(imageArray1);
+        setImageData2(imageArray2);
 
         // Store raw arrays
-        setLeftArray(fullArray1);
-        setRightArray(fullArray2);
+        setLeftArray(imageArray1);
+        setRightArray(imageArray2);
 
         setIsLoadingImages?.(false);
         notifications.hide('loading-images');

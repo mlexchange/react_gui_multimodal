@@ -1024,7 +1024,6 @@ export const InclinedLinecutOverlay: React.FC<InclinedLinecutOverlayProps> = ({
           imageHeight: rows,
           beam_center_x: beamCenterX,
           beam_center_y: beamCenterY,
-          factor: 1, // No scaling factor needed - we're working in full resolution
         });
 
         if (!endpoints) return null;

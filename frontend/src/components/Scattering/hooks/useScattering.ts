@@ -41,7 +41,6 @@ export default function useScattering() {
   const [imageData2, setImageData2] = useState<number[][]>([]);
   const [zoomedXPixelRange, setZoomedXPixelRange] = useState<[number, number] | null>(null);
   const [zoomedYPixelRange, setZoomedYPixelRange] = useState<[number, number] | null>(null);
-  const [resolutionMessage, setResolutionMessage] = useState('');
 
   // Calibration parameters
   const [calibrationParams, setCalibrationParams] = useState<CalibrationParams | null>(null);
@@ -178,8 +177,6 @@ export default function useScattering() {
     setZoomedXPixelRange,
     zoomedYPixelRange,
     setZoomedYPixelRange,
-    resolutionMessage,
-    setResolutionMessage,
 
     // Calibration parameters
     calibrationParams,

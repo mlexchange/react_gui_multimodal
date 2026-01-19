@@ -83,8 +83,6 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     setZoomedXPixelRange,
     zoomedYPixelRange,
     setZoomedYPixelRange,
-    resolutionMessage,
-    setResolutionMessage,
     calibrationParams,
     updateCalibration,
     isCalibrationSet,
@@ -726,7 +724,6 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                     rightImageColorPalette={rightImageColorPalette}
                     setZoomedXPixelRange={setZoomedXPixelRange}
                     setZoomedYPixelRange={setZoomedYPixelRange}
-                    setResolutionMessage={setResolutionMessage}
                     isLogScale={isLogScale}
                     lowerPercentile={lowerPercentile}
                     upperPercentile={upperPercentile}
@@ -789,43 +786,6 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                     setShowQSpaceAxes={setShowQSpaceAxes}
                   />
               </div>
-
-              {resolutionMessage && (
-                <div className="flex items-center text-gray-500 text-left pt-2 whitespace-nowrap overflow-x-auto shrink-0">
-                  <span>{resolutionMessage}</span>
-                  <Popover width={900} position="top">
-                    <Popover.Target>
-                      <div className="cursor-pointer">
-                        <InfoIcon className="ml-2 w-5 h-5" />
-                      </div>
-                    </Popover.Target>
-                    <Popover.Dropdown>
-                      <div className="space-y-4 whitespace-normal">
-                        <p className="font-medium mb-2">
-                          The resolution of the displayed image changes based on the zoom level:
-                        </p>
-                        <ul className="space-y-3">
-                          <li className="flex">
-                            <span className="font-medium">• Low Resolution</span>
-                            <span className="ml-1">(Downsampling factor = 4): When viewing &gt;50% of the scattering image.</span>
-                          </li>
-                          <li className="flex">
-                            <span className="font-medium">• Medium Resolution</span>
-                            <span className="ml-1">(Downsampling factor = 2): When viewing 20-50% of the scattering image.</span>
-                          </li>
-                          <li className="flex">
-                            <span className="font-medium">• Full Resolution</span>
-                            <span className="ml-1">(Downsampling factor = 1): When viewing &lt;20% of the scattering image.</span>
-                          </li>
-                        </ul>
-                        <p className="mt-3 text-black-600">
-                          <span className="text-red-600">Note:</span> When the image width or height is &gt;2000 pixels, the downsampling factor is doubled.
-                        </p>
-                      </div>
-                    </Popover.Dropdown>
-                  </Popover>
-                </div>
-              )}
           </ContentCard>
 
           {/* Summary Card */}

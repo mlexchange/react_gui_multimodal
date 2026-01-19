@@ -1,12 +1,11 @@
 """
-In-memory LRU cache for processed scan images with resolution levels.
+In-memory LRU cache for processed scan images.
 
 This module provides a centralized cache that:
-1. Caches processed images with all resolution levels pre-computed
+1. Caches processed images for reuse across operations
 2. Allows azimuthal integration to reuse cached images instead of re-fetching
-3. Uses functools.lru_cache for simple, efficient in-memory caching
-4. Thread-safe for concurrent access from batch processing
-5. Supports optional mask application (mask_uri parameter)
+3. Thread-safe for concurrent access from batch processing
+4. Supports optional mask application (mask_uri parameter)
 """
 
 import threading
@@ -25,70 +24,10 @@ logger = get_logger(__name__)
 
 
 @dataclass
-class ResolutionLevel:
-    """Single resolution level of an image."""
-    array: np.ndarray  # 2D float32 array
-    factor: int  # Downsampling factor (1=full, 2/4/8=downsampled)
-
-
-@dataclass
 class ProcessedImageData:
-    """Processed image with all resolution levels."""
-    low: ResolutionLevel
-    medium: ResolutionLevel
-    full: ResolutionLevel
-    original_shape: Tuple[int, int]  # (height, width)
-
-
-def downsample_array(array: np.ndarray, factor: int) -> np.ndarray:
-    """
-    Downsample a 2D array by selecting every nth pixel.
-    Mirrors frontend downsampleArray.ts logic exactly.
-
-    Args:
-        array: 2D numpy array to downsample
-        factor: Downsampling factor (e.g., 2 = select every 2nd pixel)
-
-    Returns:
-        Downsampled array
-    """
-    if factor <= 1:
-        return array
-    return array[::factor, ::factor]
-
-
-def compute_resolution_levels(image_array: np.ndarray) -> ProcessedImageData:
-    """
-    Compute all resolution levels for an image.
-    Logic mirrors frontend processImageToResolutions().
-
-    Args:
-        image_array: 2D numpy array (float32)
-
-    Returns:
-        ProcessedImageData with low, medium, and full resolution levels
-    """
-    height, width = image_array.shape
-    is_large_image = width > 2000 or height > 2000
-
-    low_factor = 8 if is_large_image else 4
-    medium_factor = 4 if is_large_image else 2
-
-    return ProcessedImageData(
-        low=ResolutionLevel(
-            array=downsample_array(image_array, low_factor),
-            factor=low_factor
-        ),
-        medium=ResolutionLevel(
-            array=downsample_array(image_array, medium_factor),
-            factor=medium_factor
-        ),
-        full=ResolutionLevel(
-            array=image_array.copy(),
-            factor=1
-        ),
-        original_shape=(height, width)
-    )
+    """Processed image data."""
+    array: np.ndarray  # 2D float32 array
+    shape: Tuple[int, int]  # (height, width)
 
 
 def _load_mask_array(mask_uri: str) -> Optional[np.ndarray]:
@@ -124,15 +63,14 @@ def _fetch_and_process_image(
     mask_uri: Optional[str] = None,
 ) -> ProcessedImageData:
     """
-    Fetch an image from Tiled and process it into resolution levels.
-    This is the internal function that does the actual work.
+    Fetch an image from Tiled and process it.
 
     Args:
         scan_uri: Scan URI like "rawdata/NaCl_small/NaCl_1_10_sample_2_2m"
         mask_uri: Optional mask URI or mask_id for detector mask
 
     Returns:
-        ProcessedImageData with all resolution levels
+        ProcessedImageData with the processed image array
     """
     # Construct full URI
     tiled_base_uri = get_tiled_base_uri()
@@ -162,8 +100,10 @@ def _fetch_and_process_image(
     # Ensure float32
     processed_image = np.array(processed_image, dtype=np.float32)
 
-    # Compute all resolution levels
-    return compute_resolution_levels(processed_image)
+    return ProcessedImageData(
+        array=processed_image,
+        shape=processed_image.shape,
+    )
 
 
 # Cache for processed images - keyed by scan_uri
@@ -195,7 +135,7 @@ def get_cached_processed_image(
                       large datasets where cache thrashing would occur)
 
     Returns:
-        ProcessedImageData with all resolution levels
+        ProcessedImageData with the processed image array
     """
     global _image_cache, _cache_order
 

@@ -1,7 +1,7 @@
 """
 Mask management endpoints.
 
-Handles mask resolution from PONI files and mask uploads.
+Handles mask lookup from PONI files and mask uploads.
 """
 
 import os
@@ -12,7 +12,7 @@ from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response
 
 from xscattering_backend.cache.tiled_cache import get_tiled_base_uri, get_tiled_client_for_uri
-from xscattering_backend.config.models import MaskResolutionResponse
+from xscattering_backend.config.models import MaskResponse
 from xscattering_backend.utils.mask_loader import (
     load_mask_from_bytes,
     load_mask_from_tiled,
@@ -21,10 +21,10 @@ from xscattering_backend.utils.mask_loader import (
 router = APIRouter()
 
 
-@router.get("/resolve-mask", response_model=MaskResolutionResponse)
+@router.get("/resolve-mask", response_model=MaskResponse)
 async def resolve_mask(
     poni_uri: str = Query(..., description="URI of the PONI calibration file"),
-) -> MaskResolutionResponse:
+) -> MaskResponse:
     """
     Resolve the mask referenced by a PONI calibration file.
 
@@ -43,7 +43,7 @@ async def resolve_mask(
 
     Returns
     -------
-    MaskResolutionResponse
+    MaskResponse
         Contains found status, mask_uri if found, and mask_name.
     """
     poni_uri = poni_uri.lstrip("/")
@@ -59,7 +59,7 @@ async def resolve_mask(
         mask_name = metadata.get("mask")
 
         if not mask_name:
-            return MaskResolutionResponse(
+            return MaskResponse(
                 found=False,
                 mask_name=None,
                 message="No mask reference found in PONI metadata",
@@ -83,7 +83,7 @@ async def resolve_mask(
             # Try to access it to verify existence
             _ = mask_client.metadata
 
-            return MaskResolutionResponse(
+            return MaskResponse(
                 found=True,
                 mask_uri=mask_uri,
                 mask_name=mask_name,
@@ -91,7 +91,7 @@ async def resolve_mask(
             )
 
         except Exception:
-            return MaskResolutionResponse(
+            return MaskResponse(
                 found=False,
                 mask_uri=None,
                 mask_name=mask_name,

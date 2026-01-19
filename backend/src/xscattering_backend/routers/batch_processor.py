@@ -95,7 +95,7 @@ def process_scan_all_linecuts(
             mask_uri=mask_uri,
             bypass_cache=bypass_cache,
         )
-        image_array = processed_image.full.array
+        image_array = processed_image.array
 
         # Compute Q matrices ONCE (for linecuts)
         q_x_matrix, q_y_matrix = compute_q_matrices(image_array.shape, calibration)

@@ -113,8 +113,8 @@ class BatchAllRequest(BaseModel):
 # =============================================================================
 
 
-class MaskResolutionResponse(BaseModel):
-    """Response model for mask resolution endpoint."""
+class MaskResponse(BaseModel):
+    """Response model for mask lookup endpoint."""
 
     found: bool
     mask_uri: Optional[str] = None
