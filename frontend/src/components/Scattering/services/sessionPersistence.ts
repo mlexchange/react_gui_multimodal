@@ -22,20 +22,6 @@ import type {
 const STORAGE_KEY = 'scattering_session_v1';
 
 /**
- * Display settings stored in session
- */
-export interface DisplaySettings {
-  isLogScale: boolean;
-  lowerPercentile: number;
-  upperPercentile: number;
-  normalization: string;
-  imageColormap: string;
-  differenceColormap: string;
-  normalizationMode: string;
-  showQSpaceAxes: boolean;
-}
-
-/**
  * Complete session state structure
  */
 export interface SessionState {
@@ -55,8 +41,8 @@ export interface SessionState {
   /** Calibration parameters */
   calibrationParams: CalibrationParams | null;
 
-  /** Display/transformation settings */
-  displaySettings: DisplaySettings;
+  /** Q-space axes toggle (for switching between pixel and Q-space display) */
+  showQSpaceAxes: boolean;
 
   /** Linecut definitions (without extracted data) */
   horizontalLinecuts: Linecut[];
@@ -87,20 +73,6 @@ export interface SessionState {
 }
 
 /**
- * Default display settings
- */
-const DEFAULT_DISPLAY_SETTINGS: DisplaySettings = {
-  isLogScale: false,
-  lowerPercentile: 1,
-  upperPercentile: 99,
-  normalization: 'none',
-  imageColormap: 'Viridis',
-  differenceColormap: 'RdBu',
-  normalizationMode: 'together',
-  showQSpaceAxes: false
-};
-
-/**
  * Create a default/empty session state
  */
 export function createDefaultSessionState(): SessionState {
@@ -111,7 +83,7 @@ export function createDefaultSessionState(): SessionState {
     rightImageIndex: "",
     experimentType: 'SAXS',
     calibrationParams: null,
-    displaySettings: { ...DEFAULT_DISPLAY_SETTINGS },
+    showQSpaceAxes: false,
     horizontalLinecuts: [],
     verticalLinecuts: [],
     inclinedLinecuts: [],
@@ -209,7 +181,8 @@ function isValidSessionState(state: unknown): state is SessionState {
   if (s.rightImageIndex !== "" && typeof s.rightImageIndex !== 'number') return false;
   if (s.experimentType !== 'SAXS' && s.experimentType !== 'GISAXS') return false;
   if (s.calibrationParams !== null && typeof s.calibrationParams !== 'object') return false;
-  if (typeof s.displaySettings !== 'object') return false;
+  // showQSpaceAxes is optional for backward compatibility (default to false)
+  if (s.showQSpaceAxes !== undefined && typeof s.showQSpaceAxes !== 'boolean') return false;
   if (!Array.isArray(s.horizontalLinecuts)) return false;
   if (!Array.isArray(s.verticalLinecuts)) return false;
   if (!Array.isArray(s.inclinedLinecuts)) return false;

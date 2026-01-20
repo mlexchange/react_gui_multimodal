@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { Select, Popover, IconButton, notifications } from '@/components/ui';
+import { Select, IconButton, notifications } from '@/components/ui';
 import { PrevNextSelect, ContentCard, LoadingOverlay, Modal } from '@/components/shared';
-import { CircleHalfTiltIcon, GitDiffIcon, InfoIcon, ListIcon, TreeStructureIcon, WarningIcon, WrenchIcon } from '@phosphor-icons/react';
+import { CircleHalfTiltIcon, GitDiffIcon, ListIcon, TreeStructureIcon, WarningIcon, WrenchIcon } from '@phosphor-icons/react';
 import { CalibrationParams, OperationType } from './types';
 
 import { Button, ButtonWithIcon } from '@blueskyproject/finch';
@@ -15,7 +15,6 @@ import useAzimuthalIntegration from './hooks/useAzimuthalIntegration';
 import useHorizontalLinecut from './hooks/useHorizontalLinecut';
 import useVerticalLinecut from './hooks/useVerticalLinecut';
 import useInclinedLinecut from './hooks/useInclinedLinecut';
-import useDataTransformation from './hooks/useDataTransformation';
 import useSummary from './hooks/useSummary';
 import useSessionPersistence, { PersistableState } from './hooks/useSessionPersistence';
 import useBatchProcessing from './hooks/useBatchProcessing';
@@ -25,7 +24,6 @@ import H5WebScatterSubplot from './H5WebScatterSubplot';
 import LinecutWidget from './LinecutWidget';
 import InclinedLinecutWidget from './InclinedLinecutWidget';
 import AzimuthalIntegrationWidget from './AzimuthalIntegrationWidget';
-import DataTransformationAccordion from './DataTransformationAccordion';
 import CalibrationWidget from './CalibrationWidget';
 import LinecutFig from './LinecutFig';
 import InclinedLinecutFig from './InclinedLinecutFig';
@@ -50,7 +48,6 @@ interface ScatteringProps {
 
 export default function Scattering({ standalone = false }: ScatteringProps) {
   const linecutOrder = ['Horizontal', 'Vertical', 'Inclined', 'Azimuthal'];
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isCalibrationOpen, setIsCalibrationOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isSummaryCollapsed, setIsSummaryCollapsed] = useState(false);
@@ -96,6 +93,8 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     updateMaskData,
     showMaskOverlay,
     setShowMaskOverlay,
+    showQSpaceAxes,
+    setShowQSpaceAxes,
     restoreState: restoreScatteringState,
   } = useScattering();
 
@@ -103,29 +102,6 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
   const qXVector = qXMatrix[0];
   // get the first column of qYMatrix as qYVector
   const qYVector = qYMatrix.map(row => row[0]);
-
-
-  const {
-    isLogScale,
-    setIsLogScale,
-    lowerPercentile,
-    setLowerPercentile,
-    upperPercentile,
-    setUpperPercentile,
-    normalization,
-    setNormalization,
-    imageColormap,
-    setImageColormap,
-    differenceColormap,
-    setDifferenceColormap,
-    normalizationMode,
-    setNormalizationMode,
-    showQSpaceAxes,
-    setShowQSpaceAxes,
-    resetQSpaceAxes,
-    mainTransformDataFunction,
-    restoreSettings: restoreDisplaySettings,
-  } = useDataTransformation();
 
 
   const {
@@ -300,15 +276,13 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     // Apply restored session state
     console.log('Restoring session state...');
 
-    // 1. Restore display settings first (doesn't depend on data)
-    restoreDisplaySettings(restoredSession.displaySettings);
-
-    // 2. Restore multimodal state (experiment type, calibration, selectedLinecuts, maskUri)
+    // 1. Restore scattering state (experiment type, calibration, selectedLinecuts, maskUri, showQSpaceAxes)
     restoreScatteringState({
       experimentType: restoredSession.experimentType,
       selectedLinecuts: restoredSession.selectedLinecuts,
       calibrationParams: restoredSession.calibrationParams,
       maskUri: restoredSession.maskUri,
+      showQSpaceAxes: restoredSession.showQSpaceAxes,
     });
 
     // 3. Restore linecut definitions
@@ -355,7 +329,6 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     isRestoring,
     hasRestoredSession,
     restoredSession,
-    restoreDisplaySettings,
     restoreScatteringState,
     restoreHorizontalLinecuts,
     restoreVerticalLinecuts,
@@ -367,17 +340,6 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     setLeftImageIndex,
     setRightImageIndex,
   ]);
-
-  // ========== RESET Q-SPACE AXES ON EXPERIMENT TYPE CHANGE ==========
-  // Track previous experiment type to detect changes
-  const prevExperimentTypeRef = useRef(experimentType);
-  useEffect(() => {
-    if (prevExperimentTypeRef.current !== experimentType) {
-      // Reset Q-space axes toggle when experiment type changes
-      resetQSpaceAxes();
-      prevExperimentTypeRef.current = experimentType;
-    }
-  }, [experimentType, resetQSpaceAxes]);
 
   // ========== AUTO-SAVE SESSION ==========
   // Trigger auto-save whenever persistable state changes
@@ -391,16 +353,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
       rightImageIndex,
       experimentType: experimentType as 'SAXS' | 'GISAXS',
       calibrationParams,
-      displaySettings: {
-        isLogScale,
-        lowerPercentile,
-        upperPercentile,
-        normalization,
-        imageColormap,
-        differenceColormap,
-        normalizationMode,
-        showQSpaceAxes,
-      },
+      showQSpaceAxes,
       horizontalLinecuts,
       verticalLinecuts,
       inclinedLinecuts,
@@ -424,13 +377,6 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     rightImageIndex,
     experimentType,
     calibrationParams,
-    isLogScale,
-    lowerPercentile,
-    upperPercentile,
-    normalization,
-    imageColormap,
-    differenceColormap,
-    normalizationMode,
     showQSpaceAxes,
     horizontalLinecuts,
     verticalLinecuts,
@@ -739,13 +685,6 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                     rightImageColorPalette={rightImageColorPalette}
                     setZoomedXPixelRange={setZoomedXPixelRange}
                     setZoomedYPixelRange={setZoomedYPixelRange}
-                    isLogScale={isLogScale}
-                    lowerPercentile={lowerPercentile}
-                    upperPercentile={upperPercentile}
-                    normalization={normalization}
-                    imageColormap={imageColormap}
-                    differenceColormap={differenceColormap}
-                    normalizationMode={normalizationMode}
                     azimuthalIntegrations={azimuthalIntegrations}
                     azimuthalData1={azimuthalData1}
                     azimuthalData2={azimuthalData2}
@@ -755,7 +694,6 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                     qYMatrix={qYMatrix}
                     qXMatrix={qXMatrix}
                     units="nm⁻¹"
-                    mainTransformDataFunction={mainTransformDataFunction}
                     leftImageIndex={leftImageIndex}
                     rightImageIndex={rightImageIndex}
                     scanUris={scanUris}
@@ -936,30 +874,6 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
         )}
       </div>
       </div>
-
-      {/* Settings Overlay */}
-      <Modal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        title="Data Transformation"
-      >
-        <DataTransformationAccordion
-          isLogScale={isLogScale}
-          setIsLogScale={setIsLogScale}
-          lowerPercentile={lowerPercentile}
-          setLowerPercentile={setLowerPercentile}
-          upperPercentile={upperPercentile}
-          setUpperPercentile={setUpperPercentile}
-          normalization={normalization}
-          setNormalization={setNormalization}
-          imageColormap={imageColormap}
-          setImageColormap={setImageColormap}
-          differenceColormap={differenceColormap}
-          setDifferenceColormap={setDifferenceColormap}
-          normalizationMode={normalizationMode}
-          setNormalizationMode={setNormalizationMode}
-        />
-      </Modal>
 
       {/* Calibration Overlay */}
       <Modal

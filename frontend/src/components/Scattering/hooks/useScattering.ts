@@ -10,6 +10,7 @@ interface RestorableScatteringState {
   selectedLinecuts?: string[];
   calibrationParams?: CalibrationParams;
   maskUri?: string | null;
+  showQSpaceAxes?: boolean;
 }
 
 // Define the response interface for q-matrices
@@ -51,6 +52,9 @@ export default function useScattering() {
   const [maskShape, setMaskShape] = useState<[number, number] | null>(null);
   const [showMaskOverlay, setShowMaskOverlay] = useState(false);
 
+  // Q-space axes toggle (for switching between pixel and Q-space display)
+  const [showQSpaceAxes, setShowQSpaceAxes] = useState(false);
+
   // Callback to update mask data and shape together
   const updateMaskData = useCallback((data: Uint8Array | null, shape: [number, number] | null) => {
     setMaskData(data);
@@ -91,6 +95,9 @@ export default function useScattering() {
     setMaskData(null);
     setMaskShape(null);
     setShowMaskOverlay(false);
+
+    // Reset Q-space axes toggle
+    setShowQSpaceAxes(false);
 
     // Clear selected linecuts
     setSelectedLinecuts([]);
@@ -194,6 +201,9 @@ export default function useScattering() {
     }
     if (state.maskUri !== undefined) {
       setMaskUri(state.maskUri);
+    }
+    if (state.showQSpaceAxes !== undefined) {
+      setShowQSpaceAxes(state.showQSpaceAxes);
     }
   }, []);
 
@@ -309,6 +319,10 @@ export default function useScattering() {
     updateMaskData,
     showMaskOverlay,
     setShowMaskOverlay,
+
+    // Q-space axes toggle
+    showQSpaceAxes,
+    setShowQSpaceAxes,
 
     // Session restoration
     restoreState,

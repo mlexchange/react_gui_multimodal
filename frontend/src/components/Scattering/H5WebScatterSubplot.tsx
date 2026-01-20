@@ -11,6 +11,7 @@ import {
   SnapshotBtn,
   type ColorMap,
   type CustomDomain,
+  type HistogramParams,
 } from '@h5web/lib';
 import {
   ArrowsHorizontalIcon,
@@ -33,7 +34,6 @@ type Domain = [number, number];
 
 import { notifications } from '@/components/ui';
 import {
-  TransformDataFunction,
   CalibrationParams,
   Linecut,
   InclinedLinecut,
@@ -45,6 +45,7 @@ import {
 import { getArrayMinMax } from './utils/getArrayMinAndMax';
 import { calculateDifferenceArray } from './utils/calculateDifferenceArray';
 import { calculateDivisionArray } from './utils/calculateDivisionArray';
+import { calculateGlobalPercentiles } from './utils/transformationUtils';
 import {
   fetchWithCache,
   type GISAXSTransformedData,
@@ -65,13 +66,6 @@ interface H5WebScatterSubplotProps {
   rightImageColorPalette: string[];
   setZoomedXPixelRange: (range: [number, number] | null) => void;
   setZoomedYPixelRange: (range: [number, number] | null) => void;
-  isLogScale: boolean;
-  lowerPercentile: number;
-  upperPercentile: number;
-  normalization: string;
-  imageColormap: string;
-  differenceColormap: string;
-  normalizationMode: string;
   azimuthalIntegrations: AzimuthalIntegration[];
   azimuthalData1: AzimuthalData[];  // Kept for backward compatibility
   azimuthalData2: AzimuthalData[];  // Kept for backward compatibility
@@ -81,7 +75,6 @@ interface H5WebScatterSubplotProps {
   qYMatrix: number[][];
   qXMatrix: number[][];
   units: string;
-  mainTransformDataFunction: TransformDataFunction;
   leftImageIndex?: number | "";
   rightImageIndex?: number | "";
   scanUris?: string[];
@@ -117,12 +110,6 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
   maxQValue,
   qYMatrix,
   qXMatrix,
-  isLogScale,
-  lowerPercentile,
-  upperPercentile,
-  normalization,
-  normalizationMode,
-  mainTransformDataFunction,
   leftImageIndex,
   rightImageIndex,
   scanUris,
@@ -150,9 +137,7 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
   const [rightGisaxsTransformed, setRightGisaxsTransformed] = useState<GISAXSTransformedData | null>(null);
 
   // Toolbar state
-  const [scaleType, setScaleType] = useState<ColorScaleType>(
-    isLogScale ? ScaleType.Log : ScaleType.Linear
-  );
+  const [scaleType, setScaleType] = useState<ColorScaleType>(ScaleType.Linear);
   const [colorMap, setColorMap] = useState<ColorMap>('Viridis');
   const [diffColorMap, setDiffColorMap] = useState<ColorMap>('RdBu');
   const [invertColorMap, setInvertColorMap] = useState(false);
@@ -162,6 +147,24 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
   const [showGrid, setShowGrid] = useState(false);
   const [showOverlays, setShowOverlays] = useState(true);
   const [customDomain, setCustomDomain] = useState<CustomDomain>([null, null]);
+
+  // Calculate and set initial domain based on 1% and 99% percentiles when data changes
+  useEffect(() => {
+    if (leftArray.length === 0 || rightArray.length === 0) {
+      return;
+    }
+
+    // Use the display arrays (which may be Q-space transformed for GISAXS)
+    const arrays = experimentType === 'GISAXS' && showQSpaceAxes && leftGisaxsTransformed && rightGisaxsTransformed
+      ? { left: leftGisaxsTransformed.array, right: rightGisaxsTransformed.array }
+      : { left: leftArray, right: rightArray };
+
+    // Calculate 1% and 99% percentiles across both arrays
+    const [p1, p99] = calculateGlobalPercentiles(arrays.left, arrays.right, 1, 99);
+
+    // Set as custom domain (will be used by DomainWidget)
+    setCustomDomain([p1, p99]);
+  }, [leftArray, rightArray, leftGisaxsTransformed, rightGisaxsTransformed, experimentType, showQSpaceAxes]);
 
   // Determine if q-space toggle is enabled (calibration must be set with valid q-matrices)
   const canToggleQSpace = useMemo(() => {
@@ -323,33 +326,21 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
     return true;
   }, [showOverlays, experimentType, showQSpaceAxes]);
 
-  // Transform data based on settings
+  // Prepare data for visualization (just replace NaN with 0, let toolbar handle scale/domain)
   const transformedData = useMemo(() => {
     if (displayArrays.left.length === 0 || displayArrays.right.length === 0) {
       return null;
     }
 
-    const { array1, array2 } = mainTransformDataFunction(
-      displayArrays.left,
-      displayArrays.right,
-      isLogScale,
-      lowerPercentile,
-      upperPercentile,
-      normalization,
-      normalizationMode
-    );
+    // Replace NaN values with 0 for visualization
+    const array1 = displayArrays.left.map(row => row.map(val => Number.isNaN(val) ? 0 : val));
+    const array2 = displayArrays.right.map(row => row.map(val => Number.isNaN(val) ? 0 : val));
 
     const diff = calculateResult(array1, array2);
 
     return { array1, array2, diff };
   }, [
     displayArrays,
-    isLogScale,
-    lowerPercentile,
-    upperPercentile,
-    normalization,
-    normalizationMode,
-    mainTransformDataFunction,
     calculateResult,
   ]);
 
@@ -399,6 +390,99 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
     const [safeDomain] = getSafeDomain(sharedDomain, fallbackDomain, scaleType);
     return safeDomain;
   }, [sharedDomain, scaleType]);
+
+  // Compute histogram bounds using tighter percentiles to exclude extreme outliers
+  // This makes the histogram more useful for data with long tails
+  const histogramBounds = useMemo((): [number, number] | undefined => {
+    if (!transformedData) return undefined;
+
+    // Use 0.5% and 99.5% percentiles to exclude extreme outliers
+    const [histMin, histMax] = calculateGlobalPercentiles(
+      transformedData.array1,
+      transformedData.array2,
+      0.5,
+      99.5
+    );
+
+    // Ensure valid bounds
+    if (!Number.isFinite(histMin) || !Number.isFinite(histMax) || histMin >= histMax) {
+      return undefined;
+    }
+
+    // For log/sqrt scales, ensure positive minimum
+    if ((scaleType === ScaleType.Log || scaleType === ScaleType.Sqrt) && histMin <= 0) {
+      // Find smallest positive value in the percentile range
+      const safeMin = Math.max(histMin, 1e-10);
+      return [safeMin, histMax];
+    }
+
+    return [histMin, histMax];
+  }, [transformedData, scaleType]);
+
+  // Compute histogram for DomainWidget (combines both left and right arrays)
+  // Uses tighter percentile bounds to show useful distribution, excluding outliers
+  const histogramParams = useMemo((): HistogramParams | undefined => {
+    if (!transformedData || !histogramBounds) return undefined;
+
+    const [domainMin, domainMax] = histogramBounds;
+    const numBins = 50;
+
+    // Create bin edges based on scale type
+    const bins = new Float32Array(numBins + 1);
+    const useLogBins = (scaleType === ScaleType.Log || scaleType === ScaleType.Sqrt) && domainMin > 0;
+
+    if (useLogBins) {
+      // Logarithmically-spaced bins for log/sqrt scales
+      const logMin = Math.log10(domainMin);
+      const logMax = Math.log10(domainMax);
+      const logStep = (logMax - logMin) / numBins;
+      for (let i = 0; i <= numBins; i++) {
+        bins[i] = Math.pow(10, logMin + i * logStep);
+      }
+    } else {
+      // Linearly-spaced bins for linear/symlog scales
+      const binWidth = (domainMax - domainMin) / numBins;
+      for (let i = 0; i <= numBins; i++) {
+        bins[i] = domainMin + i * binWidth;
+      }
+    }
+
+    // Count values in each bin (from both arrays)
+    const values = new Float32Array(numBins);
+
+    const countInBins = (arr: number[][]) => {
+      for (let i = 0; i < arr.length; i++) {
+        for (let j = 0; j < arr[i].length; j++) {
+          const val = arr[i][j];
+          if (val >= domainMin && val <= domainMax) {
+            // Find bin index based on scale type
+            let binIdx: number;
+            if (useLogBins && val > 0) {
+              const logVal = Math.log10(val);
+              const logMin = Math.log10(domainMin);
+              const logMax = Math.log10(domainMax);
+              binIdx = Math.floor((logVal - logMin) / (logMax - logMin) * numBins);
+            } else {
+              binIdx = Math.floor((val - domainMin) / (domainMax - domainMin) * numBins);
+            }
+            // Handle edge case where val === domainMax
+            if (binIdx >= numBins) binIdx = numBins - 1;
+            if (binIdx >= 0) values[binIdx]++;
+          }
+        }
+      }
+    };
+
+    countInBins(transformedData.array1);
+    countInBins(transformedData.array2);
+
+    return {
+      values,
+      bins,
+      colorMap,
+      invertColorMap,
+    };
+  }, [transformedData, histogramBounds, scaleType, colorMap, invertColorMap]);
 
   // Calculate symmetric domain for comparison (centered at 0)
   const comparisonDomain = useMemo((): [number, number] | undefined => {
@@ -623,6 +707,7 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
           dataDomain={safeSharedDomain}
           customDomain={customDomain}
           scaleType={scaleType}
+          histogram={histogramParams}
           onCustomDomainChange={setCustomDomain}
         />
         <Separator />

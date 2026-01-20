@@ -10,7 +10,6 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { debounce } from 'lodash';
 import {
   SessionState,
-  DisplaySettings,
   saveSession,
   loadSession,
   clearSession,
@@ -38,7 +37,7 @@ export interface PersistableState {
   rightImageIndex: number | "";
   experimentType: 'SAXS' | 'GISAXS';
   calibrationParams: CalibrationParams;
-  displaySettings: DisplaySettings;
+  showQSpaceAxes: boolean;
   horizontalLinecuts: Linecut[];
   verticalLinecuts: Linecut[];
   inclinedLinecuts: InclinedLinecut[];
@@ -175,4 +174,4 @@ export default function useSessionPersistence(): UseSessionPersistenceReturn {
 }
 
 // Re-export types for convenience
-export type { SessionState, DisplaySettings };
+export type { SessionState };
