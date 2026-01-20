@@ -25,9 +25,9 @@
     "resolveJsonModule": true,
 
     /* Linting - MODIFIED SECTION */
-    "strict": false,           /* Changed from true to false */
-    "noUnusedLocals": false,   /* Changed from true to false */
-    "noUnusedParameters": false, /* Changed from true to false */
+    "strict": false /* Changed from true to false */,
+    "noUnusedLocals": false /* Changed from true to false */,
+    "noUnusedParameters": false /* Changed from true to false */,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
 

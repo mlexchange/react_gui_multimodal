@@ -1,11 +1,14 @@
-import React from 'react';
-import { EyeIcon, EyeSlashIcon } from '@phosphor-icons/react';
-import { InputSlider } from '@blueskyproject/finch';
-import { InclinedLinecut } from './types';
-import { IconButton } from '@/components/ui';
-import { ColorPickerPopup, ColorBox, DeleteButton } from '@/components/shared';
-import { LinecutSectionHeader, LinecutItemContainer } from './LinecutItemContainer';
-import { useColorPicker } from '../../hooks/useColorPicker';
+import React from "react";
+import { EyeIcon, EyeSlashIcon } from "@phosphor-icons/react";
+import { InputSlider } from "@blueskyproject/finch";
+import { InclinedLinecut } from "./types";
+import { IconButton } from "@/components/ui";
+import { ColorPickerPopup, ColorBox, DeleteButton } from "@/components/shared";
+import {
+  LinecutSectionHeader,
+  LinecutItemContainer
+} from "./LinecutItemContainer";
+import { useColorPicker } from "../../hooks/useColorPicker";
 
 interface InclinedLinecutWidgetProps {
   linecutType: string;
@@ -14,7 +17,11 @@ interface InclinedLinecutWidgetProps {
   maxQWidth?: number;
   updateInclinedLinecutAngle: (id: number, angle: number) => void;
   updateInclinedLinecutWidth: (id: number, qWidth: number) => void;
-  updateInclinedLinecutColor: (id: number, side: 'left' | 'right', color: string) => void;
+  updateInclinedLinecutColor: (
+    id: number,
+    side: "left" | "right",
+    color: string
+  ) => void;
   deleteInclinedLinecut: (id: number) => void;
   toggleInclinedLinecutVisibility: (id: number) => void;
 }
@@ -28,7 +35,7 @@ const InclinedLinecutWidget: React.FC<InclinedLinecutWidgetProps> = ({
   updateInclinedLinecutWidth,
   updateInclinedLinecutColor,
   deleteInclinedLinecut,
-  toggleInclinedLinecutVisibility,
+  toggleInclinedLinecutVisibility
 }) => {
   // Round maxQWidth to 2 decimal places
   const maxQWidth = parseFloat(rawMaxQWidth.toFixed(2)) || 10;
@@ -39,7 +46,7 @@ const InclinedLinecutWidget: React.FC<InclinedLinecutWidgetProps> = ({
     handleOpenColorPicker,
     handleColorChange,
     handleAcceptColor,
-    handleCancelColor,
+    handleCancelColor
   } = useColorPicker({ onColorChange: updateInclinedLinecutColor });
 
   return (
@@ -54,11 +61,11 @@ const InclinedLinecutWidget: React.FC<InclinedLinecutWidgetProps> = ({
               <div className="flex items-center gap-2">
                 <ColorBox
                   color={linecut.leftColor}
-                  onClick={(e) => handleOpenColorPicker(linecut, 'left', e)}
+                  onClick={(e) => handleOpenColorPicker(linecut, "left", e)}
                 />
                 <ColorBox
                   color={linecut.rightColor}
-                  onClick={(e) => handleOpenColorPicker(linecut, 'right', e)}
+                  onClick={(e) => handleOpenColorPicker(linecut, "right", e)}
                 />
                 <IconButton
                   onClick={() => toggleInclinedLinecutVisibility(linecut.id)}
@@ -66,7 +73,11 @@ const InclinedLinecutWidget: React.FC<InclinedLinecutWidgetProps> = ({
                   tooltip={linecut.hidden ? "Show" : "Hide"}
                   size="sm"
                 >
-                  {linecut.hidden ? <EyeSlashIcon size={18} /> : <EyeIcon size={18} />}
+                  {linecut.hidden ? (
+                    <EyeSlashIcon size={18} />
+                  ) : (
+                    <EyeIcon size={18} />
+                  )}
                 </IconButton>
                 <DeleteButton
                   onClick={() => deleteInclinedLinecut(linecut.id)}
@@ -84,7 +95,9 @@ const InclinedLinecutWidget: React.FC<InclinedLinecutWidgetProps> = ({
                   marks={[0, maxQWidth]}
                   value={linecut.qWidth ?? 0}
                   step={0.01}
-                  onChange={(value) => updateInclinedLinecutWidth(linecut.id, value)}
+                  onChange={(value) =>
+                    updateInclinedLinecutWidth(linecut.id, value)
+                  }
                 />
               </div>
 
@@ -96,7 +109,9 @@ const InclinedLinecutWidget: React.FC<InclinedLinecutWidgetProps> = ({
                   marks={[90, 0, -90]}
                   value={linecut.angle ?? 0}
                   step={1}
-                  onChange={(value) => updateInclinedLinecutAngle(linecut.id, value)}
+                  onChange={(value) =>
+                    updateInclinedLinecutAngle(linecut.id, value)
+                  }
                 />
               </div>
             </div>

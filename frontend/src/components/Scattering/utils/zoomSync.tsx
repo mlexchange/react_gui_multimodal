@@ -3,9 +3,9 @@
  * Must be rendered inside a VisCanvas component.
  */
 
-import { useRef, useCallback } from 'react';
-import { useThree, useFrame } from '@react-three/fiber';
-import { useVisCanvasContext } from '@h5web/lib';
+import { useRef, useCallback } from "react";
+import { useThree, useFrame } from "@react-three/fiber";
+import { useVisCanvasContext } from "@h5web/lib";
 
 export interface ZoomState {
   scale: { x: number; y: number };
@@ -28,7 +28,7 @@ interface ZoomBroadcasterProps {
 export function ZoomBroadcaster({ onZoomChange }: ZoomBroadcasterProps) {
   const camera = useThree((state) => state.camera);
   const { getVisibleDomains } = useVisCanvasContext();
-  const lastStateRef = useRef<string>('');
+  const lastStateRef = useRef<string>("");
   const onZoomChangeRef = useRef(onZoomChange);
   onZoomChangeRef.current = onZoomChange;
 
@@ -38,7 +38,7 @@ export function ZoomBroadcaster({ onZoomChange }: ZoomBroadcasterProps) {
       camera.scale.y >= FULL_ZOOM_THRESHOLD;
 
     const stateSignature = isFullyZoomedOut
-      ? 'null'
+      ? "null"
       : `${camera.scale.x.toFixed(4)},${camera.scale.y.toFixed(4)},${camera.position.x.toFixed(1)},${camera.position.y.toFixed(1)}`;
 
     if (stateSignature === lastStateRef.current) {
@@ -56,7 +56,7 @@ export function ZoomBroadcaster({ onZoomChange }: ZoomBroadcasterProps) {
         scale: { x: camera.scale.x, y: camera.scale.y },
         position: { x: camera.position.x, y: camera.position.y },
         xVisibleDomain: xVisibleDomain as [number, number],
-        yVisibleDomain: yVisibleDomain as [number, number],
+        yVisibleDomain: yVisibleDomain as [number, number]
       });
     }
   }, [camera, getVisibleDomains]);
@@ -101,8 +101,10 @@ export function ZoomReceiver({ zoomState }: ZoomReceiverProps) {
         Math.abs(camera.scale.x - state.scale.x) > SCALE_CHANGE_THRESHOLD ||
         Math.abs(camera.scale.y - state.scale.y) > SCALE_CHANGE_THRESHOLD;
       const positionChanged =
-        Math.abs(camera.position.x - state.position.x) > POSITION_CHANGE_THRESHOLD ||
-        Math.abs(camera.position.y - state.position.y) > POSITION_CHANGE_THRESHOLD;
+        Math.abs(camera.position.x - state.position.x) >
+          POSITION_CHANGE_THRESHOLD ||
+        Math.abs(camera.position.y - state.position.y) >
+          POSITION_CHANGE_THRESHOLD;
 
       if (scaleChanged || positionChanged) {
         camera.scale.x = state.scale.x;

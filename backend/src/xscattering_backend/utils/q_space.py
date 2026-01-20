@@ -13,13 +13,12 @@ GISAXS:
 """
 
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Tuple
 
 import numpy as np
 from pyFAI import units
 from pyFAI.integrator.azimuthal import AzimuthalIntegrator
 from pyFAI.integrator.fiber import FiberIntegrator
-
 from xscattering_backend.config.logging import get_logger
 
 logger = get_logger(__name__)
@@ -178,8 +177,7 @@ def transform_gisaxs_to_qspace(
     npt_oop = height
 
     logger.debug(
-        f"GISAXS transform: {height}x{width} -> npt_oop={npt_oop}, npt_ip={npt_ip}, "
-        f"incident_angle={incident_angle_deg}°"
+        f"GISAXS transform: {height}x{width} -> npt_oop={npt_oop}, npt_ip={npt_ip}, " f"incident_angle={incident_angle_deg}°"
     )
 
     # Perform grazing incidence integration (2D transformation)

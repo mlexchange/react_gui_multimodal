@@ -1,4 +1,4 @@
-import { SpinnerGapIcon } from '@phosphor-icons/react';
+import { SpinnerGapIcon } from "@phosphor-icons/react";
 
 interface ContentCardProps {
   title?: string;
@@ -19,9 +19,9 @@ export function ContentCard({
   className = "",
   contentClassName = "p-2",
   isLoading = false,
-  allowOverflow = false,
+  allowOverflow = false
 }: ContentCardProps) {
-  const overflowClass = allowOverflow ? 'overflow-visible' : 'overflow-hidden';
+  const overflowClass = allowOverflow ? "overflow-visible" : "overflow-hidden";
   return (
     <div
       className={`bg-white border border-gray-200 rounded-lg shadow-sm ${overflowClass} flex flex-col ${className}`}

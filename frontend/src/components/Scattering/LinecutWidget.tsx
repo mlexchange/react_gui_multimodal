@@ -1,13 +1,16 @@
 import React from "react";
 import { EyeIcon, EyeSlashIcon } from "@phosphor-icons/react";
-import { Linecut } from './types';
+import { Linecut } from "./types";
 import { InputSlider } from "@blueskyproject/finch";
 import { IconButton } from "@/components/ui";
 import { ColorPickerPopup, ColorBox, DeleteButton } from "@/components/shared";
-import { LinecutSectionHeader, LinecutItemContainer } from "./LinecutItemContainer";
+import {
+  LinecutSectionHeader,
+  LinecutItemContainer
+} from "./LinecutItemContainer";
 import { useColorPicker } from "../../hooks/useColorPicker";
 
-type LinecutDirection = 'horizontal' | 'vertical';
+type LinecutDirection = "horizontal" | "vertical";
 
 interface LinecutWidgetProps {
   direction: LinecutDirection;
@@ -23,7 +26,11 @@ interface LinecutWidgetProps {
 
 const directionConfig = {
   horizontal: {
-    positionLabel: <>q<sub>y</sub> value (nm⁻¹)</>,
+    positionLabel: (
+      <>
+        q<sub>y</sub> value (nm⁻¹)
+      </>
+    ),
     extractMinMax: (matrix: number[][]) => {
       if (!matrix || !matrix.length) return [0, 1];
       let minVal = Infinity;
@@ -36,12 +43,17 @@ const directionConfig = {
       }
       if (minVal === Infinity || maxVal === -Infinity) return [0, 1];
       return [parseFloat(minVal.toFixed(1)), parseFloat(maxVal.toFixed(1))];
-    },
+    }
   },
   vertical: {
-    positionLabel: <>q<sub>x</sub> value (nm⁻¹)</>,
+    positionLabel: (
+      <>
+        q<sub>x</sub> value (nm⁻¹)
+      </>
+    ),
     extractMinMax: (matrix: number[][]) => {
-      if (!matrix || !matrix.length || !matrix[0] || !matrix[0].length) return [0, 1];
+      if (!matrix || !matrix.length || !matrix[0] || !matrix[0].length)
+        return [0, 1];
       let minVal = Infinity;
       let maxVal = -Infinity;
       for (let x = 0; x < matrix[0].length; x++) {
@@ -52,8 +64,8 @@ const directionConfig = {
       }
       if (minVal === Infinity || maxVal === -Infinity) return [0, 1];
       return [parseFloat(minVal.toFixed(1)), parseFloat(maxVal.toFixed(1))];
-    },
-  },
+    }
+  }
 };
 
 const LinecutWidget: React.FC<LinecutWidgetProps> = ({
@@ -65,7 +77,7 @@ const LinecutWidget: React.FC<LinecutWidgetProps> = ({
   updateWidth,
   updateColor,
   deleteLinecut,
-  toggleVisibility,
+  toggleVisibility
 }) => {
   const {
     colorPickerRef,
@@ -73,7 +85,7 @@ const LinecutWidget: React.FC<LinecutWidgetProps> = ({
     handleOpenColorPicker,
     handleColorChange,
     handleAcceptColor,
-    handleCancelColor,
+    handleCancelColor
   } = useColorPicker({ onColorChange: updateColor });
 
   const config = directionConfig[direction];
@@ -112,7 +124,11 @@ const LinecutWidget: React.FC<LinecutWidgetProps> = ({
                   tooltip={linecut.hidden ? "Show" : "Hide"}
                   size="sm"
                 >
-                  {linecut.hidden ? <EyeSlashIcon size={18} /> : <EyeIcon size={18} />}
+                  {linecut.hidden ? (
+                    <EyeSlashIcon size={18} />
+                  ) : (
+                    <EyeIcon size={18} />
+                  )}
                 </IconButton>
                 <DeleteButton
                   onClick={() => deleteLinecut(linecut.id)}

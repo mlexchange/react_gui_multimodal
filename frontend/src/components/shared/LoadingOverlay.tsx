@@ -2,7 +2,9 @@ interface LoadingOverlayProps {
   message?: string;
 }
 
-export function LoadingOverlay({ message = 'Loading...' }: LoadingOverlayProps) {
+export function LoadingOverlay({
+  message = "Loading..."
+}: LoadingOverlayProps) {
   return (
     <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10 rounded">
       <div className="bg-white px-4 py-2 rounded-lg shadow flex items-center gap-2">

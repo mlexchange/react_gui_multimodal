@@ -19,7 +19,11 @@ export function useColorPicker({ onColorChange }: UseColorPickerOptions) {
 
   const handleCancelColor = useCallback(() => {
     if (colorPicker) {
-      onColorChange(colorPicker.id, colorPicker.side, colorPicker.originalColor);
+      onColorChange(
+        colorPicker.id,
+        colorPicker.side,
+        colorPicker.originalColor
+      );
       setColorPicker(null);
     }
   }, [colorPicker, onColorChange]);
@@ -29,7 +33,7 @@ export function useColorPicker({ onColorChange }: UseColorPickerOptions) {
       if (colorPicker) {
         setColorPicker({
           ...colorPicker,
-          currentColor: color,
+          currentColor: color
         });
       }
       onColorChange(id, side, color);
@@ -43,17 +47,22 @@ export function useColorPicker({ onColorChange }: UseColorPickerOptions) {
       side: "left" | "right",
       event: React.MouseEvent
     ) => {
-      if (colorPicker?.id === item.id && colorPicker?.side === side && colorPicker?.visible) {
+      if (
+        colorPicker?.id === item.id &&
+        colorPicker?.side === side &&
+        colorPicker?.visible
+      ) {
         setColorPicker(null);
       } else {
-        const originalColor = side === "left" ? item.leftColor : item.rightColor;
+        const originalColor =
+          side === "left" ? item.leftColor : item.rightColor;
         setColorPicker({
           id: item.id,
           side,
           visible: true,
           originalColor,
           currentColor: originalColor,
-          position: { top: event.clientY + 10, left: event.clientX },
+          position: { top: event.clientY + 10, left: event.clientX }
         });
       }
     },
@@ -87,6 +96,6 @@ export function useColorPicker({ onColorChange }: UseColorPickerOptions) {
     handleOpenColorPicker,
     handleColorChange,
     handleAcceptColor,
-    handleCancelColor,
+    handleCancelColor
   };
 }

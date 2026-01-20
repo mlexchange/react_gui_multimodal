@@ -3,8 +3,6 @@ from fastapi import HTTPException
 from tiled.client.container import Container
 from tiled.structures.core import StructureFamily
 
-from xscattering_backend.cache.tiled_cache import get_tiled_client_for_uri
-
 
 def trim_base_from_uri(uri_to_trim: str, tiled_base_uri: str) -> str:
     """Trim the base Tiled URI from a full URI pointing to a dataset."""
@@ -56,7 +54,8 @@ def get_scans_from_folder(tiled_client, folder_path: str, tiled_base_uri: str) -
                 current_client = current_client[part]
             except KeyError:
                 raise HTTPException(
-                    status_code=404, detail=f"Folder path '{folder_path}' not found in Tiled. Failed at part '{part}'"
+                    status_code=404,
+                    detail=f"Folder path '{folder_path}' not found in Tiled. Failed at part '{part}'",
                 )
 
     # Get all scans from this folder
@@ -93,9 +92,7 @@ def ensure_2d_image(image: np.ndarray) -> np.ndarray:
     squeezed = np.squeeze(image)
 
     if squeezed.ndim != 2:
-        raise ValueError(
-            f"Image must be 2D after squeezing, got shape {image.shape} -> {squeezed.shape}"
-        )
+        raise ValueError(f"Image must be 2D after squeezing, got shape {image.shape} -> {squeezed.shape}")
 
     return squeezed
 

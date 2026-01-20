@@ -14,7 +14,10 @@ interface MenuItemProps {
 }
 
 function MenuRoot({ children, position = "bottom-end" }: MenuProps) {
-  const [side, align] = position.split("-") as ["bottom" | "top", "start" | "end"];
+  const [side, align] = position.split("-") as [
+    "bottom" | "top",
+    "start" | "end"
+  ];
 
   return (
     <DropdownMenuPrimitive.Root>
@@ -24,10 +27,16 @@ function MenuRoot({ children, position = "bottom-end" }: MenuProps) {
             return child;
           }
           if (child.type === MenuDropdown) {
-            return React.cloneElement(child as React.ReactElement<{ side: "bottom" | "top"; align: "start" | "end" }>, {
-              side,
-              align,
-            });
+            return React.cloneElement(
+              child as React.ReactElement<{
+                side: "bottom" | "top";
+                align: "start" | "end";
+              }>,
+              {
+                side,
+                align
+              }
+            );
           }
         }
         return child;
@@ -50,7 +59,11 @@ interface MenuDropdownProps {
   align?: "start" | "end";
 }
 
-function MenuDropdown({ children, side = "bottom", align = "end" }: MenuDropdownProps) {
+function MenuDropdown({
+  children,
+  side = "bottom",
+  align = "end"
+}: MenuDropdownProps) {
   return (
     <DropdownMenuPrimitive.Portal>
       <DropdownMenuPrimitive.Content
@@ -66,7 +79,12 @@ function MenuDropdown({ children, side = "bottom", align = "end" }: MenuDropdown
   );
 }
 
-function MenuItem({ children, onClick, className = "", disabled = false }: MenuItemProps) {
+function MenuItem({
+  children,
+  onClick,
+  className = "",
+  disabled = false
+}: MenuItemProps) {
   return (
     <DropdownMenuPrimitive.Item
       className={`py-2 px-3 text-sm cursor-pointer rounded outline-none data-[highlighted]:bg-gray-100 ${
@@ -83,5 +101,5 @@ function MenuItem({ children, onClick, className = "", disabled = false }: MenuI
 export const Menu = Object.assign(MenuRoot, {
   Target: MenuTarget,
   Dropdown: MenuDropdown,
-  Item: MenuItem,
+  Item: MenuItem
 });

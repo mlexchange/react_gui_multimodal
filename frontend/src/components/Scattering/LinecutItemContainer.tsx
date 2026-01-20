@@ -5,9 +5,14 @@ interface LinecutSectionHeaderProps {
   className?: string;
 }
 
-export function LinecutSectionHeader({ children, className = "" }: LinecutSectionHeaderProps) {
+export function LinecutSectionHeader({
+  children,
+  className = ""
+}: LinecutSectionHeaderProps) {
   return (
-    <h3 className={`text-md font-bold mb-2 text-center text-sky-900 ${className}`}>
+    <h3
+      className={`text-md font-bold mb-2 text-center text-sky-900 ${className}`}
+    >
       {children}
     </h3>
   );
@@ -19,7 +24,11 @@ interface LinecutItemContainerProps {
   className?: string;
 }
 
-export function LinecutItemContainer({ children, id, className = "" }: LinecutItemContainerProps) {
+export function LinecutItemContainer({
+  children,
+  id,
+  className = ""
+}: LinecutItemContainerProps) {
   return (
     <div
       className={`mb-3 pt-2 pb-4 relative border rounded-lg ${className}`}

@@ -16,10 +16,16 @@ function PopoverRoot({ children, width, position = "bottom" }: PopoverProps) {
             return child;
           }
           if (child.type === PopoverDropdown) {
-            return React.cloneElement(child as React.ReactElement<{ side: "top" | "bottom" | "left" | "right"; width?: number }>, {
-              side: position,
-              width,
-            });
+            return React.cloneElement(
+              child as React.ReactElement<{
+                side: "top" | "bottom" | "left" | "right";
+                width?: number;
+              }>,
+              {
+                side: position,
+                width
+              }
+            );
           }
         }
         return child;
@@ -30,9 +36,7 @@ function PopoverRoot({ children, width, position = "bottom" }: PopoverProps) {
 
 function PopoverTarget({ children }: { children: React.ReactNode }) {
   return (
-    <PopoverPrimitive.Trigger asChild>
-      {children}
-    </PopoverPrimitive.Trigger>
+    <PopoverPrimitive.Trigger asChild>{children}</PopoverPrimitive.Trigger>
   );
 }
 
@@ -42,7 +46,11 @@ interface PopoverDropdownProps {
   width?: number;
 }
 
-function PopoverDropdown({ children, side = "bottom", width }: PopoverDropdownProps) {
+function PopoverDropdown({
+  children,
+  side = "bottom",
+  width
+}: PopoverDropdownProps) {
   return (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Content
@@ -60,5 +68,5 @@ function PopoverDropdown({ children, side = "bottom", width }: PopoverDropdownPr
 
 export const Popover = Object.assign(PopoverRoot, {
   Target: PopoverTarget,
-  Dropdown: PopoverDropdown,
+  Dropdown: PopoverDropdown
 });

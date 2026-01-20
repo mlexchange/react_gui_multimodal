@@ -3,12 +3,12 @@
  * Caches processed image data from the backend.
  */
 
-import { unpack } from 'msgpackr';
-import { reconstructFloat32Array } from '../utils/dataProcessingScatterSubplot';
+import { unpack } from "msgpackr";
+import { reconstructFloat32Array } from "../utils/dataProcessingScatterSubplot";
 
-const DB_NAME = 'scattering_analysis_cache';
+const DB_NAME = "scattering_analysis_cache";
 const DB_VERSION = 1;
-const STORE_NAME = 'images';
+const STORE_NAME = "images";
 const MAX_ENTRIES = 25;
 
 /**
@@ -40,9 +40,9 @@ export interface ProcessedImageData {
 }
 
 export interface CachedScatteringImage {
-  scanUri: string;              // Primary key
+  scanUri: string; // Primary key
   imageData: ProcessedImageData;
-  cachedAt: number;             // Timestamp for LRU eviction
+  cachedAt: number; // Timestamp for LRU eviction
 }
 
 export interface CacheStats {
@@ -88,14 +88,14 @@ export async function initializeCache(): Promise<IDBDatabase> {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
     request.onerror = () => {
-      console.error('Failed to open IndexedDB:', request.error);
+      console.error("Failed to open IndexedDB:", request.error);
       initPromise = null;
       reject(request.error);
     };
 
     request.onsuccess = () => {
       dbInstance = request.result;
-      console.log('IndexedDB cache initialized');
+      console.log("IndexedDB cache initialized");
       resolve(dbInstance);
     };
 
@@ -104,10 +104,10 @@ export async function initializeCache(): Promise<IDBDatabase> {
 
       // Create object store if it doesn't exist
       if (!db.objectStoreNames.contains(STORE_NAME)) {
-        const store = db.createObjectStore(STORE_NAME, { keyPath: 'scanUri' });
+        const store = db.createObjectStore(STORE_NAME, { keyPath: "scanUri" });
         // Create index on cachedAt for LRU eviction queries
-        store.createIndex('cachedAt', 'cachedAt', { unique: false });
-        console.log('Created images object store with cachedAt index');
+        store.createIndex("cachedAt", "cachedAt", { unique: false });
+        console.log("Created images object store with cachedAt index");
       }
     };
   });
@@ -119,16 +119,18 @@ export async function initializeCache(): Promise<IDBDatabase> {
  * Get a cached image by scan URI.
  * Returns null if not found.
  */
-export async function getCachedImage(scanUri: string): Promise<ProcessedImageData | null> {
+export async function getCachedImage(
+  scanUri: string
+): Promise<ProcessedImageData | null> {
   const db = await initializeCache();
 
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_NAME], 'readonly');
+    const transaction = db.transaction([STORE_NAME], "readonly");
     const store = transaction.objectStore(STORE_NAME);
     const request = store.get(scanUri);
 
     request.onerror = () => {
-      console.error('Error getting cached image:', request.error);
+      console.error("Error getting cached image:", request.error);
       reject(request.error);
     };
 
@@ -154,7 +156,7 @@ async function updateCachedAt(scanUri: string): Promise<void> {
   const db = await initializeCache();
 
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_NAME], 'readwrite');
+    const transaction = db.transaction([STORE_NAME], "readwrite");
     const store = transaction.objectStore(STORE_NAME);
     const getRequest = store.get(scanUri);
 
@@ -184,19 +186,19 @@ export async function cacheProcessedImage(
   await enforceStorageLimit(db);
 
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_NAME], 'readwrite');
+    const transaction = db.transaction([STORE_NAME], "readwrite");
     const store = transaction.objectStore(STORE_NAME);
 
     const cacheEntry: CachedScatteringImage = {
       scanUri,
       imageData,
-      cachedAt: Date.now(),
+      cachedAt: Date.now()
     };
 
     const request = store.put(cacheEntry);
 
     request.onerror = () => {
-      console.error('Error caching image:', request.error);
+      console.error("Error caching image:", request.error);
       reject(request.error);
     };
 
@@ -212,7 +214,7 @@ export async function cacheProcessedImage(
  */
 async function enforceStorageLimit(db: IDBDatabase): Promise<void> {
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_NAME], 'readwrite');
+    const transaction = db.transaction([STORE_NAME], "readwrite");
     const store = transaction.objectStore(STORE_NAME);
     const countRequest = store.count();
 
@@ -226,7 +228,7 @@ async function enforceStorageLimit(db: IDBDatabase): Promise<void> {
 
       // Need to evict oldest entries
       const toDelete = count - MAX_ENTRIES + 1; // +1 to make room for new entry
-      const index = store.index('cachedAt');
+      const index = store.index("cachedAt");
       const cursorRequest = index.openCursor(); // Opens in ascending order (oldest first)
       let deleted = 0;
 
@@ -258,17 +260,17 @@ export async function clearCache(): Promise<void> {
   const db = await initializeCache();
 
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_NAME], 'readwrite');
+    const transaction = db.transaction([STORE_NAME], "readwrite");
     const store = transaction.objectStore(STORE_NAME);
     const request = store.clear();
 
     request.onerror = () => {
-      console.error('Error clearing cache:', request.error);
+      console.error("Error clearing cache:", request.error);
       reject(request.error);
     };
 
     request.onsuccess = () => {
-      console.log('Cache cleared');
+      console.log("Cache cleared");
       resolve();
     };
   });
@@ -281,7 +283,7 @@ export async function getCacheStats(): Promise<CacheStats> {
   const db = await initializeCache();
 
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_NAME], 'readonly');
+    const transaction = db.transaction([STORE_NAME], "readonly");
     const store = transaction.objectStore(STORE_NAME);
     const cursorRequest = store.openCursor();
 
@@ -299,7 +301,7 @@ export async function getCacheStats(): Promise<CacheStats> {
         resolve({
           count,
           totalSize,
-          maxEntries: MAX_ENTRIES,
+          maxEntries: MAX_ENTRIES
         });
       }
     };
@@ -339,7 +341,7 @@ function deserializeBackendResponse(buffer: ArrayBuffer): ProcessedImageData {
   const decoded = unpack(new Uint8Array(buffer)) as BackendImageResponse;
 
   const result: ProcessedImageData = {
-    array: reconstructFloat32Array(decoded.image, decoded.shape),
+    array: reconstructFloat32Array(decoded.image, decoded.shape)
   };
 
   // Add GISAXS-specific data if present
@@ -348,7 +350,7 @@ function deserializeBackendResponse(buffer: ArrayBuffer): ProcessedImageData {
     result.gisaxsTransformed = {
       array: reconstructFloat32Array(transformed.image, transformed.shape),
       qipValues: transformed.qip_values,
-      qoopValues: transformed.qoop_values,
+      qoopValues: transformed.qoop_values
     };
   }
 
@@ -356,7 +358,7 @@ function deserializeBackendResponse(buffer: ArrayBuffer): ProcessedImageData {
     const pixelQ = decoded.gisaxs_pixel_q;
     result.gisaxsPixelQ = {
       qipMatrix: reconstructFloat32Array(pixelQ.qip_matrix, pixelQ.shape),
-      qoopMatrix: reconstructFloat32Array(pixelQ.qoop_matrix, pixelQ.shape),
+      qoopMatrix: reconstructFloat32Array(pixelQ.qoop_matrix, pixelQ.shape)
     };
   }
 
@@ -380,7 +382,7 @@ function createCacheKey(
   }
 
   // For GISAXS, include calibration hash since different calibration = different transform
-  if (experimentType === 'GISAXS' && calibration) {
+  if (experimentType === "GISAXS" && calibration) {
     const calibHash = `${calibration.sample_detector_distance}_${calibration.beam_center_x}_${calibration.beam_center_y}_${calibration.incident_angle}`;
     key += `|gisaxs=${calibHash}`;
   }
@@ -404,7 +406,12 @@ export async function fetchWithCache(
   calibration?: GISAXSCalibrationParams | null
 ): Promise<ProcessedImageData> {
   // Create cache key that includes all relevant parameters
-  const cacheKey = createCacheKey(scanUri, maskUri, experimentType, calibration);
+  const cacheKey = createCacheKey(
+    scanUri,
+    maskUri,
+    experimentType,
+    calibration
+  );
 
   // Try to get from cache first
   const cached = await getCachedImage(cacheKey);
@@ -413,38 +420,49 @@ export async function fetchWithCache(
   }
 
   // Cache miss - fetch from server
-  const url = new URL('/api/fetch-scan-image', window.location.origin);
-  url.searchParams.append('scan_uri', scanUri);
+  const url = new URL("/api/fetch-scan-image", window.location.origin);
+  url.searchParams.append("scan_uri", scanUri);
 
   if (maskUri) {
-    url.searchParams.append('mask_uri', maskUri);
+    url.searchParams.append("mask_uri", maskUri);
   }
 
   // Add experiment type
   if (experimentType) {
-    url.searchParams.append('experiment_type', experimentType);
+    url.searchParams.append("experiment_type", experimentType);
   }
 
   // Add calibration params for GISAXS
-  if (experimentType === 'GISAXS' && calibration) {
-    url.searchParams.append('sample_detector_distance', String(calibration.sample_detector_distance));
-    url.searchParams.append('beam_center_x', String(calibration.beam_center_x));
-    url.searchParams.append('beam_center_y', String(calibration.beam_center_y));
-    url.searchParams.append('pixel_size_x', String(calibration.pixel_size_x));
-    url.searchParams.append('pixel_size_y', String(calibration.pixel_size_y));
-    url.searchParams.append('wavelength', String(calibration.wavelength));
-    url.searchParams.append('incident_angle', String(calibration.incident_angle));
+  if (experimentType === "GISAXS" && calibration) {
+    url.searchParams.append(
+      "sample_detector_distance",
+      String(calibration.sample_detector_distance)
+    );
+    url.searchParams.append("beam_center_x", String(calibration.beam_center_x));
+    url.searchParams.append("beam_center_y", String(calibration.beam_center_y));
+    url.searchParams.append("pixel_size_x", String(calibration.pixel_size_x));
+    url.searchParams.append("pixel_size_y", String(calibration.pixel_size_y));
+    url.searchParams.append("wavelength", String(calibration.wavelength));
+    url.searchParams.append(
+      "incident_angle",
+      String(calibration.incident_angle)
+    );
     if (calibration.tilt !== undefined) {
-      url.searchParams.append('tilt', String(calibration.tilt));
+      url.searchParams.append("tilt", String(calibration.tilt));
     }
     if (calibration.tilt_plan_rotation !== undefined) {
-      url.searchParams.append('tilt_plan_rotation', String(calibration.tilt_plan_rotation));
+      url.searchParams.append(
+        "tilt_plan_rotation",
+        String(calibration.tilt_plan_rotation)
+      );
     }
   }
 
   const response = await fetch(url.toString());
   if (!response.ok) {
-    throw new Error(`Failed to fetch scattering image: ${response.status} ${response.statusText}`);
+    throw new Error(
+      `Failed to fetch scattering image: ${response.status} ${response.statusText}`
+    );
   }
 
   const buffer = await response.arrayBuffer();
@@ -454,7 +472,7 @@ export async function fetchWithCache(
 
   // Cache the processed result asynchronously (don't block return)
   cacheProcessedImage(cacheKey, imageData).catch((error) => {
-    console.error('Failed to cache image:', error);
+    console.error("Failed to cache image:", error);
   });
 
   return imageData;

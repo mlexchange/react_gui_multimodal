@@ -6,11 +6,11 @@
  * for proper coordinate transformation.
  */
 
-import React, { useMemo, useId } from 'react';
-import { DataToHtml, SvgElement } from '@h5web/lib';
-import { Vector3 } from 'three';
-import { calculateInclinedLineEndpoints } from './calculateInclinedLinecutEndpoints';
-import type { InclinedLinecut } from '../types';
+import React, { useMemo, useId } from "react";
+import { DataToHtml, SvgElement } from "@h5web/lib";
+import { Vector3 } from "three";
+import { calculateInclinedLineEndpoints } from "./calculateInclinedLinecutEndpoints";
+import type { InclinedLinecut } from "../types";
 
 // ============================================================================
 // Types
@@ -33,10 +33,10 @@ export interface AzimuthalSectorOverlayProps {
 
 export interface LinecutOverlayProps {
   linecuts: Array<{
-    position: number;  // pixel position
-    width: number;     // width in pixels
+    position: number; // pixel position
+    width: number; // width in pixels
     color: string;
-    type: 'horizontal' | 'vertical';
+    type: "horizontal" | "vertical";
     hidden?: boolean;
   }>;
   rows: number;
@@ -56,7 +56,12 @@ export interface InclinedLinecutOverlayProps {
   cols: number;
   beamCenterX: number;
   beamCenterY: number;
-  pixelWidthCalculator: (qXPosition: number, qYPosition: number, angle: number, qWidth: number) => number;
+  pixelWidthCalculator: (
+    qXPosition: number,
+    qYPosition: number,
+    angle: number,
+    qWidth: number
+  ) => number;
 }
 
 // ============================================================================
@@ -101,7 +106,8 @@ function findRadiusForQValue(
     const maxRadius = Math.max(imageWidth, imageHeight);
 
     // Sample along this radial line
-    let prevQ = qMagnitudeMatrix[Math.round(beamCenterY)]?.[Math.round(beamCenterX)] ?? 0;
+    let prevQ =
+      qMagnitudeMatrix[Math.round(beamCenterY)]?.[Math.round(beamCenterX)] ?? 0;
     let prevRadius = 0;
 
     for (let r = 1; r < maxRadius; r += 2) {
@@ -115,8 +121,10 @@ function findRadiusForQValue(
       if (currentQ === undefined || isNaN(currentQ)) continue;
 
       // Check if we crossed the target Q value
-      if ((prevQ <= targetQ && currentQ >= targetQ) ||
-          (prevQ >= targetQ && currentQ <= targetQ)) {
+      if (
+        (prevQ <= targetQ && currentQ >= targetQ) ||
+        (prevQ >= targetQ && currentQ <= targetQ)
+      ) {
         // Linear interpolation to estimate the exact radius
         const t = (targetQ - prevQ) / (currentQ - prevQ);
         const estimatedRadius = prevRadius + t * (r - prevRadius);
@@ -295,16 +303,17 @@ function generateCircleOrRingPoints(
   );
 
   // Generate inner circle (if there's a hole)
-  const innerCircle = innerRadius > 0
-    ? generateArcPoints(
-        innerRadius,
-        0,
-        360,
-        beamCenterX,
-        beamCenterY,
-        numPoints
-      )
-    : [];
+  const innerCircle =
+    innerRadius > 0
+      ? generateArcPoints(
+          innerRadius,
+          0,
+          360,
+          beamCenterX,
+          beamCenterY,
+          numPoints
+        )
+      : [];
 
   return { outerCircle, innerCircle };
 }
@@ -326,22 +335,25 @@ export const AzimuthalSectorOverlay: React.FC<AzimuthalSectorOverlayProps> = ({
   beamCenterY,
   maxQValue,
   imageWidth,
-  imageHeight,
+  imageHeight
 }) => {
   // Generate unique ID for clipPath
   const clipId = useId();
   const clipPathId = `azimuthal-clip-${clipId}`;
 
   // Image corner points for clipping (in data coordinates)
-  const clipCorners = useMemo(() => [
-    new Vector3(0, 0),
-    new Vector3(imageWidth, 0),
-    new Vector3(imageWidth, imageHeight),
-    new Vector3(0, imageHeight),
-  ], [imageWidth, imageHeight]);
+  const clipCorners = useMemo(
+    () => [
+      new Vector3(0, 0),
+      new Vector3(imageWidth, 0),
+      new Vector3(imageWidth, imageHeight),
+      new Vector3(0, imageHeight)
+    ],
+    [imageWidth, imageHeight]
+  );
 
   // Filter visible integrations
-  const visibleIntegrations = integrations.filter(int => !int.hidden);
+  const visibleIntegrations = integrations.filter((int) => !int.hidden);
 
   // Compute overlay data for all visible integrations
   const overlayData = useMemo(() => {
@@ -359,19 +371,39 @@ export const AzimuthalSectorOverlay: React.FC<AzimuthalSectorOverlayProps> = ({
       const outerQ = qRange ? qRange[1] : maxQValue;
 
       // Find radii for the Q-values
-      const innerRadius = innerQ > 0
-        ? findRadiusForQValue(innerQ, qMagnitudeMatrix, beamCenterX, beamCenterY, imageWidth, imageHeight) ?? 0
-        : 0;
-      const outerRadius = findRadiusForQValue(outerQ, qMagnitudeMatrix, beamCenterX, beamCenterY, imageWidth, imageHeight)
-        ?? Math.max(imageWidth, imageHeight);
+      const innerRadius =
+        innerQ > 0
+          ? (findRadiusForQValue(
+              innerQ,
+              qMagnitudeMatrix,
+              beamCenterX,
+              beamCenterY,
+              imageWidth,
+              imageHeight
+            ) ?? 0)
+          : 0;
+      const outerRadius =
+        findRadiusForQValue(
+          outerQ,
+          qMagnitudeMatrix,
+          beamCenterX,
+          beamCenterY,
+          imageWidth,
+          imageHeight
+        ) ?? Math.max(imageWidth, imageHeight);
 
       // Generate points for filled sector
-      const numPointsPerArc = isFullCircle ? 60 : Math.max(20, Math.ceil(Math.abs(endAngle - startAngle) / 3));
+      const numPointsPerArc = isFullCircle
+        ? 60
+        : Math.max(20, Math.ceil(Math.abs(endAngle - startAngle) / 3));
 
       // For full circle, generate circle/ring points
       // For partial circle, generate ring sector points
       let sectorPoints: Vector3[] = [];
-      let circleData: { outerCircle: Vector3[]; innerCircle: Vector3[] } | null = null;
+      let circleData: {
+        outerCircle: Vector3[];
+        innerCircle: Vector3[];
+      } | null = null;
 
       if (isFullCircle) {
         // Full circle: use separate outer and inner circles with evenodd fill-rule
@@ -405,16 +437,17 @@ export const AzimuthalSectorOverlay: React.FC<AzimuthalSectorOverlayProps> = ({
         isFullCircle ? 60 : numPointsPerArc
       );
 
-      const innerArcPoints = innerRadius > 0
-        ? generateArcPoints(
-            innerRadius,
-            isFullCircle ? 0 : startAngle,
-            isFullCircle ? 360 : endAngle,
-            beamCenterX,
-            beamCenterY,
-            isFullCircle ? 60 : numPointsPerArc
-          )
-        : [];
+      const innerArcPoints =
+        innerRadius > 0
+          ? generateArcPoints(
+              innerRadius,
+              isFullCircle ? 0 : startAngle,
+              isFullCircle ? 360 : endAngle,
+              beamCenterX,
+              beamCenterY,
+              isFullCircle ? 60 : numPointsPerArc
+            )
+          : [];
 
       // Generate radial line points (only for non-full circles)
       let startRadialPoints: [Vector3, Vector3] | null = null;
@@ -447,10 +480,18 @@ export const AzimuthalSectorOverlay: React.FC<AzimuthalSectorOverlayProps> = ({
         outerArcPoints,
         innerArcPoints,
         startRadialPoints,
-        endRadialPoints,
+        endRadialPoints
       };
     });
-  }, [visibleIntegrations, qMagnitudeMatrix, beamCenterX, beamCenterY, maxQValue, imageWidth, imageHeight]);
+  }, [
+    visibleIntegrations,
+    qMagnitudeMatrix,
+    beamCenterX,
+    beamCenterY,
+    maxQValue,
+    imageWidth,
+    imageHeight
+  ]);
 
   if (overlayData.length === 0) {
     return null;
@@ -482,65 +523,80 @@ export const AzimuthalSectorOverlay: React.FC<AzimuthalSectorOverlayProps> = ({
           outerArcPoints,
           innerArcPoints,
           startRadialPoints,
-          endRadialPoints,
+          endRadialPoints
         } = data;
 
         return (
           <React.Fragment key={`azimuthal-sector-${index}`}>
             {/* Full filled circle */}
-            {isFullCircle && circleData && circleData.outerCircle.length >= 3 && (
-              <>
-                {/* If no inner circle (innerRadius = 0), draw filled circle */}
-                {circleData.innerCircle.length === 0 ? (
-                  <DataToHtml points={circleData.outerCircle}>
-                    {(...htmlPoints) => (
-                      <SvgElement>
-                        <g clipPath={`url(#${clipPathId})`}>
-                          <polygon
-                            points={htmlPoints.map(p => `${p.x},${p.y}`).join(' ')}
-                            fill={color}
-                            fillOpacity={0.2}
-                            stroke="none"
-                          />
-                        </g>
-                      </SvgElement>
-                    )}
-                  </DataToHtml>
-                ) : (
-                  /* If inner circle exists (innerRadius > 0), draw using path with evenodd */
-                  <DataToHtml points={[...circleData.outerCircle, ...circleData.innerCircle]}>
-                    {(...htmlPoints) => {
-                      const outerLen = circleData.outerCircle.length;
-                      const outerPoints = htmlPoints.slice(0, outerLen);
-                      const innerPoints = htmlPoints.slice(outerLen);
-
-                      // Build SVG path: outer circle (clockwise) + inner circle (counter-clockwise for hole)
-                      const outerPath = outerPoints.map((p, i) =>
-                        i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`
-                      ).join(' ') + ' Z';
-
-                      const innerPath = innerPoints.map((p, i) =>
-                        i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`
-                      ).join(' ') + ' Z';
-
-                      return (
+            {isFullCircle &&
+              circleData &&
+              circleData.outerCircle.length >= 3 && (
+                <>
+                  {/* If no inner circle (innerRadius = 0), draw filled circle */}
+                  {circleData.innerCircle.length === 0 ? (
+                    <DataToHtml points={circleData.outerCircle}>
+                      {(...htmlPoints) => (
                         <SvgElement>
                           <g clipPath={`url(#${clipPathId})`}>
-                            <path
-                              d={`${outerPath} ${innerPath}`}
+                            <polygon
+                              points={htmlPoints
+                                .map((p) => `${p.x},${p.y}`)
+                                .join(" ")}
                               fill={color}
                               fillOpacity={0.2}
-                              fillRule="evenodd"
                               stroke="none"
                             />
                           </g>
                         </SvgElement>
-                      );
-                    }}
-                  </DataToHtml>
-                )}
-              </>
-            )}
+                      )}
+                    </DataToHtml>
+                  ) : (
+                    /* If inner circle exists (innerRadius > 0), draw using path with evenodd */
+                    <DataToHtml
+                      points={[
+                        ...circleData.outerCircle,
+                        ...circleData.innerCircle
+                      ]}
+                    >
+                      {(...htmlPoints) => {
+                        const outerLen = circleData.outerCircle.length;
+                        const outerPoints = htmlPoints.slice(0, outerLen);
+                        const innerPoints = htmlPoints.slice(outerLen);
+
+                        // Build SVG path: outer circle (clockwise) + inner circle (counter-clockwise for hole)
+                        const outerPath =
+                          outerPoints
+                            .map((p, i) =>
+                              i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`
+                            )
+                            .join(" ") + " Z";
+
+                        const innerPath =
+                          innerPoints
+                            .map((p, i) =>
+                              i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`
+                            )
+                            .join(" ") + " Z";
+
+                        return (
+                          <SvgElement>
+                            <g clipPath={`url(#${clipPathId})`}>
+                              <path
+                                d={`${outerPath} ${innerPath}`}
+                                fill={color}
+                                fillOpacity={0.2}
+                                fillRule="evenodd"
+                                stroke="none"
+                              />
+                            </g>
+                          </SvgElement>
+                        );
+                      }}
+                    </DataToHtml>
+                  )}
+                </>
+              )}
 
             {/* Filled sector (only for non-full circles with valid sector points) */}
             {!isFullCircle && sectorPoints.length >= 3 && (
@@ -549,7 +605,9 @@ export const AzimuthalSectorOverlay: React.FC<AzimuthalSectorOverlayProps> = ({
                   <SvgElement>
                     <g clipPath={`url(#${clipPathId})`}>
                       <polygon
-                        points={htmlPoints.map(p => `${p.x},${p.y}`).join(' ')}
+                        points={htmlPoints
+                          .map((p) => `${p.x},${p.y}`)
+                          .join(" ")}
                         fill={color}
                         fillOpacity={0.2}
                         stroke="none"
@@ -567,7 +625,9 @@ export const AzimuthalSectorOverlay: React.FC<AzimuthalSectorOverlayProps> = ({
                   <SvgElement>
                     <g clipPath={`url(#${clipPathId})`}>
                       <polyline
-                        points={htmlPoints.map(p => `${p.x},${p.y}`).join(' ')}
+                        points={htmlPoints
+                          .map((p) => `${p.x},${p.y}`)
+                          .join(" ")}
                         fill="none"
                         stroke={color}
                         strokeWidth={2}
@@ -586,7 +646,9 @@ export const AzimuthalSectorOverlay: React.FC<AzimuthalSectorOverlayProps> = ({
                   <SvgElement>
                     <g clipPath={`url(#${clipPathId})`}>
                       <polyline
-                        points={htmlPoints.map(p => `${p.x},${p.y}`).join(' ')}
+                        points={htmlPoints
+                          .map((p) => `${p.x},${p.y}`)
+                          .join(" ")}
                         fill="none"
                         stroke={color}
                         strokeWidth={2}
@@ -704,7 +766,7 @@ function buildMaskRectangles(
           x: runStart * scaleX,
           y: row * scaleY,
           width: (col - runStart) * scaleX,
-          height: scaleY,
+          height: scaleY
         });
         runStart = null;
       }
@@ -724,7 +786,7 @@ export const MaskOverlay: React.FC<MaskOverlayProps> = ({
   maskData,
   maskShape,
   imageWidth,
-  imageHeight,
+  imageHeight
 }) => {
   // Memoize rectangle computation
   const rectangles = useMemo(() => {
@@ -734,12 +796,15 @@ export const MaskOverlay: React.FC<MaskOverlayProps> = ({
   // Image corner points for clipping
   const clipId = useId();
   const clipPathId = `mask-clip-${clipId}`;
-  const clipCorners = useMemo(() => [
-    new Vector3(0, 0),
-    new Vector3(imageWidth, 0),
-    new Vector3(imageWidth, imageHeight),
-    new Vector3(0, imageHeight),
-  ], [imageWidth, imageHeight]);
+  const clipCorners = useMemo(
+    () => [
+      new Vector3(0, 0),
+      new Vector3(imageWidth, 0),
+      new Vector3(imageWidth, imageHeight),
+      new Vector3(0, imageHeight)
+    ],
+    [imageWidth, imageHeight]
+  );
 
   if (rectangles.length === 0) {
     return null;
@@ -820,9 +885,9 @@ export const MaskOverlay: React.FC<MaskOverlayProps> = ({
 export const LinecutOverlay: React.FC<LinecutOverlayProps> = ({
   linecuts,
   rows,
-  cols,
+  cols
 }) => {
-  const visibleLinecuts = linecuts.filter(lc => !lc.hidden);
+  const visibleLinecuts = linecuts.filter((lc) => !lc.hidden);
 
   if (visibleLinecuts.length === 0) return null;
 
@@ -832,7 +897,7 @@ export const LinecutOverlay: React.FC<LinecutOverlayProps> = ({
         const { position, width, color, type } = linecut;
         const halfWidth = width / 2;
 
-        if (type === 'horizontal') {
+        if (type === "horizontal") {
           // Horizontal linecut: band spans full width, at y=position
           const yTop = Math.max(0, position - halfWidth);
           const yBottom = Math.min(rows, position + halfWidth);
@@ -846,7 +911,7 @@ export const LinecutOverlay: React.FC<LinecutOverlayProps> = ({
                 new Vector3(cols, yBottom),
                 new Vector3(0, yBottom),
                 new Vector3(0, position),
-                new Vector3(cols, position),
+                new Vector3(cols, position)
               ]}
             >
               {(p0, p1, p2, p3, lineStart, lineEnd) => (
@@ -888,7 +953,7 @@ export const LinecutOverlay: React.FC<LinecutOverlayProps> = ({
                 new Vector3(xRight, rows),
                 new Vector3(xLeft, rows),
                 new Vector3(position, 0),
-                new Vector3(position, rows),
+                new Vector3(position, rows)
               ]}
             >
               {(p0, p1, p2, p3, lineStart, lineEnd) => (
@@ -936,7 +1001,10 @@ const clipPolygonToImageBoundaries = (
 ): Array<{ x: number; y: number }> => {
   if (points.length < 3) return points;
 
-  const isInside = (p: { x: number; y: number }, edge: { x1: number; y1: number; x2: number; y2: number }) => {
+  const isInside = (
+    p: { x: number; y: number },
+    edge: { x1: number; y1: number; x2: number; y2: number }
+  ) => {
     const dx = edge.x2 - edge.x1;
     const dy = edge.y2 - edge.y1;
     const cross = (p.x - edge.x1) * dy - (p.y - edge.y1) * dx;
@@ -962,7 +1030,7 @@ const clipPolygonToImageBoundaries = (
     { x1: 0, y1: 0, x2: imageWidth, y2: 0 },
     { x1: imageWidth, y1: 0, x2: imageWidth, y2: imageHeight },
     { x1: imageWidth, y1: imageHeight, x2: 0, y2: imageHeight },
-    { x1: 0, y1: imageHeight, x2: 0, y2: 0 },
+    { x1: 0, y1: imageHeight, x2: 0, y2: 0 }
   ];
 
   let clipped = [...points, points[0]]; // Close polygon
@@ -1006,9 +1074,9 @@ export const InclinedLinecutOverlay: React.FC<InclinedLinecutOverlayProps> = ({
   cols,
   beamCenterX,
   beamCenterY,
-  pixelWidthCalculator,
+  pixelWidthCalculator
 }) => {
-  const visibleLinecuts = linecuts.filter(lc => !lc.hidden);
+  const visibleLinecuts = linecuts.filter((lc) => !lc.hidden);
 
   if (visibleLinecuts.length === 0) return null;
 
@@ -1023,7 +1091,7 @@ export const InclinedLinecutOverlay: React.FC<InclinedLinecutOverlayProps> = ({
           imageWidth: cols,
           imageHeight: rows,
           beam_center_x: beamCenterX,
-          beam_center_y: beamCenterY,
+          beam_center_y: beamCenterY
         });
 
         if (!endpoints) return null;
@@ -1037,18 +1105,36 @@ export const InclinedLinecutOverlay: React.FC<InclinedLinecutOverlayProps> = ({
         const perpDy = dx;
 
         // Calculate pixel width from q-space width (position and angle aware)
-        const pixelWidth = pixelWidthCalculator(qXPosition, qYPosition, angle, qWidth);
+        const pixelWidth = pixelWidthCalculator(
+          qXPosition,
+          qYPosition,
+          angle,
+          qWidth
+        );
         const halfWidthPixels = pixelWidth / 2;
 
         // Calculate envelope corners and clip to image boundaries
         const rawEnvelope = [
-          { x: x0 + perpDx * halfWidthPixels, y: y0 + perpDy * halfWidthPixels },
-          { x: x1 + perpDx * halfWidthPixels, y: y1 + perpDy * halfWidthPixels },
-          { x: x1 - perpDx * halfWidthPixels, y: y1 - perpDy * halfWidthPixels },
-          { x: x0 - perpDx * halfWidthPixels, y: y0 - perpDy * halfWidthPixels },
+          {
+            x: x0 + perpDx * halfWidthPixels,
+            y: y0 + perpDy * halfWidthPixels
+          },
+          {
+            x: x1 + perpDx * halfWidthPixels,
+            y: y1 + perpDy * halfWidthPixels
+          },
+          {
+            x: x1 - perpDx * halfWidthPixels,
+            y: y1 - perpDy * halfWidthPixels
+          },
+          { x: x0 - perpDx * halfWidthPixels, y: y0 - perpDy * halfWidthPixels }
         ];
 
-        const clippedEnvelope = clipPolygonToImageBoundaries(rawEnvelope, cols, rows);
+        const clippedEnvelope = clipPolygonToImageBoundaries(
+          rawEnvelope,
+          cols,
+          rows
+        );
 
         // Beam center position
         const beamX = beamCenterX;
@@ -1059,14 +1145,11 @@ export const InclinedLinecutOverlay: React.FC<InclinedLinecutOverlayProps> = ({
           new Vector3(x0, y0),
           new Vector3(x1, y1),
           new Vector3(beamX, beamY),
-          ...clippedEnvelope.map(p => new Vector3(p.x, p.y)),
+          ...clippedEnvelope.map((p) => new Vector3(p.x, p.y))
         ];
 
         return (
-          <DataToHtml
-            key={`inclined-linecut-${index}`}
-            points={dataPoints}
-          >
+          <DataToHtml key={`inclined-linecut-${index}`} points={dataPoints}>
             {(...htmlPoints) => {
               const [lineStart, lineEnd, center, ...envPoints] = htmlPoints;
               return (
@@ -1074,7 +1157,7 @@ export const InclinedLinecutOverlay: React.FC<InclinedLinecutOverlayProps> = ({
                   {/* Clipped width envelope - opacity 0.3 matching Plotly */}
                   {qWidth > 0 && envPoints.length >= 3 && (
                     <polygon
-                      points={envPoints.map(p => `${p.x},${p.y}`).join(' ')}
+                      points={envPoints.map((p) => `${p.x},${p.y}`).join(" ")}
                       fill={color}
                       fillOpacity={0.3}
                       stroke="none"

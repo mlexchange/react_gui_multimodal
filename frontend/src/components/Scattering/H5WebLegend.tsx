@@ -5,7 +5,7 @@
  * Positioned at the bottom of the plot container.
  */
 
-import React from 'react';
+import React from "react";
 
 export interface LegendEntry {
   /** Unique identifier for the entry */
@@ -35,11 +35,17 @@ interface H5WebLegendProps {
  * Renders a horizontal legend at the bottom of a plot.
  * Entries can be lines or markers with optional outline colors.
  */
-export function H5WebLegend({ entries, onEntryClick, className = '' }: H5WebLegendProps) {
+export function H5WebLegend({
+  entries,
+  onEntryClick,
+  className = ""
+}: H5WebLegendProps) {
   if (entries.length === 0) return null;
 
   return (
-    <div className={`flex flex-wrap items-center justify-center gap-x-4 gap-y-1 px-2 py-1 text-xs ${className}`}>
+    <div
+      className={`flex flex-wrap items-center justify-center gap-x-4 gap-y-1 px-2 py-1 text-xs ${className}`}
+    >
       {entries.map((entry) => {
         const isClickable = onEntryClick !== undefined;
         const isHidden = entry.visible === false;
@@ -47,7 +53,7 @@ export function H5WebLegend({ entries, onEntryClick, className = '' }: H5WebLege
         return (
           <div
             key={entry.id}
-            className={`flex items-center gap-1.5 ${isClickable ? 'cursor-pointer hover:opacity-80' : ''} ${isHidden ? 'opacity-50' : ''}`}
+            className={`flex items-center gap-1.5 ${isClickable ? "cursor-pointer hover:opacity-80" : ""} ${isHidden ? "opacity-50" : ""}`}
             onClick={isClickable ? () => onEntryClick(entry.id) : undefined}
           >
             {/* Color indicator */}

@@ -14,7 +14,6 @@ import threading
 from typing import Dict, List, Tuple
 
 import numpy as np
-
 from xscattering_backend.config.logging import get_logger
 from xscattering_backend.config.settings import get_config
 from xscattering_backend.utils.q_space import compute_saxs_q_matrices
@@ -48,10 +47,7 @@ def _compute_cache_key(image_shape: Tuple[int, int], calibration: dict) -> str:
     # Create a deterministic string representation
     key_data = {
         "shape": list(image_shape),
-        "calibration": {
-            k: v for k, v in sorted(calibration.items())
-            if v is not None
-        },
+        "calibration": {k: v for k, v in sorted(calibration.items()) if v is not None},
     }
     key_str = json.dumps(key_data, sort_keys=True)
     return hashlib.sha256(key_str.encode()).hexdigest()[:16]

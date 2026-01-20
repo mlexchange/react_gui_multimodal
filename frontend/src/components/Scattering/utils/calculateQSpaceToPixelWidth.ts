@@ -9,19 +9,27 @@ import { findPixelPositionForQValue } from "./findPixelPositionForQValue";
  * @returns Width in pixel units
  */
 export const calculateQSpaceToPixelWidth = (
-    qPosition: number,
-    qWidth: number,
-    qMatrix: number[][],
-    direction: 'horizontal' | 'vertical' = 'horizontal'
-  ): number => {
-    // If width is zero or matrix is empty, return 0
-    if (qWidth <= 0 || !qMatrix || qMatrix.length === 0) return 0;
+  qPosition: number,
+  qWidth: number,
+  qMatrix: number[][],
+  direction: "horizontal" | "vertical" = "horizontal"
+): number => {
+  // If width is zero or matrix is empty, return 0
+  if (qWidth <= 0 || !qMatrix || qMatrix.length === 0) return 0;
 
-    // Find pixel positions for both edges of the width band
-    const upperQValue = qPosition + qWidth / 2;
-    const lowerQValue = qPosition - qWidth / 2;
-    const upperPixel = findPixelPositionForQValue(upperQValue, qMatrix, direction);
-    const lowerPixel = findPixelPositionForQValue(lowerQValue, qMatrix, direction);
+  // Find pixel positions for both edges of the width band
+  const upperQValue = qPosition + qWidth / 2;
+  const lowerQValue = qPosition - qWidth / 2;
+  const upperPixel = findPixelPositionForQValue(
+    upperQValue,
+    qMatrix,
+    direction
+  );
+  const lowerPixel = findPixelPositionForQValue(
+    lowerQValue,
+    qMatrix,
+    direction
+  );
 
-    return Math.abs(upperPixel - lowerPixel);
-  };
+  return Math.abs(upperPixel - lowerPixel);
+};

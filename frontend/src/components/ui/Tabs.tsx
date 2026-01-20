@@ -18,7 +18,12 @@ interface TabsProps {
   className?: string;
 }
 
-export function Tabs({ value, onValueChange, children, className = "" }: TabsProps) {
+export function Tabs({
+  value,
+  onValueChange,
+  children,
+  className = ""
+}: TabsProps) {
   return (
     <TabsPrimitive.Root
       value={value}
@@ -42,10 +47,14 @@ interface TabsListProps {
 
 const listVariantStyles = {
   primary: "bg-gray-100 p-1 rounded-lg gap-1",
-  secondary: "bg-gray-50 p-0.5 rounded-md gap-0.5 border border-gray-200",
+  secondary: "bg-gray-50 p-0.5 rounded-md gap-0.5 border border-gray-200"
 };
 
-export function TabsList({ children, variant = "primary", className = "" }: TabsListProps) {
+export function TabsList({
+  children,
+  variant = "primary",
+  className = ""
+}: TabsListProps) {
   return (
     <TabsPrimitive.List
       className={`
@@ -79,16 +88,18 @@ export function TabsTrigger({
   variant = "primary",
   disabled = false,
   className = "",
-  hasData = false,
+  hasData = false
 }: TabsTriggerProps) {
   // Build class strings based on variant and hasData
-  const baseClasses = variant === "primary"
-    ? "px-3 py-1.5 text-sm font-medium rounded-md transition-all"
-    : "px-2 py-1 text-xs font-medium rounded transition-all";
+  const baseClasses =
+    variant === "primary"
+      ? "px-3 py-1.5 text-sm font-medium rounded-md transition-all"
+      : "px-2 py-1 text-xs font-medium rounded transition-all";
 
-  const activeClasses = variant === "primary"
-    ? "data-[state=active]:bg-white data-[state=active]:text-sky-700 data-[state=active]:shadow-sm"
-    : "data-[state=active]:bg-white data-[state=active]:text-sky-600 data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-gray-200";
+  const activeClasses =
+    variant === "primary"
+      ? "data-[state=active]:bg-white data-[state=active]:text-sky-700 data-[state=active]:shadow-sm"
+      : "data-[state=active]:bg-white data-[state=active]:text-sky-600 data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-gray-200";
 
   // Inactive classes depend on hasData - blue if has data, gray otherwise
   const inactiveClasses = hasData
@@ -99,7 +110,9 @@ export function TabsTrigger({
       ? "data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-900 data-[state=inactive]:hover:bg-gray-50"
       : "data-[state=inactive]:text-gray-500 data-[state=inactive]:hover:text-gray-700 data-[state=inactive]:hover:bg-gray-100";
 
-  const disabledClasses = disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer";
+  const disabledClasses = disabled
+    ? "opacity-50 cursor-not-allowed"
+    : "cursor-pointer";
 
   return (
     <TabsPrimitive.Trigger
@@ -122,7 +135,11 @@ interface TabsContentProps {
   className?: string;
 }
 
-export function TabsContent({ value, children, className = "" }: TabsContentProps) {
+export function TabsContent({
+  value,
+  children,
+  className = ""
+}: TabsContentProps) {
   return (
     <TabsPrimitive.Content
       value={value}

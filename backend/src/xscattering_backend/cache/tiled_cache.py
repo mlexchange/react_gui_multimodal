@@ -9,7 +9,6 @@ from functools import lru_cache
 
 from dotenv import load_dotenv
 from tiled.client import from_uri
-
 from xscattering_backend.config.settings import get_config
 
 # Load .env file (auto-discovers from current and parent directories)

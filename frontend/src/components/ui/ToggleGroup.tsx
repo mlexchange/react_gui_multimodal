@@ -12,7 +12,7 @@ interface ToggleGroupProps<T extends string> {
 const sizeStyles = {
   sm: "px-2 py-1 text-xs",
   md: "px-3 py-1.5 text-sm",
-  lg: "px-4 py-2 text-base",
+  lg: "px-4 py-2 text-base"
 };
 
 export function ToggleGroup<T extends string>({
@@ -21,7 +21,7 @@ export function ToggleGroup<T extends string>({
   options,
   disabled = false,
   size = "md",
-  className = "",
+  className = ""
 }: ToggleGroupProps<T>) {
   return (
     <ToggleGroupPrimitive.Root
@@ -41,9 +41,10 @@ export function ToggleGroup<T extends string>({
           className={`
             ${sizeStyles[size]}
             rounded-md font-medium transition-colors
-            ${value === option.value
-              ? "bg-sky-500 text-white"
-              : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+            ${
+              value === option.value
+                ? "bg-sky-500 text-white"
+                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
             }
             ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
           `}

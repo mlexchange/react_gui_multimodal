@@ -8,9 +8,9 @@
  * Uses msgpack for efficient binary response handling.
  */
 
-import { unpack } from 'msgpackr';
-import { debounce } from 'lodash';
-import { CalibrationParams, LinecutResult } from '../types';
+import { unpack } from "msgpackr";
+import { debounce } from "lodash";
+import { CalibrationParams, LinecutResult } from "../types";
 
 // ============================================================================
 // Types - Linecuts
@@ -80,8 +80,11 @@ export interface AzimuthalIntegrationResult {
  * Internal function to fetch linecut data from the backend.
  */
 async function fetchLinecutInternal(
-  linecutType: 'horizontal' | 'vertical' | 'inclined',
-  params: HorizontalLinecutParams | VerticalLinecutParams | InclinedLinecutParams,
+  linecutType: "horizontal" | "vertical" | "inclined",
+  params:
+    | HorizontalLinecutParams
+    | VerticalLinecutParams
+    | InclinedLinecutParams,
   signal?: AbortSignal
 ): Promise<LinecutResult> {
   // Build request body based on linecut type
@@ -97,20 +100,22 @@ async function fetchLinecutInternal(
       tilt: params.calibration.tilt ?? 0,
       tilt_plan_rotation: params.calibration.tilt_plan_rotation ?? 0,
       experiment_type: params.experimentType,
-      incident_angle: params.calibration.incident_angle ?? 0,
+      incident_angle: params.calibration.incident_angle ?? 0
     },
     linecut_type: linecutType,
-    mask_uri: params.maskUri || null,
+    mask_uri: params.maskUri || null
   };
 
   let requestBody: object;
 
-  if (linecutType === 'horizontal' || linecutType === 'vertical') {
-    const typedParams = params as HorizontalLinecutParams | VerticalLinecutParams;
+  if (linecutType === "horizontal" || linecutType === "vertical") {
+    const typedParams = params as
+      | HorizontalLinecutParams
+      | VerticalLinecutParams;
     requestBody = {
       ...baseBody,
       position: typedParams.position,
-      width: typedParams.width,
+      width: typedParams.width
     };
   } else {
     const typedParams = params as InclinedLinecutParams;
@@ -119,15 +124,15 @@ async function fetchLinecutInternal(
       q_x_position: typedParams.qXPosition,
       q_y_position: typedParams.qYPosition,
       angle: typedParams.angle,
-      q_width: typedParams.qWidth,
+      q_width: typedParams.qWidth
     };
   }
 
-  const response = await fetch('/api/extract-linecut', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+  const response = await fetch("/api/extract-linecut", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(requestBody),
-    signal,
+    signal
   });
 
   if (!response.ok) {
@@ -136,7 +141,7 @@ async function fetchLinecutInternal(
       q_values: [],
       intensities: [],
       success: false,
-      error_message: `Request failed: ${response.status} - ${errorText}`,
+      error_message: `Request failed: ${response.status} - ${errorText}`
     };
   }
 
@@ -155,38 +160,44 @@ async function fetchAzimuthalInternal(
   params: AzimuthalIntegrationParams,
   signal?: AbortSignal
 ): Promise<AzimuthalIntegrationResult> {
-  const url = new URL('/api/azimuthal-integrator', window.location.origin);
+  const url = new URL("/api/azimuthal-integrator", window.location.origin);
 
   // Add scan URIs
-  url.searchParams.set('left_scan_uri', params.leftScanUri);
-  url.searchParams.set('right_scan_uri', params.rightScanUri);
+  url.searchParams.set("left_scan_uri", params.leftScanUri);
+  url.searchParams.set("right_scan_uri", params.rightScanUri);
 
   // Add calibration parameters
   const cal = params.calibration;
-  url.searchParams.set('sample_detector_distance', cal.sample_detector_distance.toString());
-  url.searchParams.set('beam_center_x', cal.beam_center_x.toString());
-  url.searchParams.set('beam_center_y', cal.beam_center_y.toString());
-  url.searchParams.set('pixel_size_x', cal.pixel_size_x.toString());
-  url.searchParams.set('pixel_size_y', cal.pixel_size_y.toString());
-  url.searchParams.set('wavelength', cal.wavelength.toString());
-  url.searchParams.set('tilt', (cal.tilt ?? 0).toString());
-  url.searchParams.set('tilt_plan_rotation', (cal.tilt_plan_rotation ?? 0).toString());
+  url.searchParams.set(
+    "sample_detector_distance",
+    cal.sample_detector_distance.toString()
+  );
+  url.searchParams.set("beam_center_x", cal.beam_center_x.toString());
+  url.searchParams.set("beam_center_y", cal.beam_center_y.toString());
+  url.searchParams.set("pixel_size_x", cal.pixel_size_x.toString());
+  url.searchParams.set("pixel_size_y", cal.pixel_size_y.toString());
+  url.searchParams.set("wavelength", cal.wavelength.toString());
+  url.searchParams.set("tilt", (cal.tilt ?? 0).toString());
+  url.searchParams.set(
+    "tilt_plan_rotation",
+    (cal.tilt_plan_rotation ?? 0).toString()
+  );
 
   // Add azimuth range (split parameters)
-  url.searchParams.set('azimuth_start_deg', params.azimuthStart.toString());
-  url.searchParams.set('azimuth_end_deg', params.azimuthEnd.toString());
+  url.searchParams.set("azimuth_start_deg", params.azimuthStart.toString());
+  url.searchParams.set("azimuth_end_deg", params.azimuthEnd.toString());
 
   // Add q-range if provided (split parameters)
   if (params.qRangeStart != null) {
-    url.searchParams.set('q_range_start', params.qRangeStart.toString());
+    url.searchParams.set("q_range_start", params.qRangeStart.toString());
   }
   if (params.qRangeEnd != null) {
-    url.searchParams.set('q_range_end', params.qRangeEnd.toString());
+    url.searchParams.set("q_range_end", params.qRangeEnd.toString());
   }
 
   // Add mask URI if provided
   if (params.maskUri) {
-    url.searchParams.set('mask_uri', params.maskUri);
+    url.searchParams.set("mask_uri", params.maskUri);
   }
 
   const response = await fetch(url.toString(), { signal });
@@ -202,16 +213,19 @@ async function fetchAzimuthalInternal(
       q_array_filtered_1: [],
       q_array_filtered_2: [],
       success: false,
-      error_message: `Request failed: ${response.status} - ${errorText}`,
+      error_message: `Request failed: ${response.status} - ${errorText}`
     };
   }
 
   const buffer = await response.arrayBuffer();
-  const data = unpack(new Uint8Array(buffer)) as Omit<AzimuthalIntegrationResult, 'success' | 'error_message'>;
+  const data = unpack(new Uint8Array(buffer)) as Omit<
+    AzimuthalIntegrationResult,
+    "success" | "error_message"
+  >;
   return {
     ...data,
     success: true,
-    error_message: null,
+    error_message: null
   };
 }
 
@@ -277,30 +291,38 @@ const debouncedFetchers: Map<string, ReturnType<typeof debounce>> = new Map();
  * - Left and right scan requests have separate debounce timers
  * - Rapid updates to the same linecut are debounced together
  */
-function getDebouncedFetcher<T extends HorizontalLinecutParams | VerticalLinecutParams | InclinedLinecutParams>(
+function getDebouncedFetcher<
+  T extends
+    | HorizontalLinecutParams
+    | VerticalLinecutParams
+    | InclinedLinecutParams
+>(
   linecutKey: string,
-  linecutType: 'horizontal' | 'vertical' | 'inclined'
+  linecutType: "horizontal" | "vertical" | "inclined"
 ): (params: T, options: DebouncedFetchOptions) => void {
   let fetcher = debouncedFetchers.get(linecutKey);
 
   if (!fetcher) {
     fetcher = debounce(
-      async (
-        params: T,
-        options: DebouncedFetchOptions
-      ) => {
+      async (params: T, options: DebouncedFetchOptions) => {
         const controller = getAbortController(linecutKey);
 
         try {
-          const result = await fetchLinecutInternal(linecutType, params, controller.signal);
+          const result = await fetchLinecutInternal(
+            linecutType,
+            params,
+            controller.signal
+          );
           options.onSuccess(result);
         } catch (error) {
           // Ignore abort errors - they're expected when cancelling
-          if (error instanceof Error && error.name === 'AbortError') {
+          if (error instanceof Error && error.name === "AbortError") {
             return;
           }
           if (options.onError) {
-            options.onError(error instanceof Error ? error : new Error(String(error)));
+            options.onError(
+              error instanceof Error ? error : new Error(String(error))
+            );
           }
         } finally {
           cleanupController(linecutKey, controller);
@@ -325,12 +347,15 @@ function getDebouncedFetcher<T extends HorizontalLinecutParams | VerticalLinecut
  */
 export function fetchHorizontalLinecut(
   linecutId: number,
-  side: 'left' | 'right',
+  side: "left" | "right",
   params: HorizontalLinecutParams,
   options: DebouncedFetchOptions
 ): void {
   const key = `horizontal-${side}-${linecutId}`;
-  const fetcher = getDebouncedFetcher<HorizontalLinecutParams>(key, 'horizontal');
+  const fetcher = getDebouncedFetcher<HorizontalLinecutParams>(
+    key,
+    "horizontal"
+  );
   fetcher(params, options);
 }
 
@@ -344,12 +369,12 @@ export function fetchHorizontalLinecut(
  */
 export function fetchVerticalLinecut(
   linecutId: number,
-  side: 'left' | 'right',
+  side: "left" | "right",
   params: VerticalLinecutParams,
   options: DebouncedFetchOptions
 ): void {
   const key = `vertical-${side}-${linecutId}`;
-  const fetcher = getDebouncedFetcher<VerticalLinecutParams>(key, 'vertical');
+  const fetcher = getDebouncedFetcher<VerticalLinecutParams>(key, "vertical");
   fetcher(params, options);
 }
 
@@ -363,12 +388,12 @@ export function fetchVerticalLinecut(
  */
 export function fetchInclinedLinecut(
   linecutId: number,
-  side: 'left' | 'right',
+  side: "left" | "right",
   params: InclinedLinecutParams,
   options: DebouncedFetchOptions
 ): void {
   const key = `inclined-${side}-${linecutId}`;
-  const fetcher = getDebouncedFetcher<InclinedLinecutParams>(key, 'inclined');
+  const fetcher = getDebouncedFetcher<InclinedLinecutParams>(key, "inclined");
   fetcher(params, options);
 }
 
@@ -410,11 +435,13 @@ export function fetchAzimuthalIntegration(
           const result = await fetchAzimuthalInternal(p, controller.signal);
           opts.onSuccess(result);
         } catch (error) {
-          if (error instanceof Error && error.name === 'AbortError') {
+          if (error instanceof Error && error.name === "AbortError") {
             return;
           }
           if (opts.onError) {
-            opts.onError(error instanceof Error ? error : new Error(String(error)));
+            opts.onError(
+              error instanceof Error ? error : new Error(String(error))
+            );
           }
         } finally {
           cleanupController(key, controller);
@@ -426,7 +453,12 @@ export function fetchAzimuthalIntegration(
     debouncedFetchers.set(key, fetcher);
   }
 
-  (fetcher as (p: AzimuthalIntegrationParams, opts: AzimuthalFetchOptions) => void)(params, options);
+  (
+    fetcher as (
+      p: AzimuthalIntegrationParams,
+      opts: AzimuthalFetchOptions
+    ) => void
+  )(params, options);
 }
 
 /**
@@ -479,9 +511,9 @@ export function cancelAllPendingRequests(): void {
  * @param side - Which image side ('left' or 'right')
  */
 export function cancelLinecutRequest(
-  linecutType: 'horizontal' | 'vertical' | 'inclined',
+  linecutType: "horizontal" | "vertical" | "inclined",
   linecutId: number,
-  side: 'left' | 'right'
+  side: "left" | "right"
 ): void {
   const key = `${linecutType}-${side}-${linecutId}`;
 
@@ -528,27 +560,35 @@ export async function fetchQVectors(
   params: QVectorsParams,
   signal?: AbortSignal
 ): Promise<QVectorsResult> {
-  const url = new URL('/api/q-space', window.location.origin);
+  const url = new URL("/api/q-space", window.location.origin);
 
   const cal = params.calibration;
-  url.searchParams.set('sample_detector_distance', cal.sample_detector_distance.toString());
-  url.searchParams.set('beam_center_x', cal.beam_center_x.toString());
-  url.searchParams.set('beam_center_y', cal.beam_center_y.toString());
-  url.searchParams.set('pixel_size_x', cal.pixel_size_x.toString());
-  url.searchParams.set('pixel_size_y', cal.pixel_size_y.toString());
-  url.searchParams.set('wavelength', cal.wavelength.toString());
-  url.searchParams.set('tilt', (cal.tilt ?? 0).toString());
-  url.searchParams.set('tilt_plan_rotation', (cal.tilt_plan_rotation ?? 0).toString());
-  url.searchParams.set('experiment_type', params.experimentType);
-  url.searchParams.set('incident_angle', (cal.incident_angle ?? 0).toString());
-  url.searchParams.set('image_width', params.imageWidth.toString());
-  url.searchParams.set('image_height', params.imageHeight.toString());
+  url.searchParams.set(
+    "sample_detector_distance",
+    cal.sample_detector_distance.toString()
+  );
+  url.searchParams.set("beam_center_x", cal.beam_center_x.toString());
+  url.searchParams.set("beam_center_y", cal.beam_center_y.toString());
+  url.searchParams.set("pixel_size_x", cal.pixel_size_x.toString());
+  url.searchParams.set("pixel_size_y", cal.pixel_size_y.toString());
+  url.searchParams.set("wavelength", cal.wavelength.toString());
+  url.searchParams.set("tilt", (cal.tilt ?? 0).toString());
+  url.searchParams.set(
+    "tilt_plan_rotation",
+    (cal.tilt_plan_rotation ?? 0).toString()
+  );
+  url.searchParams.set("experiment_type", params.experimentType);
+  url.searchParams.set("incident_angle", (cal.incident_angle ?? 0).toString());
+  url.searchParams.set("image_width", params.imageWidth.toString());
+  url.searchParams.set("image_height", params.imageHeight.toString());
 
   const response = await fetch(url.toString(), { signal });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Failed to fetch Q-vectors: ${response.status} - ${errorText}`);
+    throw new Error(
+      `Failed to fetch Q-vectors: ${response.status} - ${errorText}`
+    );
   }
 
   const buffer = await response.arrayBuffer();

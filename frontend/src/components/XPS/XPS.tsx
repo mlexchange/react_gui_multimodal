@@ -1,7 +1,7 @@
-import RealSpaceImagesAccordion from './RealSpaceImagesAccordion';
-import NumberOfParticlesAccordion from './NumberOfParticlesAccordion';
-import XPSSpectraAccordion from './XPSSpectraAccordion';
-import XPSControlsPanel from './XPSControlsPanel';
+import RealSpaceImagesAccordion from "./RealSpaceImagesAccordion";
+import NumberOfParticlesAccordion from "./NumberOfParticlesAccordion";
+import XPSSpectraAccordion from "./XPSSpectraAccordion";
+import XPSControlsPanel from "./XPSControlsPanel";
 
 export default function XPS() {
   return (

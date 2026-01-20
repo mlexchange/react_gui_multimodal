@@ -4,7 +4,6 @@ import msgpack
 import numpy as np
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
-
 from xscattering_backend.cache.image_cache import get_cached_processed_image
 from xscattering_backend.config.logging import get_logger
 
@@ -107,9 +106,7 @@ async def fetch_scan_image(
                     get_or_compute_gisaxs_transform,
                 )
 
-                gisaxs_result = get_or_compute_gisaxs_transform(
-                    scan_uri, calibration, mask_uri=mask_uri
-                )
+                gisaxs_result = get_or_compute_gisaxs_transform(scan_uri, calibration, mask_uri=mask_uri)
 
                 # Include GISAXS-specific data
                 response_data["gisaxs_transformed"] = {

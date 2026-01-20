@@ -2,8 +2,8 @@
  * Shared utilities for H5Web line plot components.
  */
 
-import React from 'react';
-import { ScaleType, getSafeDomain } from '@h5web/lib';
+import React from "react";
+import { ScaleType, getSafeDomain } from "@h5web/lib";
 
 export interface CurveData {
   id: string;
@@ -27,17 +27,19 @@ export function calculateCurveDomains(
 ): { xDomain: Domain; yDomain: Domain } {
   const { xPaddingPercent = 0.02, yPaddingPercent = 0.05 } = options;
 
-  let xMin = Infinity, xMax = -Infinity;
-  let yMin = Infinity, yMax = -Infinity;
+  let xMin = Infinity,
+    xMax = -Infinity;
+  let yMin = Infinity,
+    yMax = -Infinity;
 
-  curves.forEach(curve => {
-    curve.abscissas.forEach(v => {
+  curves.forEach((curve) => {
+    curve.abscissas.forEach((v) => {
       if (isFinite(v)) {
         xMin = Math.min(xMin, v);
         xMax = Math.max(xMax, v);
       }
     });
-    curve.ordinates.forEach(v => {
+    curve.ordinates.forEach((v) => {
       if (isFinite(v) && !isNaN(v)) {
         yMin = Math.min(yMin, v);
         yMax = Math.max(yMax, v);
@@ -55,7 +57,7 @@ export function calculateCurveDomains(
 
   return {
     xDomain: [xMin - xPadding, xMax + xPadding],
-    yDomain: [yMin - yPadding, yMax + yPadding],
+    yDomain: [yMin - yPadding, yMax + yPadding]
   };
 }
 
@@ -125,7 +127,11 @@ export function findClosestIndex(arr: number[], target: number): number {
 /**
  * Find the curve closest to a given (x, y) position.
  */
-export function findClosestCurve(curves: CurveData[], x: number, y: number): CurveData | null {
+export function findClosestCurve(
+  curves: CurveData[],
+  x: number,
+  y: number
+): CurveData | null {
   if (curves.length === 0) return null;
 
   let closestCurve = curves[0];
@@ -148,12 +154,15 @@ export function findClosestCurve(curves: CurveData[], x: number, y: number): Cur
 /**
  * Get the data point on a curve closest to the x position.
  */
-export function getClosestPoint(curve: CurveData, x: number): { xVal: number; yVal: number; index: number } {
+export function getClosestPoint(
+  curve: CurveData,
+  x: number
+): { xVal: number; yVal: number; index: number } {
   const index = findClosestIndex(curve.abscissas, x);
   return {
     xVal: curve.abscissas[index],
     yVal: curve.ordinates[index],
-    index,
+    index
   };
 }
 
@@ -172,9 +181,9 @@ export function StandardTooltip({
   color,
   xLabel,
   xValue,
-  xUnit = '',
+  xUnit = "",
   yValue,
-  xPrecision = 4,
+  xPrecision = 4
 }: StandardTooltipProps): React.ReactElement {
   return (
     <div className="text-xs bg-white/90 p-1 rounded shadow">
@@ -200,7 +209,7 @@ export function createTooltipRenderer(
     xPrecision?: number;
   }
 ) {
-  const { xLabel, xUnit = '', xPrecision = 4 } = options;
+  const { xLabel, xUnit = "", xPrecision = 4 } = options;
 
   return (x: number, y: number): React.ReactElement | null => {
     const closestCurve = findClosestCurve(curves, x, y);

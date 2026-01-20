@@ -9,10 +9,16 @@
  * - Start processing button
  */
 
-import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { Modal } from '@/components/shared';
-import { ButtonWithIcon } from '@blueskyproject/finch';
-import { CheckIcon, StackIcon } from '@phosphor-icons/react';
+import React, {
+  useState,
+  useCallback,
+  useRef,
+  useEffect,
+  useMemo
+} from "react";
+import { Modal } from "@/components/shared";
+import { ButtonWithIcon } from "@blueskyproject/finch";
+import { CheckIcon, StackIcon } from "@phosphor-icons/react";
 
 interface BatchScanSelectorProps {
   isOpen: boolean;
@@ -30,10 +36,12 @@ export function BatchScanSelector({
   scanUris,
   scanNames,
   onConfirm,
-  initialSelectedUris,
+  initialSelectedUris
 }: BatchScanSelectorProps) {
   // Set of selected indices
-  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
+  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(
+    new Set()
+  );
 
   // Track last clicked index for shift+click range selection
   const lastClickedIndex = useRef<number | null>(null);
@@ -53,7 +61,7 @@ export function BatchScanSelector({
 
       if (initialSelectedUris && initialSelectedUris.length > 0) {
         const indices = new Set<number>();
-        initialSelectedUris.forEach(uri => {
+        initialSelectedUris.forEach((uri) => {
           const index = uriToIndexMap.get(uri);
           if (index !== undefined) {
             indices.add(index);
@@ -65,7 +73,8 @@ export function BatchScanSelector({
   }, [isOpen, initialSelectedUris, uriToIndexMap]);
 
   // Check if all scans are selected
-  const allSelected = selectedIndices.size === scanUris.length && scanUris.length > 0;
+  const allSelected =
+    selectedIndices.size === scanUris.length && scanUris.length > 0;
 
   /**
    * Handle "Select All" toggle
@@ -88,11 +97,15 @@ export function BatchScanSelector({
     // Prevent default browser behavior (text selection, etc.)
     event.preventDefault();
 
-    setSelectedIndices(prev => {
+    setSelectedIndices((prev) => {
       const next = new Set(prev);
 
       // Shift+click: select range from last clicked to current
-      if (event.shiftKey && lastClickedIndex.current !== null && lastClickedIndex.current !== index) {
+      if (
+        event.shiftKey &&
+        lastClickedIndex.current !== null &&
+        lastClickedIndex.current !== index
+      ) {
         const start = Math.min(lastClickedIndex.current, index);
         const end = Math.max(lastClickedIndex.current, index);
         for (let i = start; i <= end; i++) {
@@ -118,8 +131,8 @@ export function BatchScanSelector({
    */
   const handleConfirm = useCallback(() => {
     const selectedUris = Array.from(selectedIndices)
-      .sort((a, b) => a - b)  // Keep original order
-      .map(i => scanUris[i]);
+      .sort((a, b) => a - b) // Keep original order
+      .map((i) => scanUris[i]);
     onConfirm(selectedUris);
   }, [selectedIndices, scanUris, onConfirm]);
 
@@ -133,7 +146,8 @@ export function BatchScanSelector({
       <div className="space-y-4">
         {/* Description */}
         <p className="text-sm text-gray-600">
-          Select scans to process with all current linecut and integration settings.
+          Select scans to process with all current linecut and integration
+          settings.
         </p>
 
         {/* Select All checkbox */}
@@ -145,7 +159,10 @@ export function BatchScanSelector({
             onChange={handleSelectAll}
             className="w-4 h-4 text-sky-600 border-gray-300 rounded focus:ring-sky-500 cursor-pointer"
           />
-          <label htmlFor="select-all" className="font-medium text-sm cursor-pointer">
+          <label
+            htmlFor="select-all"
+            className="font-medium text-sm cursor-pointer"
+          >
             Select All ({scanUris.length} scans)
           </label>
         </div>
@@ -161,9 +178,7 @@ export function BatchScanSelector({
               <div
                 key={index}
                 className={`flex items-center gap-2 px-3 py-2 cursor-pointer border-b border-gray-100 last:border-b-0 select-none ${
-                  selectedIndices.has(index)
-                    ? 'bg-sky-50'
-                    : 'hover:bg-gray-50'
+                  selectedIndices.has(index) ? "bg-sky-50" : "hover:bg-gray-50"
                 }`}
                 onClick={(e) => handleToggle(index, e)}
               >
@@ -173,8 +188,12 @@ export function BatchScanSelector({
                   readOnly
                   className="w-4 h-4 text-sky-600 border-gray-300 rounded focus:ring-sky-500 pointer-events-none"
                 />
-                <span className="text-sm text-gray-700 truncate flex-1">{name}</span>
-                <span className="text-xs text-gray-400 tabular-nums">#{index + 1}</span>
+                <span className="text-sm text-gray-700 truncate flex-1">
+                  {name}
+                </span>
+                <span className="text-xs text-gray-400 tabular-nums">
+                  #{index + 1}
+                </span>
               </div>
             ))}
           </div>

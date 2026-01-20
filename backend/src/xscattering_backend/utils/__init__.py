@@ -15,9 +15,9 @@ from xscattering_backend.utils.mask_loader import (
     normalize_mask,
 )
 from xscattering_backend.utils.q_space import (
+    GISAXSTransformResult,
     compute_saxs_q_matrices,
     transform_gisaxs_to_qspace,
-    GISAXSTransformResult,
 )
 from xscattering_backend.utils.scans import (
     ensure_2d_image,

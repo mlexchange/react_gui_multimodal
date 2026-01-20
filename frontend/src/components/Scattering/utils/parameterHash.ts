@@ -5,7 +5,7 @@
  * parameters, used to detect when parameters have changed after batch processing.
  */
 
-import { Linecut, InclinedLinecut, AzimuthalIntegration } from '../types';
+import { Linecut, InclinedLinecut, AzimuthalIntegration } from "../types";
 
 /**
  * Round a number to a fixed precision to avoid floating point comparison issues.
@@ -22,7 +22,7 @@ function roundForHash(value: number, decimals: number = 6): string {
 export function hashHorizontalLinecut(linecut: Linecut): string {
   return JSON.stringify({
     position: roundForHash(linecut.position),
-    width: roundForHash(linecut.width),
+    width: roundForHash(linecut.width)
   });
 }
 
@@ -33,7 +33,7 @@ export function hashHorizontalLinecut(linecut: Linecut): string {
 export function hashVerticalLinecut(linecut: Linecut): string {
   return JSON.stringify({
     position: roundForHash(linecut.position),
-    width: roundForHash(linecut.width),
+    width: roundForHash(linecut.width)
   });
 }
 
@@ -46,7 +46,7 @@ export function hashInclinedLinecut(linecut: InclinedLinecut): string {
     qXPosition: roundForHash(linecut.qXPosition),
     qYPosition: roundForHash(linecut.qYPosition),
     angle: roundForHash(linecut.angle, 2),
-    qWidth: roundForHash(linecut.qWidth),
+    qWidth: roundForHash(linecut.qWidth)
   });
 }
 
@@ -54,14 +54,19 @@ export function hashInclinedLinecut(linecut: InclinedLinecut): string {
  * Generate a hash for azimuthal integration parameters.
  * Only includes parameters that affect the batch processing results.
  */
-export function hashAzimuthalIntegration(integration: AzimuthalIntegration): string {
+export function hashAzimuthalIntegration(
+  integration: AzimuthalIntegration
+): string {
   return JSON.stringify({
     qRange: integration.qRange
-      ? [roundForHash(integration.qRange[0]), roundForHash(integration.qRange[1])]
+      ? [
+          roundForHash(integration.qRange[0]),
+          roundForHash(integration.qRange[1])
+        ]
       : null,
     azimuthRange: [
       roundForHash(integration.azimuthRange[0], 2),
-      roundForHash(integration.azimuthRange[1], 2),
-    ],
+      roundForHash(integration.azimuthRange[1], 2)
+    ]
   });
 }

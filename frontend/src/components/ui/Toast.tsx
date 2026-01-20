@@ -1,6 +1,17 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useEffect
+} from "react";
 import * as ToastPrimitive from "@radix-ui/react-toast";
-import { XIcon, CheckCircleIcon, XCircleIcon, SpinnerIcon } from "@phosphor-icons/react";
+import {
+  XIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  SpinnerIcon
+} from "@phosphor-icons/react";
 
 interface Toast {
   id: string;
@@ -45,48 +56,77 @@ export function useToast() {
   return context;
 }
 
-function ToastProviderInner({ children, onMount }: { children: React.ReactNode; onMount: (api: ToastContextType) => void }) {
+function ToastProviderInner({
+  children,
+  onMount
+}: {
+  children: React.ReactNode;
+  onMount: (api: ToastContextType) => void;
+}) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const show = useCallback(({ id, title, message, loading, autoClose }: ShowToastProps) => {
-    setToasts((prev) => {
-      const existing = prev.find((t) => t.id === id);
-      if (existing) {
-        return prev.map((t) =>
+  const show = useCallback(
+    ({ id, title, message, loading, autoClose }: ShowToastProps) => {
+      setToasts((prev) => {
+        const existing = prev.find((t) => t.id === id);
+        if (existing) {
+          return prev.map((t) =>
+            t.id === id
+              ? {
+                  ...t,
+                  title,
+                  message,
+                  type: loading ? "loading" : "default",
+                  autoClose
+                }
+              : t
+          );
+        }
+        return [
+          ...prev,
+          {
+            id,
+            title,
+            message,
+            type: loading ? "loading" : "default",
+            autoClose
+          }
+        ];
+      });
+    },
+    []
+  );
+
+  const update = useCallback(
+    ({ id, title, message, color, autoClose }: UpdateToastProps) => {
+      setToasts((prev) =>
+        prev.map((t) =>
           t.id === id
-            ? { ...t, title, message, type: loading ? "loading" : "default", autoClose }
+            ? {
+                ...t,
+                title,
+                message,
+                type:
+                  color === "green"
+                    ? "success"
+                    : color === "red"
+                      ? "error"
+                      : "default",
+                autoClose
+              }
             : t
-        );
+        )
+      );
+
+      // Auto-remove after autoClose duration
+      if (typeof autoClose === "number" && autoClose > 0) {
+        setTimeout(() => {
+          setToasts((prev) => prev.filter((t) => t.id !== id));
+        }, autoClose);
       }
-      return [
-        ...prev,
-        { id, title, message, type: loading ? "loading" : "default", autoClose },
-      ];
-    });
-  }, []);
-
-  const update = useCallback(({ id, title, message, color, autoClose }: UpdateToastProps) => {
-    setToasts((prev) =>
-      prev.map((t) =>
-        t.id === id
-          ? {
-              ...t,
-              title,
-              message,
-              type: color === "green" ? "success" : color === "red" ? "error" : "default",
-              autoClose,
-            }
-          : t
-      )
-    );
-
-    // Auto-remove after autoClose duration
-    if (typeof autoClose === "number" && autoClose > 0) {
-      setTimeout(() => {
-        setToasts((prev) => prev.filter((t) => t.id !== id));
-      }, autoClose);
-    }
-  }, []);
+    },
+    []
+  );
 
   const removeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -109,7 +149,13 @@ function ToastProviderInner({ children, onMount }: { children: React.ReactNode; 
           <ToastPrimitive.Root
             key={toast.id}
             className="bg-white border border-gray-200 rounded-lg shadow-lg p-4 flex items-start gap-3 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full"
-            duration={toast.autoClose === false ? Infinity : (typeof toast.autoClose === "number" ? toast.autoClose : 5000)}
+            duration={
+              toast.autoClose === false
+                ? Infinity
+                : typeof toast.autoClose === "number"
+                  ? toast.autoClose
+                  : 5000
+            }
             onOpenChange={(open) => {
               if (!open) removeToast(toast.id);
             }}
@@ -119,7 +165,11 @@ function ToastProviderInner({ children, onMount }: { children: React.ReactNode; 
                 <SpinnerIcon size={20} className="text-blue-500 animate-spin" />
               )}
               {toast.type === "success" && (
-                <CheckCircleIcon size={20} className="text-green-500" weight="fill" />
+                <CheckCircleIcon
+                  size={20}
+                  className="text-green-500"
+                  weight="fill"
+                />
               )}
               {toast.type === "error" && (
                 <XCircleIcon size={20} className="text-red-500" weight="fill" />
@@ -150,9 +200,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <ToastProviderInner onMount={handleMount}>
-      {children}
-    </ToastProviderInner>
+    <ToastProviderInner onMount={handleMount}>{children}</ToastProviderInner>
   );
 }
 
@@ -162,21 +210,27 @@ export const notifications = {
     if (globalToastRef) {
       globalToastRef.show(props);
     } else {
-      console.warn("Toast not initialized. Make sure ToastProvider is mounted.");
+      console.warn(
+        "Toast not initialized. Make sure ToastProvider is mounted."
+      );
     }
   },
   update: (props: UpdateToastProps) => {
     if (globalToastRef) {
       globalToastRef.update(props);
     } else {
-      console.warn("Toast not initialized. Make sure ToastProvider is mounted.");
+      console.warn(
+        "Toast not initialized. Make sure ToastProvider is mounted."
+      );
     }
   },
   hide: (id: string) => {
     if (globalToastRef) {
       globalToastRef.hide(id);
     } else {
-      console.warn("Toast not initialized. Make sure ToastProvider is mounted.");
+      console.warn(
+        "Toast not initialized. Make sure ToastProvider is mounted."
+      );
     }
-  },
+  }
 };

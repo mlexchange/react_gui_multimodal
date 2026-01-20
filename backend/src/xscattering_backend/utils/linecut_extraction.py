@@ -323,9 +323,7 @@ def extract_inclined_linecut(
         return np.array([]), np.array([])
 
     # Calculate pixel width for averaging
-    pixel_width = calculate_inclined_pixel_width(
-        q_x_position, q_y_position, angle, q_width, q_x_vector, q_y_vector
-    )
+    pixel_width = calculate_inclined_pixel_width(q_x_position, q_y_position, angle, q_width, q_x_vector, q_y_vector)
 
     # Perpendicular vector for width averaging
     perp_x = -dir_y
@@ -357,10 +355,7 @@ def extract_inclined_linecut(
     pixel_y = np.round(sample_y).astype(np.int32)
 
     # Create mask for valid coordinates
-    valid_mask = (
-        (pixel_x >= 0) & (pixel_x < image_width) &
-        (pixel_y >= 0) & (pixel_y < image_height)
-    )
+    valid_mask = (pixel_x >= 0) & (pixel_x < image_width) & (pixel_y >= 0) & (pixel_y < image_height)
 
     # Clip coordinates to valid range for safe indexing
     pixel_x_clipped = np.clip(pixel_x, 0, image_width - 1)
@@ -606,9 +601,7 @@ def extract_gisaxs_inclined_linecut(
     pixel_oop = np.round(sample_idx_oop).astype(np.int32)
 
     # Create mask for valid coordinates
-    valid_mask = (
-        (pixel_ip >= 0) & (pixel_ip < npt_ip) & (pixel_oop >= 0) & (pixel_oop < npt_oop)
-    )
+    valid_mask = (pixel_ip >= 0) & (pixel_ip < npt_ip) & (pixel_oop >= 0) & (pixel_oop < npt_oop)
 
     # Clip coordinates for safe indexing
     pixel_ip_clipped = np.clip(pixel_ip, 0, npt_ip - 1)
@@ -624,8 +617,6 @@ def extract_gisaxs_inclined_linecut(
     # Compute mean along width axis
     value_sum = np.sum(values, axis=1)
     value_count = np.sum(valid_values, axis=1)
-    intensities = np.divide(
-        value_sum, value_count, out=np.zeros_like(value_sum), where=value_count > 0
-    )
+    intensities = np.divide(value_sum, value_count, out=np.zeros_like(value_sum), where=value_count > 0)
 
     return q_path, intensities

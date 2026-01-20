@@ -23,7 +23,7 @@ interface SelectProps {
 const sizeStyles = {
   sm: "px-2 py-1 text-sm",
   md: "px-3 py-1.5 text-sm",
-  lg: "px-3 py-2 text-base",
+  lg: "px-3 py-2 text-base"
 };
 
 export function Select({
@@ -36,7 +36,7 @@ export function Select({
   disabled = false,
   size = "md",
   maxDropdownHeight = 300,
-  className = "",
+  className = ""
 }: SelectProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -105,7 +105,9 @@ export function Select({
                     value={item.value}
                     className="py-2 px-4 text-sm hover:bg-gray-100 cursor-pointer rounded outline-none data-[highlighted]:bg-sky-50 data-[state=checked]:bg-sky-100 flex items-center justify-between"
                   >
-                    <SelectPrimitive.ItemText>{item.label}</SelectPrimitive.ItemText>
+                    <SelectPrimitive.ItemText>
+                      {item.label}
+                    </SelectPrimitive.ItemText>
                     <SelectPrimitive.ItemIndicator>
                       <CheckIcon size={14} className="text-sky-600" />
                     </SelectPrimitive.ItemIndicator>

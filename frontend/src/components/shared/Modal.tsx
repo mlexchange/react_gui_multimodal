@@ -1,5 +1,5 @@
-import { IconButton } from '@/components/ui';
-import { XIcon } from '@phosphor-icons/react';
+import { IconButton } from "@/components/ui";
+import { XIcon } from "@phosphor-icons/react";
 
 interface ModalProps {
   isOpen: boolean;
@@ -16,7 +16,7 @@ export function Modal({
   title,
   titleIcon,
   children,
-  showCloseButton = true,
+  showCloseButton = true
 }: ModalProps) {
   if (!isOpen) return null;
 
@@ -40,9 +40,7 @@ export function Modal({
             </IconButton>
           )}
         </div>
-        <div className="p-4">
-          {children}
-        </div>
+        <div className="p-4">{children}</div>
       </div>
     </div>
   );

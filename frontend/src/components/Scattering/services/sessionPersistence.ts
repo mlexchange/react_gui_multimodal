@@ -12,14 +12,14 @@ import type {
   Linecut,
   InclinedLinecut,
   AzimuthalIntegration
-} from '../types';
+} from "../types";
 import type {
   BatchResultsStore,
   BatchParameterHashes
-} from '../hooks/useBatchProcessing';
+} from "../hooks/useBatchProcessing";
 
 // Storage key for sessionStorage
-const STORAGE_KEY = 'scattering_session_v1';
+const STORAGE_KEY = "scattering_session_v1";
 
 /**
  * Complete session state structure
@@ -36,7 +36,7 @@ export interface SessionState {
   rightImageIndex: number | "";
 
   /** Experiment type (SAXS or GISAXS) */
-  experimentType: 'SAXS' | 'GISAXS';
+  experimentType: "SAXS" | "GISAXS";
 
   /** Calibration parameters */
   calibrationParams: CalibrationParams | null;
@@ -58,7 +58,7 @@ export interface SessionState {
   /** UI state */
   isSidebarCollapsed: boolean;
   isSummaryCollapsed: boolean;
-  operationType: 'subtract' | 'divide';
+  operationType: "subtract" | "divide";
 
   /** Mask URI for uploaded or resolved mask */
   maskUri: string | null;
@@ -81,7 +81,7 @@ export function createDefaultSessionState(): SessionState {
     containerPath: null,
     leftImageIndex: "",
     rightImageIndex: "",
-    experimentType: 'SAXS',
+    experimentType: "SAXS",
     calibrationParams: null,
     showQSpaceAxes: false,
     horizontalLinecuts: [],
@@ -91,7 +91,7 @@ export function createDefaultSessionState(): SessionState {
     azimuthalIntegrations: [],
     isSidebarCollapsed: false,
     isSummaryCollapsed: false,
-    operationType: 'subtract',
+    operationType: "subtract",
     maskUri: null,
     savedAt: Date.now()
   };
@@ -116,7 +116,7 @@ export function saveSession(state: SessionState): boolean {
     return true;
   } catch (error) {
     // Handle quota exceeded or other storage errors
-    console.error('Failed to save session to sessionStorage:', error);
+    console.error("Failed to save session to sessionStorage:", error);
     return false;
   }
 }
@@ -138,14 +138,16 @@ export function loadSession(): SessionState | null {
 
     // Validate the loaded state
     if (!isValidSessionState(state)) {
-      console.warn('Invalid session state found in sessionStorage, clearing...');
+      console.warn(
+        "Invalid session state found in sessionStorage, clearing..."
+      );
       clearSession();
       return null;
     }
 
     return state;
   } catch (error) {
-    console.error('Failed to load session from sessionStorage:', error);
+    console.error("Failed to load session from sessionStorage:", error);
     return null;
   }
 }
@@ -157,7 +159,7 @@ export function clearSession(): void {
   try {
     sessionStorage.removeItem(STORAGE_KEY);
   } catch (error) {
-    console.error('Failed to clear session from sessionStorage:', error);
+    console.error("Failed to clear session from sessionStorage:", error);
   }
 }
 
@@ -168,31 +170,38 @@ export function clearSession(): void {
  * @returns true if the object has the correct structure
  */
 function isValidSessionState(state: unknown): state is SessionState {
-  if (typeof state !== 'object' || state === null) {
+  if (typeof state !== "object" || state === null) {
     return false;
   }
 
   const s = state as Partial<SessionState>;
 
   // Check required fields exist and have correct types
-  if (typeof s.version !== 'number') return false;
-  if (s.containerPath !== null && typeof s.containerPath !== 'string') return false;
-  if (s.leftImageIndex !== "" && typeof s.leftImageIndex !== 'number') return false;
-  if (s.rightImageIndex !== "" && typeof s.rightImageIndex !== 'number') return false;
-  if (s.experimentType !== 'SAXS' && s.experimentType !== 'GISAXS') return false;
-  if (s.calibrationParams !== null && typeof s.calibrationParams !== 'object') return false;
+  if (typeof s.version !== "number") return false;
+  if (s.containerPath !== null && typeof s.containerPath !== "string")
+    return false;
+  if (s.leftImageIndex !== "" && typeof s.leftImageIndex !== "number")
+    return false;
+  if (s.rightImageIndex !== "" && typeof s.rightImageIndex !== "number")
+    return false;
+  if (s.experimentType !== "SAXS" && s.experimentType !== "GISAXS")
+    return false;
+  if (s.calibrationParams !== null && typeof s.calibrationParams !== "object")
+    return false;
   // showQSpaceAxes is optional for backward compatibility (default to false)
-  if (s.showQSpaceAxes !== undefined && typeof s.showQSpaceAxes !== 'boolean') return false;
+  if (s.showQSpaceAxes !== undefined && typeof s.showQSpaceAxes !== "boolean")
+    return false;
   if (!Array.isArray(s.horizontalLinecuts)) return false;
   if (!Array.isArray(s.verticalLinecuts)) return false;
   if (!Array.isArray(s.inclinedLinecuts)) return false;
   if (!Array.isArray(s.selectedLinecuts)) return false;
   if (!Array.isArray(s.azimuthalIntegrations)) return false;
-  if (typeof s.isSidebarCollapsed !== 'boolean') return false;
-  if (typeof s.isSummaryCollapsed !== 'boolean') return false;
-  if (s.operationType !== 'subtract' && s.operationType !== 'divide') return false;
-  if (s.maskUri !== null && typeof s.maskUri !== 'string') return false;
-  if (typeof s.savedAt !== 'number') return false;
+  if (typeof s.isSidebarCollapsed !== "boolean") return false;
+  if (typeof s.isSummaryCollapsed !== "boolean") return false;
+  if (s.operationType !== "subtract" && s.operationType !== "divide")
+    return false;
+  if (s.maskUri !== null && typeof s.maskUri !== "string") return false;
+  if (typeof s.savedAt !== "number") return false;
 
   return true;
 }
@@ -209,7 +218,7 @@ export function getSessionAge(state: SessionState): string {
   const minutes = Math.floor((age % (60 * 60 * 1000)) / (60 * 1000));
 
   if (hours > 0) {
-    return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+    return `${hours} hour${hours === 1 ? "" : "s"} ago`;
   }
-  return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+  return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
 }

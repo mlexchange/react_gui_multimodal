@@ -6,24 +6,24 @@
  * Session persists within a tab (survives refresh) but is cleared when tab closes.
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { debounce } from 'lodash';
+import { useState, useCallback, useRef, useEffect } from "react";
+import { debounce } from "lodash";
 import {
   SessionState,
   saveSession,
   loadSession,
-  clearSession,
-} from '../services/sessionPersistence';
+  clearSession
+} from "../services/sessionPersistence";
 import type {
   CalibrationParams,
   Linecut,
   InclinedLinecut,
   AzimuthalIntegration
-} from '../types';
+} from "../types";
 import type {
   BatchResultsStore,
   BatchParameterHashes
-} from './useBatchProcessing';
+} from "./useBatchProcessing";
 
 // Auto-save debounce delay in milliseconds
 const AUTO_SAVE_DEBOUNCE_MS = 1000;
@@ -35,7 +35,7 @@ export interface PersistableState {
   containerPath: string | null;
   leftImageIndex: number | "";
   rightImageIndex: number | "";
-  experimentType: 'SAXS' | 'GISAXS';
+  experimentType: "SAXS" | "GISAXS";
   calibrationParams: CalibrationParams;
   showQSpaceAxes: boolean;
   horizontalLinecuts: Linecut[];
@@ -45,7 +45,7 @@ export interface PersistableState {
   azimuthalIntegrations: AzimuthalIntegration[];
   isSidebarCollapsed: boolean;
   isSummaryCollapsed: boolean;
-  operationType: 'subtract' | 'divide';
+  operationType: "subtract" | "divide";
   maskUri: string | null;
   // Batch processing state (optional for backward compatibility)
   batchResults?: BatchResultsStore;
@@ -87,7 +87,9 @@ export interface UseSessionPersistenceReturn {
 export default function useSessionPersistence(): UseSessionPersistenceReturn {
   const [isRestoring, setIsRestoring] = useState(true);
   const [hasRestoredSession, setHasRestoredSession] = useState(false);
-  const [restoredSession, setRestoredSession] = useState<SessionState | null>(null);
+  const [restoredSession, setRestoredSession] = useState<SessionState | null>(
+    null
+  );
   const [lastSaveTime, setLastSaveTime] = useState<number | null>(null);
 
   // Ref to track if component is mounted (for async operations)
@@ -148,9 +150,12 @@ export default function useSessionPersistence(): UseSessionPersistenceReturn {
   /**
    * Trigger debounced auto-save
    */
-  const triggerAutoSave = useCallback((state: PersistableState) => {
-    debouncedSave(state);
-  }, [debouncedSave]);
+  const triggerAutoSave = useCallback(
+    (state: PersistableState) => {
+      debouncedSave(state);
+    },
+    [debouncedSave]
+  );
 
   /**
    * Clear the saved session

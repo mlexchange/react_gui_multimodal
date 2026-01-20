@@ -2,7 +2,7 @@
  * Utilities for calculating visible Q ranges when the image is zoomed.
  */
 
-import { InclinedLinecut } from '../types';
+import { InclinedLinecut } from "../types";
 
 interface CalculateZoomedAzimuthalQRangeParams {
   zoomedXPixelRange: [number, number];
@@ -30,7 +30,7 @@ function normalizePixelBounds(
     xMin: Math.max(0, Math.floor(Math.min(xRange[0], xRange[1]))),
     xMax: Math.min(maxX, Math.ceil(Math.max(xRange[0], xRange[1]))),
     yMin: Math.max(0, Math.floor(Math.min(yRange[0], yRange[1]))),
-    yMax: Math.min(maxY, Math.ceil(Math.max(yRange[0], yRange[1]))),
+    yMax: Math.min(maxY, Math.ceil(Math.max(yRange[0], yRange[1])))
   };
 }
 
@@ -90,14 +90,23 @@ function computeSignedQRadial(
   beamCenterY: number,
   isVertical: boolean
 ): number {
-  const boundedX = Math.min(Math.max(0, Math.round(pixelX)), qXVector.length - 1);
-  const boundedY = Math.min(Math.max(0, Math.round(pixelY)), qYVector.length - 1);
+  const boundedX = Math.min(
+    Math.max(0, Math.round(pixelX)),
+    qXVector.length - 1
+  );
+  const boundedY = Math.min(
+    Math.max(0, Math.round(pixelY)),
+    qYVector.length - 1
+  );
 
   const qX = qXVector[boundedX];
   const qY = qYVector[boundedY];
 
   if (isVertical) {
-    const qYCenter = qYVector[Math.min(Math.max(0, Math.round(beamCenterY)), qYVector.length - 1)];
+    const qYCenter =
+      qYVector[
+        Math.min(Math.max(0, Math.round(beamCenterY)), qYVector.length - 1)
+      ];
     return qY - qYCenter;
   } else {
     const qRadial = Math.sqrt(qX * qX + qY * qY);
@@ -113,7 +122,7 @@ function computeSignedQRadial(
 export function calculateZoomedAzimuthalQRange({
   zoomedXPixelRange,
   zoomedYPixelRange,
-  qMagnitudeMatrix,
+  qMagnitudeMatrix
 }: CalculateZoomedAzimuthalQRangeParams): [number, number] | null {
   if (!qMagnitudeMatrix || qMagnitudeMatrix.length === 0) {
     return null;
@@ -160,7 +169,7 @@ export function calculateZoomedInclinedQRange({
   qXVector,
   qYVector,
   beamCenterX,
-  beamCenterY,
+  beamCenterY
 }: CalculateZoomedInclinedQRangeParams): [number, number] | null {
   if (!qXVector.length || !qYVector.length) {
     return null;
@@ -198,8 +207,24 @@ export function calculateZoomedInclinedQRange({
 
   const isVertical = Math.abs(Math.abs(linecut.angle) - 90) < 1;
 
-  const qRadial1 = computeSignedQRadial(x1, y1, qXVector, qYVector, beamCenterX, beamCenterY, isVertical);
-  const qRadial2 = computeSignedQRadial(x2, y2, qXVector, qYVector, beamCenterX, beamCenterY, isVertical);
+  const qRadial1 = computeSignedQRadial(
+    x1,
+    y1,
+    qXVector,
+    qYVector,
+    beamCenterX,
+    beamCenterY,
+    isVertical
+  );
+  const qRadial2 = computeSignedQRadial(
+    x2,
+    y2,
+    qXVector,
+    qYVector,
+    beamCenterX,
+    beamCenterY,
+    isVertical
+  );
 
   return qRadial1 < qRadial2 ? [qRadial1, qRadial2] : [qRadial2, qRadial1];
 }

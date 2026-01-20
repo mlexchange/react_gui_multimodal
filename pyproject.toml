@@ -1,0 +1,8 @@
+# Root-level tool configuration for pre-commit hooks
+
+[tool.black]
+line-length = 127
+
+[tool.isort]
+profile = "black"
+line_length = 127

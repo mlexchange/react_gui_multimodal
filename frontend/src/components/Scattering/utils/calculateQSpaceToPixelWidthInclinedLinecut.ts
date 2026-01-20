@@ -1,4 +1,4 @@
-import { binarySearchClosest } from './h5webUtils';
+import { binarySearchClosest } from "./h5webUtils";
 
 /**
  * Calculates width in pixel space from q-space parameters for inclined linecuts
@@ -19,15 +19,26 @@ export const calculateInclinedQSpaceToPixelWidth = (
   angle: number,
   qWidth: number,
   qXVector: number[],
-  qYVector: number[],
+  qYVector: number[]
 ): number => {
   // If width is zero or vectors are empty, return 0
-  if (qWidth <= 0 || !qXVector || !qYVector || qXVector.length === 0 || qYVector.length === 0) {
+  if (
+    qWidth <= 0 ||
+    !qXVector ||
+    !qYVector ||
+    qXVector.length === 0 ||
+    qYVector.length === 0
+  ) {
     return 0;
   }
 
   // Convert central position to image coordinates
-  const [centerPixelX, centerPixelY] = qToPixel(qXPosition, qYPosition, qXVector, qYVector);
+  const [centerPixelX, centerPixelY] = qToPixel(
+    qXPosition,
+    qYPosition,
+    qXVector,
+    qYVector
+  );
 
   // Calculate direction vectors based on angle
   const angleRad = (angle * Math.PI) / 180;
@@ -48,8 +59,7 @@ export const calculateInclinedQSpaceToPixelWidth = (
 
   // Calculate pixel distance between center and half-width point
   const pixelDistanceHalfWidth = Math.sqrt(
-    Math.pow(pixel1X - centerPixelX, 2) +
-    Math.pow(pixel1Y - centerPixelY, 2)
+    Math.pow(pixel1X - centerPixelX, 2) + Math.pow(pixel1Y - centerPixelY, 2)
   );
 
   // Return the full width in pixels (twice the half-width)

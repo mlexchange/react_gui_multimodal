@@ -8,14 +8,14 @@ import {
   CurveType,
   GlyphType,
   Annotation,
-  useVisCanvasContext,
-} from '@h5web/lib';
-import { useThree } from '@react-three/fiber';
-import { Vector3 } from 'three';
+  useVisCanvasContext
+} from "@h5web/lib";
+import { useThree } from "@react-three/fiber";
+import { Vector3 } from "three";
 import { DisplayOption } from "./types";
 import ProgressBar from "./SummaryProgressBar";
 import { ToggleGroup } from "@/components/ui";
-import { H5WebLegend, LegendEntry } from './H5WebLegend';
+import { H5WebLegend, LegendEntry } from "./H5WebLegend";
 
 /**
  * Click handler component that goes inside VisCanvas.
@@ -52,8 +52,8 @@ function CanvasClickHandler({ dataLength, onPointClick }: ClickHandlerProps) {
       }
     };
 
-    canvasArea.addEventListener('click', handleClick);
-    return () => canvasArea.removeEventListener('click', handleClick);
+    canvasArea.addEventListener("click", handleClick);
+    return () => canvasArea.removeEventListener("click", handleClick);
   }, [canvasArea, htmlToData, camera, dataLength, onPointClick]);
 
   return null;
@@ -84,10 +84,10 @@ interface ContextMenuPosition {
 }
 
 // Colors
-const MAX_COLOR = 'rgb(31, 119, 180)';  // Blue
-const AVG_COLOR = 'rgb(255, 127, 14)';  // Orange
-const LEFT_MARKER_COLOR = 'red';
-const RIGHT_MARKER_COLOR = 'rgb(0, 200, 0)';  // Bright green
+const MAX_COLOR = "rgb(31, 119, 180)"; // Blue
+const AVG_COLOR = "rgb(255, 127, 14)"; // Orange
+const LEFT_MARKER_COLOR = "red";
+const RIGHT_MARKER_COLOR = "rgb(0, 200, 0)"; // Bright green
 
 const SummaryFig: React.FC<SummaryFigProps> = ({
   maxIntensities,
@@ -96,11 +96,11 @@ const SummaryFig: React.FC<SummaryFigProps> = ({
   rightImageIndex,
   onSelectImages,
   isFetchingData = false,
-  displayOption = 'both',
+  displayOption = "both",
   setDisplayOption,
   imageNames = [],
   progress = 0,
-  progressMessage = 'Loading data...'
+  progressMessage = "Loading data..."
 }) => {
   // State for context menu
   const [contextMenu, setContextMenu] = useState<ContextMenuPosition>({
@@ -114,37 +114,51 @@ const SummaryFig: React.FC<SummaryFigProps> = ({
   useEffect(() => {
     const handleGlobalClick = () => {
       if (contextMenu.isVisible) {
-        setContextMenu(prev => ({ ...prev, isVisible: false }));
+        setContextMenu((prev) => ({ ...prev, isVisible: false }));
       }
     };
 
-    document.addEventListener('click', handleGlobalClick);
+    document.addEventListener("click", handleGlobalClick);
     return () => {
-      document.removeEventListener('click', handleGlobalClick);
+      document.removeEventListener("click", handleGlobalClick);
     };
   }, [contextMenu.isVisible]);
 
   // Handle menu option clicks
-  const handleShowOnLeft = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    onSelectImages(contextMenu.pointIndex, rightImageIndex);
-    setContextMenu(prev => ({ ...prev, isVisible: false }));
-  }, [contextMenu.pointIndex, rightImageIndex, onSelectImages]);
+  const handleShowOnLeft = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onSelectImages(contextMenu.pointIndex, rightImageIndex);
+      setContextMenu((prev) => ({ ...prev, isVisible: false }));
+    },
+    [contextMenu.pointIndex, rightImageIndex, onSelectImages]
+  );
 
-  const handleShowOnRight = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    onSelectImages(leftImageIndex, contextMenu.pointIndex);
-    setContextMenu(prev => ({ ...prev, isVisible: false }));
-  }, [contextMenu.pointIndex, leftImageIndex, onSelectImages]);
+  const handleShowOnRight = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onSelectImages(leftImageIndex, contextMenu.pointIndex);
+      setContextMenu((prev) => ({ ...prev, isVisible: false }));
+    },
+    [contextMenu.pointIndex, leftImageIndex, onSelectImages]
+  );
 
   // Create x-axis values (image indices, 1-based for display but 0-based internally)
-  const indices = useMemo(() =>
-    Array.from({ length: maxIntensities.length }, (_, i) => i + 1),
+  const indices = useMemo(
+    () => Array.from({ length: maxIntensities.length }, (_, i) => i + 1),
     [maxIntensities.length]
   );
 
   // Prepare curve data for H5Web
-  const { curves, curveEntries, markerEntries, xDomain, yDomain, leftMarkerData, rightMarkerData } = useMemo(() => {
+  const {
+    curves,
+    curveEntries,
+    markerEntries,
+    xDomain,
+    yDomain,
+    leftMarkerData,
+    rightMarkerData
+  } = useMemo(() => {
     const curveData: Array<{
       id: string;
       abscissas: number[];
@@ -161,39 +175,39 @@ const SummaryFig: React.FC<SummaryFigProps> = ({
     // Prepare data - note: H5Web uses horizontal X axis for intensity, Y for index
     // But we want vertical plot (Y = image index, X = intensity)
     // So we swap: abscissas = intensities, ordinates = indices
-    if (displayOption === 'both' || displayOption === 'max') {
+    if (displayOption === "both" || displayOption === "max") {
       curveData.push({
-        id: 'max',
+        id: "max",
         abscissas: maxIntensities,
         ordinates: indices,
         color: MAX_COLOR,
-        label: 'Max',
+        label: "Max",
         curveType: CurveType.LineAndGlyphs,
         glyphType: GlyphType.Circle,
-        glyphSize: 6,
+        glyphSize: 6
       });
       curveLegend.push({
-        id: 'max',
-        label: 'Max',
-        color: MAX_COLOR,
+        id: "max",
+        label: "Max",
+        color: MAX_COLOR
       });
     }
 
-    if (displayOption === 'both' || displayOption === 'avg') {
+    if (displayOption === "both" || displayOption === "avg") {
       curveData.push({
-        id: 'avg',
+        id: "avg",
         abscissas: avgIntensities,
         ordinates: indices,
         color: AVG_COLOR,
-        label: 'Avg',
+        label: "Avg",
         curveType: CurveType.LineAndGlyphs,
         glyphType: GlyphType.Circle,
-        glyphSize: 6,
+        glyphSize: 6
       });
       curveLegend.push({
-        id: 'avg',
-        label: 'Avg',
-        color: AVG_COLOR,
+        id: "avg",
+        label: "Avg",
+        color: AVG_COLOR
       });
     }
 
@@ -201,38 +215,48 @@ const SummaryFig: React.FC<SummaryFigProps> = ({
     let leftMarker: { x: number; y: number } | null = null;
     let rightMarker: { x: number; y: number } | null = null;
 
-    if (typeof leftImageIndex === 'number') {
-      const intensity = displayOption === 'avg' ? avgIntensities[leftImageIndex] : maxIntensities[leftImageIndex];
+    if (typeof leftImageIndex === "number") {
+      const intensity =
+        displayOption === "avg"
+          ? avgIntensities[leftImageIndex]
+          : maxIntensities[leftImageIndex];
       leftMarker = { x: intensity, y: leftImageIndex + 1 };
       markerLegend.push({
-        id: 'left-indicator',
-        label: 'L = Left',
-        color: 'white',
+        id: "left-indicator",
+        label: "L = Left",
+        color: "white",
         isMarker: true,
-        outlineColor: LEFT_MARKER_COLOR,
+        outlineColor: LEFT_MARKER_COLOR
       });
     }
 
-    if (typeof rightImageIndex === 'number') {
-      const intensity = displayOption === 'avg' ? avgIntensities[rightImageIndex] : maxIntensities[rightImageIndex];
+    if (typeof rightImageIndex === "number") {
+      const intensity =
+        displayOption === "avg"
+          ? avgIntensities[rightImageIndex]
+          : maxIntensities[rightImageIndex];
       rightMarker = { x: intensity, y: rightImageIndex + 1 };
       markerLegend.push({
-        id: 'right-indicator',
-        label: 'R = Right',
-        color: 'white',
+        id: "right-indicator",
+        label: "R = Right",
+        color: "white",
         isMarker: true,
-        outlineColor: RIGHT_MARKER_COLOR,
+        outlineColor: RIGHT_MARKER_COLOR
       });
     }
 
     // Calculate domains
-    let xMin = Infinity, xMax = -Infinity;
+    let xMin = Infinity,
+      xMax = -Infinity;
 
-    const allIntensities = displayOption === 'both'
-      ? [...maxIntensities, ...avgIntensities]
-      : displayOption === 'max' ? maxIntensities : avgIntensities;
+    const allIntensities =
+      displayOption === "both"
+        ? [...maxIntensities, ...avgIntensities]
+        : displayOption === "max"
+          ? maxIntensities
+          : avgIntensities;
 
-    allIntensities.forEach(v => {
+    allIntensities.forEach((v) => {
       if (isFinite(v) && !isNaN(v)) {
         xMin = Math.min(xMin, v);
         xMax = Math.max(xMax, v);
@@ -253,28 +277,41 @@ const SummaryFig: React.FC<SummaryFigProps> = ({
       curveEntries: curveLegend,
       markerEntries: markerLegend,
       xDomain: [xMin - xPadding, xMax + xPadding] as Domain,
-      yDomain: [yMax, yMin] as Domain,  // Reversed for top-to-bottom
+      yDomain: [yMax, yMin] as Domain, // Reversed for top-to-bottom
       leftMarkerData: leftMarker,
-      rightMarkerData: rightMarker,
+      rightMarkerData: rightMarker
     };
-  }, [maxIntensities, avgIntensities, indices, displayOption, leftImageIndex, rightImageIndex]);
+  }, [
+    maxIntensities,
+    avgIntensities,
+    indices,
+    displayOption,
+    leftImageIndex,
+    rightImageIndex
+  ]);
 
   // Handle canvas click - show context menu
-  const handleCanvasClick = useCallback((pointIndex: number, screenX: number, screenY: number) => {
-    setContextMenu({
-      isVisible: true,
-      pointIndex,
-      x: screenX,
-      y: screenY,
-    });
-  }, []);
+  const handleCanvasClick = useCallback(
+    (pointIndex: number, screenX: number, screenY: number) => {
+      setContextMenu({
+        isVisible: true,
+        pointIndex,
+        x: screenX,
+        y: screenY
+      });
+    },
+    []
+  );
 
   // Determine if we should show the progress bar
   const showProgressBar = isFetchingData && progress < 100;
   const hasData = maxIntensities.length > 0 || avgIntensities.length > 0;
 
   return (
-    <div className="w-full h-full relative flex flex-col" data-summary-fig="true">
+    <div
+      className="w-full h-full relative flex flex-col"
+      data-summary-fig="true"
+    >
       {/* Progress Bar */}
       <div className="w-full pt-3">
         <ProgressBar
@@ -292,9 +329,9 @@ const SummaryFig: React.FC<SummaryFigProps> = ({
             value={displayOption}
             onValueChange={setDisplayOption}
             options={[
-              { value: 'max', label: 'Max' },
-              { value: 'avg', label: 'Average' },
-              { value: 'both', label: 'Both' },
+              { value: "max", label: "Max" },
+              { value: "avg", label: "Average" },
+              { value: "both", label: "Both" }
             ]}
             size="sm"
           />
@@ -305,7 +342,9 @@ const SummaryFig: React.FC<SummaryFigProps> = ({
         {isFetchingData && progress < 100 && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-50 z-10">
             <div className="text-lg font-semibold">
-              {progress > 0 ? `Loading... ${Math.round(progress)}%` : 'Initializing...'}
+              {progress > 0
+                ? `Loading... ${Math.round(progress)}%`
+                : "Initializing..."}
             </div>
           </div>
         )}
@@ -318,12 +357,12 @@ const SummaryFig: React.FC<SummaryFigProps> = ({
                 abscissaConfig={{
                   visDomain: xDomain,
                   showGrid: true,
-                  label: 'Intensity',
+                  label: "Intensity"
                 }}
                 ordinateConfig={{
                   visDomain: yDomain,
                   showGrid: true,
-                  label: 'Image index',
+                  label: "Image index"
                 }}
                 aspect="auto"
               >
@@ -379,7 +418,11 @@ const SummaryFig: React.FC<SummaryFigProps> = ({
                     x={leftMarkerData.x}
                     y={leftMarkerData.y}
                     overflowCanvas
-                    style={{ transform: 'translate(12px, -50%)', fontWeight: 'bold', fontSize: 14 }}
+                    style={{
+                      transform: "translate(12px, -50%)",
+                      fontWeight: "bold",
+                      fontSize: 14
+                    }}
                   >
                     L
                   </Annotation>
@@ -391,7 +434,11 @@ const SummaryFig: React.FC<SummaryFigProps> = ({
                     x={rightMarkerData.x}
                     y={rightMarkerData.y}
                     overflowCanvas
-                    style={{ transform: 'translate(12px, -50%)', fontWeight: 'bold', fontSize: 14 }}
+                    style={{
+                      transform: "translate(12px, -50%)",
+                      fontWeight: "bold",
+                      fontSize: 14
+                    }}
                   >
                     R
                   </Annotation>
@@ -401,8 +448,9 @@ const SummaryFig: React.FC<SummaryFigProps> = ({
                   guides="both"
                   renderTooltip={(x, y) => {
                     // Find closest point
-                    const imageIdx = Math.round(y) - 1;  // Convert to 0-based
-                    if (imageIdx < 0 || imageIdx >= maxIntensities.length) return null;
+                    const imageIdx = Math.round(y) - 1; // Convert to 0-based
+                    if (imageIdx < 0 || imageIdx >= maxIntensities.length)
+                      return null;
 
                     const maxVal = maxIntensities[imageIdx];
                     const avgVal = avgIntensities[imageIdx];
@@ -412,10 +460,12 @@ const SummaryFig: React.FC<SummaryFigProps> = ({
                       <div className="text-xs bg-white/90 p-1 rounded shadow">
                         <div className="font-medium">Image #{imageIdx + 1}</div>
                         {name && <div className="text-gray-600">{name}</div>}
-                        {(displayOption === 'both' || displayOption === 'max') && (
+                        {(displayOption === "both" ||
+                          displayOption === "max") && (
                           <div>Max: {maxVal?.toFixed(2)}</div>
                         )}
-                        {(displayOption === 'both' || displayOption === 'avg') && (
+                        {(displayOption === "both" ||
+                          displayOption === "avg") && (
                           <div>Avg: {avgVal?.toFixed(2)}</div>
                         )}
                       </div>
@@ -427,7 +477,9 @@ const SummaryFig: React.FC<SummaryFigProps> = ({
             {/* Legend - two rows */}
             <div className="shrink-0 border-t border-gray-100 flex flex-col">
               <H5WebLegend entries={curveEntries} />
-              {markerEntries.length > 0 && <H5WebLegend entries={markerEntries} />}
+              {markerEntries.length > 0 && (
+                <H5WebLegend entries={markerEntries} />
+              )}
             </div>
           </div>
         ) : (

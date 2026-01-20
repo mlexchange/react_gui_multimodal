@@ -7,7 +7,11 @@ interface ColorBoxProps {
   tooltip?: string;
 }
 
-export function ColorBox({ color, onClick, tooltip = "Click to change color" }: ColorBoxProps) {
+export function ColorBox({
+  color,
+  onClick,
+  tooltip = "Click to change color"
+}: ColorBoxProps) {
   return (
     <Tooltip content={tooltip}>
       <div

@@ -8,28 +8,31 @@
  * - Detecting stale results when parameters change
  */
 
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback } from "react";
 import {
   XIcon,
   StackIcon,
   PlayIcon,
   FolderOpenIcon,
-  WarningIcon,
-} from '@phosphor-icons/react';
-import { Button, ButtonWithIcon } from '@blueskyproject/finch';
-import { IconButton } from '@/components/ui';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/Tabs';
-import { BatchResultsView } from './BatchResultsView';
-import { BatchScanSelector } from './BatchScanSelector';
-import ProgressBar from './SummaryProgressBar';
-import type { BatchOperationType, BatchJobResult } from './hooks/useBatchProcessing';
-import type { Linecut, InclinedLinecut, AzimuthalIntegration } from './types';
+  WarningIcon
+} from "@phosphor-icons/react";
+import { Button, ButtonWithIcon } from "@blueskyproject/finch";
+import { IconButton } from "@/components/ui";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/Tabs";
+import { BatchResultsView } from "./BatchResultsView";
+import { BatchScanSelector } from "./BatchScanSelector";
+import ProgressBar from "./SummaryProgressBar";
+import type {
+  BatchOperationType,
+  BatchJobResult
+} from "./hooks/useBatchProcessing";
+import type { Linecut, InclinedLinecut, AzimuthalIntegration } from "./types";
 
 const OPERATION_LABELS: Record<BatchOperationType, string> = {
-  horizontal: 'Horizontal',
-  vertical: 'Vertical',
-  inclined: 'Inclined',
-  azimuthal: 'Azimuthal',
+  horizontal: "Horizontal",
+  vertical: "Vertical",
+  inclined: "Inclined",
+  azimuthal: "Azimuthal"
 };
 
 interface BatchProcessingWidgetProps {
@@ -114,57 +117,86 @@ export function BatchProcessingWidget({
   setIsSelectorOpen,
   runBatchAll,
   onCancel,
-  experimentType,
+  experimentType
 }: BatchProcessingWidgetProps) {
   // Get linecuts for the active tab
   const activeLinecuts = useMemo(() => {
     switch (activeTab) {
-      case 'horizontal':
+      case "horizontal":
         return horizontalLinecuts;
-      case 'vertical':
+      case "vertical":
         return verticalLinecuts;
-      case 'inclined':
+      case "inclined":
         return inclinedLinecuts;
-      case 'azimuthal':
+      case "azimuthal":
         return azimuthalIntegrations;
     }
-  }, [activeTab, horizontalLinecuts, verticalLinecuts, inclinedLinecuts, azimuthalIntegrations]);
+  }, [
+    activeTab,
+    horizontalLinecuts,
+    verticalLinecuts,
+    inclinedLinecuts,
+    azimuthalIntegrations
+  ]);
 
   // Available tabs (only show tabs that have linecuts defined)
   const availableTabs = useMemo(() => {
     const tabs: BatchOperationType[] = [];
-    if (horizontalLinecuts.length > 0) tabs.push('horizontal');
-    if (verticalLinecuts.length > 0) tabs.push('vertical');
-    if (inclinedLinecuts.length > 0) tabs.push('inclined');
-    if (experimentType === 'SAXS' && azimuthalIntegrations.length > 0) {
-      tabs.push('azimuthal');
+    if (horizontalLinecuts.length > 0) tabs.push("horizontal");
+    if (verticalLinecuts.length > 0) tabs.push("vertical");
+    if (inclinedLinecuts.length > 0) tabs.push("inclined");
+    if (experimentType === "SAXS" && azimuthalIntegrations.length > 0) {
+      tabs.push("azimuthal");
     }
     return tabs;
-  }, [horizontalLinecuts, verticalLinecuts, inclinedLinecuts, azimuthalIntegrations, experimentType]);
+  }, [
+    horizontalLinecuts,
+    verticalLinecuts,
+    inclinedLinecuts,
+    azimuthalIntegrations,
+    experimentType
+  ]);
 
   // Count total linecuts
   const totalLinecuts = useMemo(() => {
-    return horizontalLinecuts.length +
+    return (
+      horizontalLinecuts.length +
       verticalLinecuts.length +
       inclinedLinecuts.length +
-      (experimentType === 'SAXS' ? azimuthalIntegrations.length : 0);
-  }, [horizontalLinecuts, verticalLinecuts, inclinedLinecuts, azimuthalIntegrations, experimentType]);
+      (experimentType === "SAXS" ? azimuthalIntegrations.length : 0)
+    );
+  }, [
+    horizontalLinecuts,
+    verticalLinecuts,
+    inclinedLinecuts,
+    azimuthalIntegrations,
+    experimentType
+  ]);
 
   // Handle tab change
-  const handleTabChange = useCallback((value: string) => {
-    setActiveTab(value as BatchOperationType);
-  }, [setActiveTab]);
+  const handleTabChange = useCallback(
+    (value: string) => {
+      setActiveTab(value as BatchOperationType);
+    },
+    [setActiveTab]
+  );
 
   // Handle secondary tab change (linecut selection within type)
-  const handleLinecutSelect = useCallback((id: number) => {
-    setActiveLinecutId(id);
-  }, [setActiveLinecutId]);
+  const handleLinecutSelect = useCallback(
+    (id: number) => {
+      setActiveLinecutId(id);
+    },
+    [setActiveLinecutId]
+  );
 
   // Handle scan selection complete
-  const handleScanSelectionComplete = useCallback((uris: string[]) => {
-    setSelectedScanUris(uris);
-    setIsSelectorOpen(false);
-  }, [setSelectedScanUris, setIsSelectorOpen]);
+  const handleScanSelectionComplete = useCallback(
+    (uris: string[]) => {
+      setSelectedScanUris(uris);
+      setIsSelectorOpen(false);
+    },
+    [setSelectedScanUris, setIsSelectorOpen]
+  );
 
   // Handle run batch
   const handleRunBatch = useCallback(async () => {
@@ -172,7 +204,7 @@ export function BatchProcessingWidget({
       await runBatchAll();
     } catch (error) {
       // Error is already handled in the hook with notifications
-      console.error('Batch processing error:', error);
+      console.error("Batch processing error:", error);
     }
   }, [runBatchAll]);
 
@@ -187,10 +219,10 @@ export function BatchProcessingWidget({
     if (activeLinecutId === null || activeLinecuts.length === 0) {
       return { currentLinecut: null, currentLinecutIndex: 0 };
     }
-    const index = activeLinecuts.findIndex(lc => lc.id === activeLinecutId);
+    const index = activeLinecuts.findIndex((lc) => lc.id === activeLinecutId);
     return {
       currentLinecut: index >= 0 ? activeLinecuts[index] : null,
-      currentLinecutIndex: Math.max(0, index),
+      currentLinecutIndex: Math.max(0, index)
     };
   }, [activeLinecutId, activeLinecuts]);
 
@@ -250,10 +282,14 @@ export function BatchProcessingWidget({
             )}
             <ButtonWithIcon
               icon={<PlayIcon size={24} />}
-              text={isProcessing ? 'Processing...' : 'Run Batch'}
+              text={isProcessing ? "Processing..." : "Run Batch"}
               cb={handleRunBatch}
               size="medium"
-              disabled={isProcessing || selectedScanUris.length === 0 || totalLinecuts === 0}
+              disabled={
+                isProcessing ||
+                selectedScanUris.length === 0 ||
+                totalLinecuts === 0
+              }
               styles="disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
             />
           </div>
@@ -265,7 +301,8 @@ export function BatchProcessingWidget({
             <div className="flex items-center gap-2 text-amber-700">
               <WarningIcon size={24} />
               <span className="text-sm">
-                No linecuts defined. Add linecuts in the sidebar before batch processing.
+                No linecuts defined. Add linecuts in the sidebar before batch
+                processing.
               </span>
             </div>
           </div>
@@ -276,10 +313,15 @@ export function BatchProcessingWidget({
           <div className="px-4 pt-3 shrink-0">
             <Tabs value={activeTab} onValueChange={handleTabChange}>
               <TabsList variant="primary">
-                {availableTabs.map(tab => {
+                {availableTabs.map((tab) => {
                   const hasResults = resultCounts[tab] > 0;
                   return (
-                    <TabsTrigger key={tab} value={tab} variant="primary" hasData={hasResults}>
+                    <TabsTrigger
+                      key={tab}
+                      value={tab}
+                      variant="primary"
+                      hasData={hasResults}
+                    >
                       {OPERATION_LABELS[tab]}
                       {hasResults && (
                         <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-sky-100 text-sky-700 rounded">
@@ -298,7 +340,7 @@ export function BatchProcessingWidget({
         {activeLinecuts.length > 1 && (
           <div className="px-4 pt-2 shrink-0">
             <Tabs
-              value={activeLinecutId?.toString() ?? ''}
+              value={activeLinecutId?.toString() ?? ""}
               onValueChange={(v) => handleLinecutSelect(parseInt(v, 10))}
             >
               <TabsList variant="secondary">

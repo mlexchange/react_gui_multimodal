@@ -10,7 +10,6 @@ import tempfile
 from typing import Tuple
 
 import numpy as np
-
 from xscattering_backend.cache.mask_cache import (
     cache_tiled_mask,
     cache_uploaded_mask,
@@ -220,10 +219,7 @@ def load_mask_from_bytes(
     elif ext == "csv":
         mask_array = _parse_csv(file_content)
     else:
-        raise ValueError(
-            f"Unsupported mask format: {ext}. "
-            "Use .npy, .tiff, .tif, .edf, .cbf, or .csv"
-        )
+        raise ValueError(f"Unsupported mask format: {ext}. " "Use .npy, .tiff, .tif, .edf, .cbf, or .csv")
 
     # Ensure 2D
     mask_array = np.squeeze(mask_array)

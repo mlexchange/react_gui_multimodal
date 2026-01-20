@@ -1,29 +1,36 @@
-import { EyeIcon, EyeSlashIcon } from '@phosphor-icons/react';
-import { InputSliderRange } from '@blueskyproject/finch';
-import { AzimuthalIntegration } from './types';
-import { IconButton } from '@/components/ui';
-import { ColorPickerPopup, ColorBox, DeleteButton } from '@/components/shared';
-import { LinecutSectionHeader, LinecutItemContainer } from './LinecutItemContainer';
-import { useColorPicker } from '../../hooks/useColorPicker';
+import { EyeIcon, EyeSlashIcon } from "@phosphor-icons/react";
+import { InputSliderRange } from "@blueskyproject/finch";
+import { AzimuthalIntegration } from "./types";
+import { IconButton } from "@/components/ui";
+import { ColorPickerPopup, ColorBox, DeleteButton } from "@/components/shared";
+import {
+  LinecutSectionHeader,
+  LinecutItemContainer
+} from "./LinecutItemContainer";
+import { useColorPicker } from "../../hooks/useColorPicker";
 
 interface AzimuthalIntegrationWidgetProps {
-    integrations: AzimuthalIntegration[];
-    maxQValue: number;
-    updateAzimuthalQRange: (id: number, range: [number, number]) => void;
-    updateAzimuthalRange: (id: number, range: [number, number]) => void;
-    updateAzimuthalColor: (id: number, side: 'left' | 'right', color: string) => void;
-    deleteAzimuthalIntegration: (id: number) => void;
-    toggleAzimuthalVisibility: (id: number) => void;
+  integrations: AzimuthalIntegration[];
+  maxQValue: number;
+  updateAzimuthalQRange: (id: number, range: [number, number]) => void;
+  updateAzimuthalRange: (id: number, range: [number, number]) => void;
+  updateAzimuthalColor: (
+    id: number,
+    side: "left" | "right",
+    color: string
+  ) => void;
+  deleteAzimuthalIntegration: (id: number) => void;
+  toggleAzimuthalVisibility: (id: number) => void;
 }
 
 export default function AzimuthalIntegrationWidget({
-    integrations,
-    maxQValue,
-    updateAzimuthalQRange,
-    updateAzimuthalRange,
-    updateAzimuthalColor,
-    deleteAzimuthalIntegration,
-    toggleAzimuthalVisibility,
+  integrations,
+  maxQValue,
+  updateAzimuthalQRange,
+  updateAzimuthalRange,
+  updateAzimuthalColor,
+  deleteAzimuthalIntegration,
+  toggleAzimuthalVisibility
 }: AzimuthalIntegrationWidgetProps) {
   const {
     colorPickerRef,
@@ -31,10 +38,12 @@ export default function AzimuthalIntegrationWidget({
     handleOpenColorPicker,
     handleColorChange,
     handleAcceptColor,
-    handleCancelColor,
+    handleCancelColor
   } = useColorPicker({ onColorChange: updateAzimuthalColor });
 
-  const getQRangeValues = (integration: AzimuthalIntegration): [number, number] => {
+  const getQRangeValues = (
+    integration: AzimuthalIntegration
+  ): [number, number] => {
     if (integration.qRange === null) {
       return [0, maxQValue];
     }
@@ -56,11 +65,15 @@ export default function AzimuthalIntegrationWidget({
                 <div className="flex items-center gap-2">
                   <ColorBox
                     color={integration.leftColor}
-                    onClick={(e) => handleOpenColorPicker(integration, 'left', e)}
+                    onClick={(e) =>
+                      handleOpenColorPicker(integration, "left", e)
+                    }
                   />
                   <ColorBox
                     color={integration.rightColor}
-                    onClick={(e) => handleOpenColorPicker(integration, 'right', e)}
+                    onClick={(e) =>
+                      handleOpenColorPicker(integration, "right", e)
+                    }
                   />
                   <IconButton
                     onClick={() => toggleAzimuthalVisibility(integration.id)}
@@ -68,7 +81,11 @@ export default function AzimuthalIntegrationWidget({
                     tooltip={integration.hidden ? "Show" : "Hide"}
                     size="sm"
                   >
-                    {integration.hidden ? <EyeSlashIcon size={18} /> : <EyeIcon size={18} />}
+                    {integration.hidden ? (
+                      <EyeSlashIcon size={18} />
+                    ) : (
+                      <EyeIcon size={18} />
+                    )}
                   </IconButton>
                   <DeleteButton
                     onClick={() => deleteAzimuthalIntegration(integration.id)}
@@ -82,7 +99,12 @@ export default function AzimuthalIntegrationWidget({
                 <div className="space-y-2">
                   <InputSliderRange
                     value={[currentQRange[0], currentQRange[1]]}
-                    onChange={(value) => updateAzimuthalQRange(integration.id, [value[0], value[1]])}
+                    onChange={(value) =>
+                      updateAzimuthalQRange(integration.id, [
+                        value[0],
+                        value[1]
+                      ])
+                    }
                     min={0}
                     max={Number(maxQValue.toFixed(1))}
                     step={0.1}
@@ -139,8 +161,13 @@ export default function AzimuthalIntegrationWidget({
                 <h4 className="text-sm mb-1">Azimuthal Range (degrees)</h4>
                 <div className="space-y-2">
                   <InputSliderRange
-                    value={[integration.azimuthRange[0], integration.azimuthRange[1]]}
-                    onChange={(value) => updateAzimuthalRange(integration.id, [value[0], value[1]])}
+                    value={[
+                      integration.azimuthRange[0],
+                      integration.azimuthRange[1]
+                    ]}
+                    onChange={(value) =>
+                      updateAzimuthalRange(integration.id, [value[0], value[1]])
+                    }
                     min={-180}
                     max={180}
                     step={1}

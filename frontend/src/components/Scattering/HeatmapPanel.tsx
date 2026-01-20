@@ -1,14 +1,14 @@
-import React, { useMemo } from 'react';
+import React, { useMemo } from "react";
 import {
   VisCanvas,
   HeatmapMesh,
   DefaultInteractions,
   ResetZoomButton,
   ColorBar,
-  TooltipMesh,
-} from '@h5web/lib';
-import type { ColorMap } from '@h5web/lib';
-import type { NdArray } from 'ndarray';
+  TooltipMesh
+} from "@h5web/lib";
+import type { ColorMap } from "@h5web/lib";
+import type { NdArray } from "ndarray";
 
 import {
   AzimuthalSectorOverlay,
@@ -16,16 +16,20 @@ import {
   LinecutOverlay,
   InclinedLinecutOverlay,
   type LinecutOverlayProps,
-  type InclinedLinecutOverlayProps,
-} from './utils/generateOverlays';
-import { type ColorScaleType } from './utils/constants';
+  type InclinedLinecutOverlayProps
+} from "./utils/generateOverlays";
+import { type ColorScaleType } from "./utils/constants";
 import {
   AXIS_LEFT_OFFSET,
   AXIS_LEFT_OFFSET_NO_LABEL,
   AXIS_RIGHT_OFFSET,
-  formatTickAsInteger,
-} from './utils/h5webUtils';
-import { ZoomBroadcaster, ZoomReceiver, type ZoomState } from './utils/zoomSync';
+  formatTickAsInteger
+} from "./utils/h5webUtils";
+import {
+  ZoomBroadcaster,
+  ZoomReceiver,
+  type ZoomState
+} from "./utils/zoomSync";
 
 type Domain = [number, number];
 
@@ -41,9 +45,14 @@ export interface HeatmapPanelProps {
   flipXAxis?: boolean;
   flipYAxis?: boolean;
   showGrid?: boolean;
-  linecuts?: LinecutOverlayProps['linecuts'];
-  inclinedLinecuts?: InclinedLinecutOverlayProps['linecuts'];
-  inclinedPixelWidthCalculator?: (qXPosition: number, qYPosition: number, angle: number, qWidth: number) => number;
+  linecuts?: LinecutOverlayProps["linecuts"];
+  inclinedLinecuts?: InclinedLinecutOverlayProps["linecuts"];
+  inclinedPixelWidthCalculator?: (
+    qXPosition: number,
+    qYPosition: number,
+    angle: number,
+    qWidth: number
+  ) => number;
   azimuthalIntegrations?: Array<{
     qRange: [number, number] | null;
     azimuthRange: [number, number];
@@ -63,9 +72,9 @@ export interface HeatmapPanelProps {
   maskData?: Uint8Array | null;
   maskShape?: [number, number] | null;
   showMaskOverlay?: boolean;
-  showOverlays?: boolean;  // Controls visibility of linecut/azimuthal overlays
+  showOverlays?: boolean; // Controls visibility of linecut/azimuthal overlays
   // GISAXS-specific Q value arrays (for transformed Q-space images)
-  gisaxsQipValues?: number[];  // 1D array for X axis in Q-space mode
+  gisaxsQipValues?: number[]; // 1D array for X axis in Q-space mode
   gisaxsQoopValues?: number[]; // 1D array for Y axis in Q-space mode
   showYAxisLabel?: boolean;
   isZoomSource?: boolean;
@@ -74,7 +83,9 @@ export interface HeatmapPanelProps {
   disableInteractions?: boolean;
 }
 
-export const LoadingSpinner: React.FC<{ message?: string }> = ({ message = 'Loading...' }) => (
+export const LoadingSpinner: React.FC<{ message?: string }> = ({
+  message = "Loading..."
+}) => (
   <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">
     <div className="bg-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2">
       <div className="w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin" />
@@ -108,7 +119,7 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
   showQSpaceAxes = false,
   qXMatrix = [],
   qYMatrix = [],
-  experimentType = 'SAXS',
+  experimentType = "SAXS",
   maskData,
   maskShape,
   showMaskOverlay = false,
@@ -120,20 +131,28 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
   isZoomSource = false,
   onZoomChange,
   syncedZoomState,
-  disableInteractions = false,
+  disableInteractions = false
 }) => {
   // Check if we're in GISAXS Q-space mode with transformed data
-  const isGisaxsQSpace = experimentType?.toLowerCase() === 'gisaxs' && showQSpaceAxes && gisaxsQipValues && gisaxsQoopValues;
+  const isGisaxsQSpace =
+    experimentType?.toLowerCase() === "gisaxs" &&
+    showQSpaceAxes &&
+    gisaxsQipValues &&
+    gisaxsQoopValues;
   // Compute axis labels based on experiment type
-  const unit = 'nm\u207B\u00B9'; // nm⁻¹ with superscript
+  const unit = "nm\u207B\u00B9"; // nm⁻¹ with superscript
   const xAxisLabel = showQSpaceAxes
-    ? (experimentType?.toLowerCase() === 'gisaxs' ? `q (in-plane) (${unit})` : `qₓ (${unit})`)
-    : 'X (pixels)';
+    ? experimentType?.toLowerCase() === "gisaxs"
+      ? `q (in-plane) (${unit})`
+      : `qₓ (${unit})`
+    : "X (pixels)";
   // Only show y-axis label if showYAxisLabel is true
   const yAxisLabel = showYAxisLabel
-    ? (showQSpaceAxes
-        ? (experimentType?.toLowerCase() === 'gisaxs' ? `q (out-of-plane) (${unit})` : `qᵧ (${unit})`)
-        : 'Y (pixels)')
+    ? showQSpaceAxes
+      ? experimentType?.toLowerCase() === "gisaxs"
+        ? `q (out-of-plane) (${unit})`
+        : `qᵧ (${unit})`
+      : "Y (pixels)"
     : undefined;
 
   // visDomain stays in PIXEL coordinates always
@@ -142,7 +161,7 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
 
   // Format q-value for display
   const formatQValue = (qValue: number): string => {
-    if (!isFinite(qValue)) return '';
+    if (!isFinite(qValue)) return "";
     const rounded = Math.round(qValue * 10) / 10;
     if (Math.abs(rounded - Math.round(rounded)) < 0.01) {
       return Math.round(rounded).toString();
@@ -159,9 +178,11 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
     // For GISAXS Q-space mode with transformed data, use 1D qip array
     if (isGisaxsQSpace && gisaxsQipValues) {
       return (pixelX: number) => {
-        const idx = Math.round(Math.max(0, Math.min(gisaxsQipValues.length - 1, pixelX)));
+        const idx = Math.round(
+          Math.max(0, Math.min(gisaxsQipValues.length - 1, pixelX))
+        );
         const qValue = gisaxsQipValues[idx];
-        if (qValue === undefined) return '';
+        if (qValue === undefined) return "";
         return formatQValue(qValue);
       };
     }
@@ -173,7 +194,7 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
     return (pixelX: number) => {
       const col = Math.round(Math.max(0, Math.min(cols - 1, pixelX)));
       const qValue = qXMatrix[0]?.[col];
-      if (qValue === undefined) return '';
+      if (qValue === undefined) return "";
       return formatQValue(qValue);
     };
   }, [showQSpaceAxes, qXMatrix, cols, isGisaxsQSpace, gisaxsQipValues]);
@@ -189,9 +210,11 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
     // Axis labels directly map pixel index to qoop value (no inversion needed)
     if (isGisaxsQSpace && gisaxsQoopValues) {
       return (pixelY: number) => {
-        const idx = Math.round(Math.max(0, Math.min(gisaxsQoopValues.length - 1, pixelY)));
+        const idx = Math.round(
+          Math.max(0, Math.min(gisaxsQoopValues.length - 1, pixelY))
+        );
         const qValue = gisaxsQoopValues[idx];
-        if (qValue === undefined) return '';
+        if (qValue === undefined) return "";
         return formatQValue(qValue);
       };
     }
@@ -203,7 +226,7 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
     return (pixelY: number) => {
       const row = Math.round(Math.max(0, Math.min(rows - 1, pixelY)));
       const qValue = qYMatrix[row]?.[0];
-      if (qValue === undefined) return '';
+      if (qValue === undefined) return "";
       return formatQValue(qValue);
     };
   }, [showQSpaceAxes, qYMatrix, rows, isGisaxsQSpace, gisaxsQoopValues]);
@@ -213,7 +236,9 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
   const shouldFlipYAxis = !flipYAxis;
 
   // Determine left offset based on whether y-axis label is shown
-  const leftOffset = showYAxisLabel ? AXIS_LEFT_OFFSET : AXIS_LEFT_OFFSET_NO_LABEL;
+  const leftOffset = showYAxisLabel
+    ? AXIS_LEFT_OFFSET
+    : AXIS_LEFT_OFFSET_NO_LABEL;
 
   return (
     <div
@@ -223,7 +248,10 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
       {isLoading && <LoadingSpinner message={loadingMessage} />}
       <div
         className="shrink-0 flex justify-center items-center pt-2 pb-1 h-11"
-        style={{ paddingLeft: `${leftOffset}px`, paddingRight: `${AXIS_RIGHT_OFFSET}px` }}
+        style={{
+          paddingLeft: `${leftOffset}px`,
+          paddingRight: `${AXIS_RIGHT_OFFSET}px`
+        }}
       >
         {header}
       </div>
@@ -235,7 +263,7 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
             showGrid,
             isIndexAxis: true,
             formatTick: formatXTick,
-            label: xAxisLabel,
+            label: xAxisLabel
           }}
           ordinateConfig={{
             visDomain: yVisDomain,
@@ -243,7 +271,7 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
             isIndexAxis: true,
             formatTick: formatYTick,
             label: yAxisLabel,
-            flip: shouldFlipYAxis,
+            flip: shouldFlipYAxis
           }}
         >
           {!disableInteractions && (
@@ -284,8 +312,13 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
                   const qoop = gisaxsQoopValues[yi];
                   return (
                     <div className="text-sm">
-                      <div>qip={qip?.toPrecision(4) ?? 'N/A'}, qoop={qoop?.toPrecision(4) ?? 'N/A'}</div>
-                      <div className="font-semibold">{value?.toPrecision(5)}</div>
+                      <div>
+                        qip={qip?.toPrecision(4) ?? "N/A"}, qoop=
+                        {qoop?.toPrecision(4) ?? "N/A"}
+                      </div>
+                      <div className="font-semibold">
+                        {value?.toPrecision(5)}
+                      </div>
                     </div>
                   );
                 }
@@ -294,7 +327,10 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
                 const qy = qYMatrix?.[yi]?.[0];
                 return (
                   <div className="text-sm">
-                    <div>qx={qx?.toPrecision(4) ?? 'N/A'}, qy={qy?.toPrecision(4) ?? 'N/A'}</div>
+                    <div>
+                      qx={qx?.toPrecision(4) ?? "N/A"}, qy=
+                      {qy?.toPrecision(4) ?? "N/A"}
+                    </div>
                     <div className="font-semibold">{value?.toPrecision(5)}</div>
                   </div>
                 );
@@ -302,29 +338,29 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
               // Pixel mode
               return (
                 <div className="text-sm">
-                  <div>x={xi}, y={yi}</div>
+                  <div>
+                    x={xi}, y={yi}
+                  </div>
                   <div className="font-semibold">{value?.toPrecision(5)}</div>
                 </div>
               );
             }}
           />
           {showOverlays && linecuts.length > 0 && (
-            <LinecutOverlay
-              linecuts={linecuts}
-              rows={rows}
-              cols={cols}
-            />
+            <LinecutOverlay linecuts={linecuts} rows={rows} cols={cols} />
           )}
-          {showOverlays && inclinedPixelWidthCalculator && inclinedLinecuts.length > 0 && (
-            <InclinedLinecutOverlay
-              linecuts={inclinedLinecuts}
-              rows={rows}
-              cols={cols}
-              beamCenterX={beamCenterX}
-              beamCenterY={beamCenterY}
-              pixelWidthCalculator={inclinedPixelWidthCalculator}
-            />
-          )}
+          {showOverlays &&
+            inclinedPixelWidthCalculator &&
+            inclinedLinecuts.length > 0 && (
+              <InclinedLinecutOverlay
+                linecuts={inclinedLinecuts}
+                rows={rows}
+                cols={cols}
+                beamCenterX={beamCenterX}
+                beamCenterY={beamCenterY}
+                pixelWidthCalculator={inclinedPixelWidthCalculator}
+              />
+            )}
           {showOverlays && azimuthalIntegrations.length > 0 && (
             <AzimuthalSectorOverlay
               integrations={azimuthalIntegrations}
@@ -348,7 +384,10 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
       </div>
       <div
         className="shrink-0 h-12"
-        style={{ paddingLeft: `${leftOffset}px`, paddingRight: `${AXIS_RIGHT_OFFSET}px` }}
+        style={{
+          paddingLeft: `${leftOffset}px`,
+          paddingRight: `${AXIS_RIGHT_OFFSET}px`
+        }}
       >
         <ColorBar
           domain={domain}
@@ -364,4 +403,4 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
 };
 
 export default HeatmapPanel;
-export type { ZoomState } from './utils/zoomSync';
+export type { ZoomState } from "./utils/zoomSync";

@@ -13,7 +13,6 @@ from typing import Optional
 import msgpack
 from fastapi import APIRouter
 from fastapi.responses import Response
-
 from xscattering_backend.cache.image_cache import get_cached_processed_image
 from xscattering_backend.config.logging import get_logger
 from xscattering_backend.config.models import BatchAllRequest
@@ -261,9 +260,7 @@ def _process_saxs_linecuts(
             azimuth_range = integration.get("azimuth_range", (-180, 180))
             q_range = integration.get("q_range")
 
-            q_values, intensities = integrate_1d(
-                ai, image_array, azimuth_range=azimuth_range, q_range=q_range
-            )
+            q_values, intensities = integrate_1d(ai, image_array, azimuth_range=azimuth_range, q_range=q_range)
             results["azimuthal"][integration_id] = {
                 "q_values": q_values.tolist(),
                 "intensities": intensities.tolist(),
@@ -514,18 +511,10 @@ async def batch_all(request: BatchAllRequest):
     # Convert Pydantic models to dicts with IDs
     calibration = request.calibration.model_dump()
 
-    horizontal_linecuts = [
-        {"id": i, **lc.model_dump()} for i, lc in enumerate(request.horizontal_linecuts)
-    ]
-    vertical_linecuts = [
-        {"id": i, **lc.model_dump()} for i, lc in enumerate(request.vertical_linecuts)
-    ]
-    inclined_linecuts = [
-        {"id": i, **lc.model_dump()} for i, lc in enumerate(request.inclined_linecuts)
-    ]
-    azimuthal_integrations = [
-        {"id": i, **lc.model_dump()} for i, lc in enumerate(request.azimuthal_integrations)
-    ]
+    horizontal_linecuts = [{"id": i, **lc.model_dump()} for i, lc in enumerate(request.horizontal_linecuts)]
+    vertical_linecuts = [{"id": i, **lc.model_dump()} for i, lc in enumerate(request.vertical_linecuts)]
+    inclined_linecuts = [{"id": i, **lc.model_dump()} for i, lc in enumerate(request.inclined_linecuts)]
+    azimuthal_integrations = [{"id": i, **lc.model_dump()} for i, lc in enumerate(request.azimuthal_integrations)]
 
     # Collect results per scan
     scan_results = []
@@ -593,10 +582,7 @@ async def batch_all(request: BatchAllRequest):
         processing_time = time.time() - batch_start_time
 
         if was_cancelled:
-            logger.info(
-                f"Batch {batch_id[:8]}: CANCELLED after {processed_count}/{total} scans "
-                f"({processing_time:.2f}s)"
-            )
+            logger.info(f"Batch {batch_id[:8]}: CANCELLED after {processed_count}/{total} scans " f"({processing_time:.2f}s)")
             await send_progress_update(
                 progress,
                 f"Batch cancelled after {processed_count}/{total} scans",
@@ -604,8 +590,7 @@ async def batch_all(request: BatchAllRequest):
             )
         else:
             logger.info(
-                f"Batch {batch_id[:8]}: COMPLETE - {successful_scans} OK, "
-                f"{failed_scans} failed ({processing_time:.2f}s)"
+                f"Batch {batch_id[:8]}: COMPLETE - {successful_scans} OK, " f"{failed_scans} failed ({processing_time:.2f}s)"
             )
             await send_progress_update(
                 100,
@@ -723,9 +708,6 @@ async def batch_all(request: BatchAllRequest):
     total_time = time.time() - batch_start_time
     response_size_kb = len(packed_data) / 1024
 
-    logger.debug(
-        f"Batch {batch_id[:8]}: Response {response_size_kb:.1f} KB, "
-        f"total time {total_time:.2f}s"
-    )
+    logger.debug(f"Batch {batch_id[:8]}: Response {response_size_kb:.1f} KB, " f"total time {total_time:.2f}s")
 
     return Response(content=packed_data, media_type="application/x-msgpack")

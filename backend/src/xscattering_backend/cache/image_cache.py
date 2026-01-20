@@ -14,8 +14,10 @@ from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
 import numpy as np
-
-from xscattering_backend.cache.tiled_cache import get_tiled_base_uri, get_tiled_client_for_uri
+from xscattering_backend.cache.tiled_cache import (
+    get_tiled_base_uri,
+    get_tiled_client_for_uri,
+)
 from xscattering_backend.config.logging import get_logger
 from xscattering_backend.config.settings import get_config
 from xscattering_backend.utils.scans import get_processed_image
@@ -26,6 +28,7 @@ logger = get_logger(__name__)
 @dataclass
 class ProcessedImageData:
     """Processed image data."""
+
     array: np.ndarray  # 2D float32 array
     shape: Tuple[int, int]  # (height, width)
 
@@ -41,8 +44,8 @@ def _load_mask_array(mask_uri: str) -> Optional[np.ndarray]:
         Mask array or None if not found
     """
     # Import here to avoid circular imports
-    from xscattering_backend.utils.mask_loader import load_mask_from_tiled
     from xscattering_backend.cache.mask_cache import get_cached_mask
+    from xscattering_backend.utils.mask_loader import load_mask_from_tiled
 
     # Check if it's already cached (uploaded or previously loaded)
     mask = get_cached_mask(mask_uri)
@@ -89,9 +92,7 @@ def _fetch_and_process_image(
             # Validate mask shape matches image shape
             img_shape = np.squeeze(image_array).shape
             if mask_array.shape != img_shape:
-                logger.warning(
-                    f"Mask shape {mask_array.shape} doesn't match image shape {img_shape}"
-                )
+                logger.warning(f"Mask shape {mask_array.shape} doesn't match image shape {img_shape}")
                 mask_array = None
 
     # Apply processing (converts to float32, masks negatives/NaN, applies detector mask)

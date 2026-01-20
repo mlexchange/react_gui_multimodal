@@ -7,7 +7,11 @@ interface DeleteButtonProps {
   tooltip?: string;
 }
 
-export function DeleteButton({ onClick, ariaLabel, tooltip = "Delete" }: DeleteButtonProps) {
+export function DeleteButton({
+  onClick,
+  ariaLabel,
+  tooltip = "Delete"
+}: DeleteButtonProps) {
   return (
     <IconButton
       onClick={onClick}

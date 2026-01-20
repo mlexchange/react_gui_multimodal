@@ -16,7 +16,7 @@ interface NumberInputProps {
 const sizeStyles = {
   sm: "px-2 py-1 text-sm",
   md: "px-3 py-1.5 text-sm",
-  lg: "px-3 py-2 text-base",
+  lg: "px-3 py-2 text-base"
 };
 
 export function NumberInput({
@@ -29,7 +29,7 @@ export function NumberInput({
   max,
   size = "md",
   disabled = false,
-  className = "",
+  className = ""
 }: NumberInputProps) {
   // Local state to track the display value while typing
   const [displayValue, setDisplayValue] = useState<string>(() => {

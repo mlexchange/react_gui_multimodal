@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
 from xscattering_backend.config.logging import setup_logging
 from xscattering_backend.config.settings import get_config, validate_config_on_startup
 from xscattering_backend.routers import (

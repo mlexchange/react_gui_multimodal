@@ -1,20 +1,35 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { notifications } from '@/components/ui';
-import { unpack } from 'msgpackr';
-import { CalibrationParams, Linecut, InclinedLinecut, AzimuthalIntegration, BatchLinecutResult } from '../types';
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { notifications } from "@/components/ui";
+import { unpack } from "msgpackr";
+import {
+  CalibrationParams,
+  Linecut,
+  InclinedLinecut,
+  AzimuthalIntegration,
+  BatchLinecutResult
+} from "../types";
 import {
   hashHorizontalLinecut,
   hashVerticalLinecut,
   hashInclinedLinecut,
-  hashAzimuthalIntegration,
-} from '../utils/parameterHash';
+  hashAzimuthalIntegration
+} from "../utils/parameterHash";
 
 // ============================================================================
 // Types
 // ============================================================================
 
-export type BatchOperationType = 'horizontal' | 'vertical' | 'inclined' | 'azimuthal';
-export type BatchStatus = 'idle' | 'pending' | 'running' | 'completed' | 'failed';
+export type BatchOperationType =
+  | "horizontal"
+  | "vertical"
+  | "inclined"
+  | "azimuthal";
+export type BatchStatus =
+  | "idle"
+  | "pending"
+  | "running"
+  | "completed"
+  | "failed";
 
 export interface BatchJobResult {
   id: string;
@@ -69,10 +84,10 @@ export interface AzimuthalParams {
 
 // Legacy type for backward compatibility
 export type BatchProcessingParams = {
-  horizontal?: Omit<HorizontalLinecutParams, 'id'>;
-  vertical?: Omit<VerticalLinecutParams, 'id'>;
-  inclined?: Omit<InclinedLinecutParams, 'id'>;
-  azimuthal?: Omit<AzimuthalParams, 'id'>;
+  horizontal?: Omit<HorizontalLinecutParams, "id">;
+  vertical?: Omit<VerticalLinecutParams, "id">;
+  inclined?: Omit<InclinedLinecutParams, "id">;
+  azimuthal?: Omit<AzimuthalParams, "id">;
 };
 
 interface BatchProgressUpdate {
@@ -128,14 +143,14 @@ const createEmptyResults = (): BatchResultsStore => ({
   horizontal: {},
   vertical: {},
   inclined: {},
-  azimuthal: {},
+  azimuthal: {}
 });
 
 const createEmptyHashes = (): BatchParameterHashes => ({
   horizontal: {},
   vertical: {},
   inclined: {},
-  azimuthal: {},
+  azimuthal: {}
 });
 
 // ============================================================================
@@ -148,7 +163,7 @@ export default function useBatchProcessing({
   horizontalLinecuts,
   verticalLinecuts,
   inclinedLinecuts,
-  azimuthalIntegrations,
+  azimuthalIntegrations
 }: UseBatchProcessingProps) {
   // =========================================================================
   // State
@@ -156,19 +171,20 @@ export default function useBatchProcessing({
 
   // Multi-linecut results storage
   const [results, setResults] = useState<BatchResultsStore>(createEmptyResults);
-  const [parameterHashes, setParameterHashes] = useState<BatchParameterHashes>(createEmptyHashes);
+  const [parameterHashes, setParameterHashes] =
+    useState<BatchParameterHashes>(createEmptyHashes);
 
   // Selected scans (shared across all operations)
   const [selectedScanUris, setSelectedScanUris] = useState<string[]>([]);
 
   // UI state for tab navigation
-  const [activeTab, setActiveTab] = useState<BatchOperationType>('horizontal');
+  const [activeTab, setActiveTab] = useState<BatchOperationType>("horizontal");
   const [activeLinecutId, setActiveLinecutId] = useState<number | null>(null);
 
   // Processing state
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [progressMessage, setProgressMessage] = useState('');
+  const [progressMessage, setProgressMessage] = useState("");
 
   // Controls for the batch results overlay
   const [isResultsOpen, setIsResultsOpen] = useState(false);
@@ -193,16 +209,22 @@ export default function useBatchProcessing({
   /** Get linecuts for the active tab */
   const activeLinecuts = useMemo(() => {
     switch (activeTab) {
-      case 'horizontal':
+      case "horizontal":
         return horizontalLinecuts;
-      case 'vertical':
+      case "vertical":
         return verticalLinecuts;
-      case 'inclined':
+      case "inclined":
         return inclinedLinecuts;
-      case 'azimuthal':
+      case "azimuthal":
         return azimuthalIntegrations;
     }
-  }, [activeTab, horizontalLinecuts, verticalLinecuts, inclinedLinecuts, azimuthalIntegrations]);
+  }, [
+    activeTab,
+    horizontalLinecuts,
+    verticalLinecuts,
+    inclinedLinecuts,
+    azimuthalIntegrations
+  ]);
 
   /** Get results for the current tab and linecut */
   const currentResult = useMemo(() => {
@@ -211,57 +233,71 @@ export default function useBatchProcessing({
   }, [results, activeTab, activeLinecutId]);
 
   /** Count of linecuts with results per tab */
-  const resultCounts = useMemo(() => ({
-    horizontal: Object.keys(results.horizontal).length,
-    vertical: Object.keys(results.vertical).length,
-    inclined: Object.keys(results.inclined).length,
-    azimuthal: Object.keys(results.azimuthal).length,
-  }), [results]);
+  const resultCounts = useMemo(
+    () => ({
+      horizontal: Object.keys(results.horizontal).length,
+      vertical: Object.keys(results.vertical).length,
+      inclined: Object.keys(results.inclined).length,
+      azimuthal: Object.keys(results.azimuthal).length
+    }),
+    [results]
+  );
 
   // =========================================================================
   // Stale Detection
   // =========================================================================
 
   /** Check if a specific linecut result is stale */
-  const isStale = useCallback((type: BatchOperationType, linecutId: number): boolean => {
-    const storedHash = parameterHashes[type][linecutId];
-    if (!storedHash) return false;
+  const isStale = useCallback(
+    (type: BatchOperationType, linecutId: number): boolean => {
+      const storedHash = parameterHashes[type][linecutId];
+      if (!storedHash) return false;
 
-    let currentHash: string;
-    switch (type) {
-      case 'horizontal': {
-        const linecut = horizontalLinecuts.find(l => l.id === linecutId);
-        if (!linecut) return true;
-        currentHash = hashHorizontalLinecut(linecut);
-        break;
+      let currentHash: string;
+      switch (type) {
+        case "horizontal": {
+          const linecut = horizontalLinecuts.find((l) => l.id === linecutId);
+          if (!linecut) return true;
+          currentHash = hashHorizontalLinecut(linecut);
+          break;
+        }
+        case "vertical": {
+          const linecut = verticalLinecuts.find((l) => l.id === linecutId);
+          if (!linecut) return true;
+          currentHash = hashVerticalLinecut(linecut);
+          break;
+        }
+        case "inclined": {
+          const linecut = inclinedLinecuts.find((l) => l.id === linecutId);
+          if (!linecut) return true;
+          currentHash = hashInclinedLinecut(linecut);
+          break;
+        }
+        case "azimuthal": {
+          const integration = azimuthalIntegrations.find(
+            (i) => i.id === linecutId
+          );
+          if (!integration) return true;
+          currentHash = hashAzimuthalIntegration(integration);
+          break;
+        }
       }
-      case 'vertical': {
-        const linecut = verticalLinecuts.find(l => l.id === linecutId);
-        if (!linecut) return true;
-        currentHash = hashVerticalLinecut(linecut);
-        break;
-      }
-      case 'inclined': {
-        const linecut = inclinedLinecuts.find(l => l.id === linecutId);
-        if (!linecut) return true;
-        currentHash = hashInclinedLinecut(linecut);
-        break;
-      }
-      case 'azimuthal': {
-        const integration = azimuthalIntegrations.find(i => i.id === linecutId);
-        if (!integration) return true;
-        currentHash = hashAzimuthalIntegration(integration);
-        break;
-      }
-    }
 
-    return storedHash !== currentHash;
-  }, [parameterHashes, horizontalLinecuts, verticalLinecuts, inclinedLinecuts, azimuthalIntegrations]);
+      return storedHash !== currentHash;
+    },
+    [
+      parameterHashes,
+      horizontalLinecuts,
+      verticalLinecuts,
+      inclinedLinecuts,
+      azimuthalIntegrations
+    ]
+  );
 
   /** Check if any result in the active tab is stale */
   const hasStaleResults = useMemo(() => {
     const linecutIds = Object.keys(results[activeTab]).map(Number);
-    return linecutIds.some(id => isStale(activeTab, id));
+    return linecutIds.some((id) => isStale(activeTab, id));
   }, [results, activeTab, isStale]);
 
   // =========================================================================
@@ -272,7 +308,7 @@ export default function useBatchProcessing({
     if (activeLinecuts.length > 0) {
       // Try to find a linecut that has results
       const linecutWithResults = activeLinecuts.find(
-        l => results[activeTab][l.id] !== undefined
+        (l) => results[activeTab][l.id] !== undefined
       );
       setActiveLinecutId(linecutWithResults?.id ?? activeLinecuts[0].id);
     } else {
@@ -285,29 +321,33 @@ export default function useBatchProcessing({
   // =========================================================================
 
   useEffect(() => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = process.env.NODE_ENV === 'production'
-      ? `${protocol}//${window.location.host}/ws/progress`
-      : 'ws://127.0.0.1:8000/ws/progress';
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl =
+      process.env.NODE_ENV === "production"
+        ? `${protocol}//${window.location.host}/ws/progress`
+        : "ws://127.0.0.1:8000/ws/progress";
 
     const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
-      console.log('[Batch] WebSocket connected');
+      console.log("[Batch] WebSocket connected");
     };
 
     ws.onmessage = (event) => {
       try {
-        if (event.data === 'pong') return;
+        if (event.data === "pong") return;
 
         const data: BatchProgressUpdate = JSON.parse(event.data);
 
         // Handle batch progress updates
-        if (data.type === 'batch' && data.batch_id) {
+        if (data.type === "batch" && data.batch_id) {
           // If we're awaiting a batch_id, capture it from the first progress update
           if (awaitingBatchIdRef.current && !currentBatchIdRef.current) {
             currentBatchIdRef.current = data.batch_id;
-            console.log('[Batch] Captured batch_id from progress:', data.batch_id);
+            console.log(
+              "[Batch] Captured batch_id from progress:",
+              data.batch_id
+            );
           }
 
           // Only handle updates that match our current job
@@ -317,12 +357,12 @@ export default function useBatchProcessing({
           }
         }
       } catch (error) {
-        console.error('[Batch] Error parsing WebSocket message:', error);
+        console.error("[Batch] Error parsing WebSocket message:", error);
       }
     };
 
     ws.onerror = (error) => {
-      console.error('[Batch] WebSocket error:', error);
+      console.error("[Batch] WebSocket error:", error);
     };
 
     wsRef.current = ws;
@@ -330,7 +370,7 @@ export default function useBatchProcessing({
     // Ping to keep connection alive
     const pingInterval = setInterval(() => {
       if (ws.readyState === WebSocket.OPEN) {
-        ws.send('ping');
+        ws.send("ping");
       }
     }, 30000);
 
@@ -352,36 +392,36 @@ export default function useBatchProcessing({
   const runBatchAll = useCallback(async () => {
     if (!calibrationParams) {
       notifications.show({
-        id: 'batch-calibration-error',
-        title: 'Error',
-        message: 'Calibration parameters are required for batch processing',
-        autoClose: 5000,
+        id: "batch-calibration-error",
+        title: "Error",
+        message: "Calibration parameters are required for batch processing",
+        autoClose: 5000
       });
       notifications.update({
-        id: 'batch-calibration-error',
-        title: 'Error',
-        message: 'Calibration parameters are required for batch processing',
-        color: 'red',
-        autoClose: 5000,
+        id: "batch-calibration-error",
+        title: "Error",
+        message: "Calibration parameters are required for batch processing",
+        color: "red",
+        autoClose: 5000
       });
-      throw new Error('Calibration parameters required');
+      throw new Error("Calibration parameters required");
     }
 
     if (selectedScanUris.length === 0) {
       notifications.show({
-        id: 'batch-no-scans',
-        title: 'Error',
-        message: 'Please select scans to process',
-        autoClose: 5000,
+        id: "batch-no-scans",
+        title: "Error",
+        message: "Please select scans to process",
+        autoClose: 5000
       });
       notifications.update({
-        id: 'batch-no-scans',
-        title: 'Error',
-        message: 'Please select scans to process',
-        color: 'red',
-        autoClose: 5000,
+        id: "batch-no-scans",
+        title: "Error",
+        message: "Please select scans to process",
+        color: "red",
+        autoClose: 5000
       });
-      throw new Error('No scans selected');
+      throw new Error("No scans selected");
     }
 
     // Count total operations
@@ -389,29 +429,31 @@ export default function useBatchProcessing({
       horizontalLinecuts.length +
       verticalLinecuts.length +
       inclinedLinecuts.length +
-      (experimentType === 'SAXS' ? azimuthalIntegrations.length : 0);
+      (experimentType === "SAXS" ? azimuthalIntegrations.length : 0);
 
     if (totalLinecuts === 0) {
       notifications.show({
-        id: 'batch-no-linecuts',
-        title: 'Error',
-        message: 'No linecuts defined. Please add linecuts before batch processing.',
-        autoClose: 5000,
+        id: "batch-no-linecuts",
+        title: "Error",
+        message:
+          "No linecuts defined. Please add linecuts before batch processing.",
+        autoClose: 5000
       });
       notifications.update({
-        id: 'batch-no-linecuts',
-        title: 'Error',
-        message: 'No linecuts defined. Please add linecuts before batch processing.',
-        color: 'red',
-        autoClose: 5000,
+        id: "batch-no-linecuts",
+        title: "Error",
+        message:
+          "No linecuts defined. Please add linecuts before batch processing.",
+        color: "red",
+        autoClose: 5000
       });
-      throw new Error('No linecuts defined');
+      throw new Error("No linecuts defined");
     }
 
     // Start processing
     setIsProcessing(true);
     setProgress(0);
-    setProgressMessage('Starting batch processing...');
+    setProgressMessage("Starting batch processing...");
 
     // Clear previous batch_id and set awaiting flag to capture new one from WebSocket
     currentBatchIdRef.current = null;
@@ -422,36 +464,38 @@ export default function useBatchProcessing({
 
     // Show loading notification
     notifications.show({
-      id: 'batch-processing',
+      id: "batch-processing",
       loading: true,
-      title: 'Batch Processing',
+      title: "Batch Processing",
       message: `Processing ${selectedScanUris.length} scans with ${totalLinecuts} linecuts...`,
-      autoClose: false,
+      autoClose: false
     });
 
     try {
       // Validate required calibration parameters
       const requiredParams = [
-        'sample_detector_distance',
-        'beam_center_x',
-        'beam_center_y',
-        'pixel_size_x',
-        'pixel_size_y',
-        'wavelength',
+        "sample_detector_distance",
+        "beam_center_x",
+        "beam_center_y",
+        "pixel_size_x",
+        "pixel_size_y",
+        "wavelength"
       ] as const;
 
       const missingParams = requiredParams.filter(
-        (param) => calibrationParams[param] === null || calibrationParams[param] === undefined
+        (param) =>
+          calibrationParams[param] === null ||
+          calibrationParams[param] === undefined
       );
 
       if (missingParams.length > 0) {
-        const errorMessage = `Missing required calibration parameters: ${missingParams.join(', ')}`;
+        const errorMessage = `Missing required calibration parameters: ${missingParams.join(", ")}`;
         notifications.update({
-          id: 'batch-processing',
-          title: 'Missing Calibration',
+          id: "batch-processing",
+          title: "Missing Calibration",
           message: errorMessage,
-          color: 'red',
-          autoClose: 5000,
+          color: "red",
+          autoClose: 5000
         });
         throw new Error(errorMessage);
       }
@@ -466,45 +510,46 @@ export default function useBatchProcessing({
         tilt: calibrationParams.tilt ?? 0,
         tilt_plan_rotation: calibrationParams.tilt_plan_rotation ?? 0,
         experiment_type: experimentType,
-        incident_angle: calibrationParams.incident_angle ?? 0,
+        incident_angle: calibrationParams.incident_angle ?? 0
       };
 
       // Build request body with all linecuts
       const requestBody: BatchAllRequest = {
         scan_uris: selectedScanUris,
         calibration,
-        horizontal_linecuts: horizontalLinecuts.map(l => ({
+        horizontal_linecuts: horizontalLinecuts.map((l) => ({
           id: l.id,
           position: l.position,
-          width: l.width,
+          width: l.width
         })),
-        vertical_linecuts: verticalLinecuts.map(l => ({
+        vertical_linecuts: verticalLinecuts.map((l) => ({
           id: l.id,
           position: l.position,
-          width: l.width,
+          width: l.width
         })),
-        inclined_linecuts: inclinedLinecuts.map(l => ({
+        inclined_linecuts: inclinedLinecuts.map((l) => ({
           id: l.id,
           q_x_position: l.qXPosition,
           q_y_position: l.qYPosition,
           angle: l.angle,
-          q_width: l.qWidth,
+          q_width: l.qWidth
         })),
-        azimuthal_integrations: experimentType === 'SAXS'
-          ? azimuthalIntegrations.map(i => ({
-              id: i.id,
-              azimuth_range: i.azimuthRange,
-              q_range: i.qRange,
-            }))
-          : [],
+        azimuthal_integrations:
+          experimentType === "SAXS"
+            ? azimuthalIntegrations.map((i) => ({
+                id: i.id,
+                azimuth_range: i.azimuthRange,
+                q_range: i.qRange
+              }))
+            : []
       };
 
       // Make the API call
-      const response = await fetch('/api/batch-all', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/batch-all", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
-        signal: abortControllerRef.current?.signal,
+        signal: abortControllerRef.current?.signal
       });
 
       if (!response.ok) {
@@ -536,7 +581,9 @@ export default function useBatchProcessing({
       };
 
       // Process horizontal results
-      for (const [idxStr, linecutResults] of Object.entries(result.results.horizontal)) {
+      for (const [idxStr, linecutResults] of Object.entries(
+        result.results.horizontal
+      )) {
         const idx = parseInt(idxStr, 10);
         const linecut = horizontalLinecuts[idx];
         if (linecut) {
@@ -547,14 +594,16 @@ export default function useBatchProcessing({
             totalScans: linecutResults.length,
             successful,
             failed,
-            processedAt: now,
+            processedAt: now
           };
           newHashes.horizontal[linecut.id] = hashHorizontalLinecut(linecut);
         }
       }
 
       // Process vertical results
-      for (const [idxStr, linecutResults] of Object.entries(result.results.vertical)) {
+      for (const [idxStr, linecutResults] of Object.entries(
+        result.results.vertical
+      )) {
         const idx = parseInt(idxStr, 10);
         const linecut = verticalLinecuts[idx];
         if (linecut) {
@@ -565,14 +614,16 @@ export default function useBatchProcessing({
             totalScans: linecutResults.length,
             successful,
             failed,
-            processedAt: now,
+            processedAt: now
           };
           newHashes.vertical[linecut.id] = hashVerticalLinecut(linecut);
         }
       }
 
       // Process inclined results
-      for (const [idxStr, linecutResults] of Object.entries(result.results.inclined)) {
+      for (const [idxStr, linecutResults] of Object.entries(
+        result.results.inclined
+      )) {
         const idx = parseInt(idxStr, 10);
         const linecut = inclinedLinecuts[idx];
         if (linecut) {
@@ -583,14 +634,16 @@ export default function useBatchProcessing({
             totalScans: linecutResults.length,
             successful,
             failed,
-            processedAt: now,
+            processedAt: now
           };
           newHashes.inclined[linecut.id] = hashInclinedLinecut(linecut);
         }
       }
 
       // Process azimuthal results
-      for (const [idxStr, linecutResults] of Object.entries(result.results.azimuthal)) {
+      for (const [idxStr, linecutResults] of Object.entries(
+        result.results.azimuthal
+      )) {
         const idx = parseInt(idxStr, 10);
         const integration = azimuthalIntegrations[idx];
         if (integration) {
@@ -601,9 +654,10 @@ export default function useBatchProcessing({
             totalScans: linecutResults.length,
             successful,
             failed,
-            processedAt: now,
+            processedAt: now
           };
-          newHashes.azimuthal[integration.id] = hashAzimuthalIntegration(integration);
+          newHashes.azimuthal[integration.id] =
+            hashAzimuthalIntegration(integration);
         }
       }
 
@@ -611,42 +665,44 @@ export default function useBatchProcessing({
       setResults(newResults);
       setParameterHashes(newHashes);
       setProgress(100);
-      setProgressMessage(`Complete: ${result.successful_scans} successful, ${result.failed_scans} failed`);
+      setProgressMessage(
+        `Complete: ${result.successful_scans} successful, ${result.failed_scans} failed`
+      );
 
       // Show success notification
       notifications.update({
-        id: 'batch-processing',
-        color: 'green',
-        title: 'Batch processing complete',
+        id: "batch-processing",
+        color: "green",
+        title: "Batch processing complete",
         message: `Processed ${result.total_scans} scans (${result.successful_scans} successful, ${result.failed_scans} failed)`,
-        autoClose: 3000,
+        autoClose: 3000
       });
 
       return result;
-
     } catch (error) {
       // Handle user cancellation - don't show error notification
-      if (error instanceof Error && error.name === 'AbortError') {
-        setProgressMessage('Cancelled');
+      if (error instanceof Error && error.name === "AbortError") {
+        setProgressMessage("Cancelled");
         notifications.update({
-          id: 'batch-processing',
-          title: 'Batch processing cancelled',
-          message: 'Batch processing was cancelled by user',
-          autoClose: 3000,
+          id: "batch-processing",
+          title: "Batch processing cancelled",
+          message: "Batch processing was cancelled by user",
+          autoClose: 3000
         });
         return;
       }
 
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
 
       setProgressMessage(errorMessage);
 
       notifications.update({
-        id: 'batch-processing',
-        color: 'red',
-        title: 'Batch processing failed',
+        id: "batch-processing",
+        color: "red",
+        title: "Batch processing failed",
         message: errorMessage,
-        autoClose: 5000,
+        autoClose: 5000
       });
 
       throw error;
@@ -662,7 +718,7 @@ export default function useBatchProcessing({
     horizontalLinecuts,
     verticalLinecuts,
     inclinedLinecuts,
-    azimuthalIntegrations,
+    azimuthalIntegrations
   ]);
 
   /**
@@ -673,7 +729,7 @@ export default function useBatchProcessing({
     setResults(createEmptyResults());
     setParameterHashes(createEmptyHashes());
     setProgress(0);
-    setProgressMessage('');
+    setProgressMessage("");
   }, []);
 
   /**
@@ -689,7 +745,7 @@ export default function useBatchProcessing({
     // Notify backend to stop processing
     if (currentBatchIdRef.current) {
       fetch(`/api/batch-cancel/${currentBatchIdRef.current}`, {
-        method: 'POST',
+        method: "POST"
       }).catch(() => {
         // Fire and forget - we don't care if this fails
       });
@@ -698,7 +754,7 @@ export default function useBatchProcessing({
     // Reset state
     setIsProcessing(false);
     setProgress(0);
-    setProgressMessage('Cancelled');
+    setProgressMessage("Cancelled");
     currentBatchIdRef.current = null;
     awaitingBatchIdRef.current = false;
   }, []);
@@ -717,15 +773,18 @@ export default function useBatchProcessing({
   // Restore results from session (will be called by parent component)
   // =========================================================================
 
-  const restoreState = useCallback((
-    savedResults: BatchResultsStore,
-    savedHashes: BatchParameterHashes,
-    savedSelectedUris: string[]
-  ) => {
-    setResults(savedResults);
-    setParameterHashes(savedHashes);
-    setSelectedScanUris(savedSelectedUris);
-  }, []);
+  const restoreState = useCallback(
+    (
+      savedResults: BatchResultsStore,
+      savedHashes: BatchParameterHashes,
+      savedSelectedUris: string[]
+    ) => {
+      setResults(savedResults);
+      setParameterHashes(savedHashes);
+      setSelectedScanUris(savedSelectedUris);
+    },
+    []
+  );
 
   // =========================================================================
   // Return
@@ -769,6 +828,6 @@ export default function useBatchProcessing({
     runBatchAll,
     cancelBatch,
     clearResults,
-    restoreState,
+    restoreState
   };
 }

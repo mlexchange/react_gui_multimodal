@@ -11,7 +11,7 @@
  * - Export to CSV
  */
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback } from "react";
 import {
   VisCanvas,
   DataCurve,
@@ -30,84 +30,96 @@ import {
   SvgElement,
   DataToHtml,
   type ColorMap,
-  type CustomDomain,
-} from '@h5web/lib';
+  type CustomDomain
+} from "@h5web/lib";
 import {
   findClosestCurve,
   getClosestPoint,
   getSafeDomainForScale,
   StandardTooltip,
-  type CurveData,
-} from './utils/linePlotUtils';
-import { Vector3 } from 'three';
-import ndarray from 'ndarray';
-import {
-  GridFourIcon,
-  DownloadSimpleIcon,
-} from '@phosphor-icons/react';
-import { Button, ButtonWithIcon } from '@blueskyproject/finch';
-import { NumberInput } from '@/components/ui';
-import { BatchOperationType } from './hooks/useBatchProcessing';
-import { BatchLinecutResult } from './types';
-import { exportToCSV } from './utils/batchExport';
-import { SCALE_OPTIONS, type ColorScaleType } from './utils/constants';
-import type { Linecut, InclinedLinecut, AzimuthalIntegration } from './types';
+  type CurveData
+} from "./utils/linePlotUtils";
+import { Vector3 } from "three";
+import ndarray from "ndarray";
+import { GridFourIcon, DownloadSimpleIcon } from "@phosphor-icons/react";
+import { Button, ButtonWithIcon } from "@blueskyproject/finch";
+import { NumberInput } from "@/components/ui";
+import { BatchOperationType } from "./hooks/useBatchProcessing";
+import { BatchLinecutResult } from "./types";
+import { exportToCSV } from "./utils/batchExport";
+import { SCALE_OPTIONS, type ColorScaleType } from "./utils/constants";
+import type { Linecut, InclinedLinecut, AzimuthalIntegration } from "./types";
 
 // Domain type
 type Domain = [number, number];
 
 // View mode type
-type ViewMode = 'waterfall' | 'heatmap';
+type ViewMode = "waterfall" | "heatmap";
 
 // Color palette for waterfall curves
 const CURVE_COLORS = [
-  '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
-  '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf',
-  '#aec7e8', '#ffbb78', '#98df8a', '#ff9896', '#c5b0d5',
+  "#1f77b4",
+  "#ff7f0e",
+  "#2ca02c",
+  "#d62728",
+  "#9467bd",
+  "#8c564b",
+  "#e377c2",
+  "#7f7f7f",
+  "#bcbd22",
+  "#17becf",
+  "#aec7e8",
+  "#ffbb78",
+  "#98df8a",
+  "#ff9896",
+  "#c5b0d5"
 ];
 
 // Format tick as 1-based integer for scan axis
 const formatScanTick = (val: number): string => {
   const intVal = Math.round(val);
   // Only show integer ticks
-  if (Math.abs(val - intVal) > 0.01) return '';
+  if (Math.abs(val - intVal) > 0.01) return "";
   return String(intVal + 1);
 };
-
 
 // Linecut info for title display
 type LinecutInfo = Linecut | InclinedLinecut | AzimuthalIntegration | null;
 
 // X-axis labels for different operation types
 const X_AXIS_LABELS: Record<BatchOperationType, string> = {
-  horizontal: 'qₓ (nm⁻¹)',
-  vertical: 'qᵧ (nm⁻¹)',
-  inclined: 'q (nm⁻¹)',
-  azimuthal: 'q (nm⁻¹)',
+  horizontal: "qₓ (nm⁻¹)",
+  vertical: "qᵧ (nm⁻¹)",
+  inclined: "q (nm⁻¹)",
+  azimuthal: "q (nm⁻¹)"
 };
 
 // Generate title string from linecut info
-function getLinecutTitle(operationType: BatchOperationType, linecut: LinecutInfo, index: number): string {
-  if (!linecut) return '';
+function getLinecutTitle(
+  operationType: BatchOperationType,
+  linecut: LinecutInfo,
+  index: number
+): string {
+  if (!linecut) return "";
 
   switch (operationType) {
-    case 'horizontal': {
+    case "horizontal": {
       const lc = linecut as Linecut;
       return `Horizontal Linecut ${index + 1}: qᵧ = ${lc.position.toFixed(3)} nm⁻¹, width = ${lc.width.toFixed(3)} nm⁻¹`;
     }
-    case 'vertical': {
+    case "vertical": {
       const lc = linecut as Linecut;
       return `Vertical Linecut ${index + 1}: qₓ = ${lc.position.toFixed(3)} nm⁻¹, width = ${lc.width.toFixed(3)} nm⁻¹`;
     }
-    case 'inclined': {
+    case "inclined": {
       const lc = linecut as InclinedLinecut;
       return `Inclined Linecut ${index + 1}: angle = ${lc.angle.toFixed(1)}°, width = ${lc.qWidth.toFixed(3)} nm⁻¹`;
     }
-    case 'azimuthal': {
+    case "azimuthal": {
       const az = linecut as AzimuthalIntegration;
       const qRangeStr = az.qRange
         ? `q = [${az.qRange[0].toFixed(3)}, ${az.qRange[1].toFixed(3)}] nm⁻¹`
-        : 'full q range';
+        : "full q range";
       return `Azimuthal Integration ${index + 1}: ${qRangeStr}, χ = [${az.azimuthRange[0].toFixed(0)}°, ${az.azimuthRange[1].toFixed(0)}°]`;
     }
   }
@@ -135,17 +147,21 @@ export function BatchResultsView({
   failed,
   hideControls = false,
   linecutInfo,
-  linecutIndex = 0,
+  linecutIndex = 0
 }: BatchResultsViewProps) {
   // Generate title for the visualization
-  const title = getLinecutTitle(operationType, linecutInfo ?? null, linecutIndex);
+  const title = getLinecutTitle(
+    operationType,
+    linecutInfo ?? null,
+    linecutIndex
+  );
 
   // Get appropriate x-axis label based on operation type
   const xAxisLabel = X_AXIS_LABELS[operationType];
   // View state
-  const [viewMode, setViewMode] = useState<ViewMode>('waterfall');
+  const [viewMode, setViewMode] = useState<ViewMode>("waterfall");
   const [waterfallOffset, setWaterfallOffset] = useState(100);
-  const [colorMap, setColorMap] = useState<ColorMap>('Viridis');
+  const [colorMap, setColorMap] = useState<ColorMap>("Viridis");
   const [invertColorMap, setInvertColorMap] = useState(false);
   const [scaleType, setScaleType] = useState<ColorScaleType>(ScaleType.Linear);
   const [customDomain, setCustomDomain] = useState<CustomDomain>([null, null]);
@@ -153,9 +169,9 @@ export function BatchResultsView({
 
   // Handler for waterfall offset changes
   const handleOffsetChange = useCallback((value: string | number) => {
-    if (typeof value === 'number') {
+    if (typeof value === "number") {
       setWaterfallOffset(value);
-    } else if (value !== '') {
+    } else if (value !== "") {
       const parsed = parseFloat(value);
       if (!isNaN(parsed)) setWaterfallOffset(parsed);
     }
@@ -168,7 +184,7 @@ export function BatchResultsView({
 
   // Filter successful results
   const successfulResults = useMemo(
-    () => results.filter(r => r.success),
+    () => results.filter((r) => r.success),
     [results]
   );
 
@@ -185,42 +201,45 @@ export function BatchResultsView({
   }, [qValues]);
 
   // Prepare curve data for waterfall plot
-  const { waterfallCurves, waterfallXDomain, waterfallYDomain } = useMemo(() => {
-    if (successfulResults.length === 0 || qValues.length === 0) {
+  const { waterfallCurves, waterfallXDomain, waterfallYDomain } =
+    useMemo(() => {
+      if (successfulResults.length === 0 || qValues.length === 0) {
+        return {
+          waterfallCurves: [],
+          waterfallXDomain: [0, 1] as Domain,
+          waterfallYDomain: [0, 1] as Domain
+        };
+      }
+
+      // Create curve data for each result with vertical offset
+      // Use CurveData-compatible structure with scanName stored in label
+      const curves: CurveData[] = successfulResults.map((r, i) => ({
+        id: `scan-${i}`,
+        label: r.scan_name,
+        abscissas: qValues,
+        ordinates: r.intensities.map((v) => v + i * waterfallOffset),
+        color: CURVE_COLORS[i % CURVE_COLORS.length]
+      }));
+
+      // Calculate domains
+      const allOrdinates = curves.flatMap((c) => c.ordinates);
+      const validOrdinates = allOrdinates.filter(
+        (v) => isFinite(v) && !isNaN(v)
+      );
+      const yMin = validOrdinates.length > 0 ? Math.min(...validOrdinates) : 0;
+      const yMax = validOrdinates.length > 0 ? Math.max(...validOrdinates) : 1;
+      const yPadding = (yMax - yMin) * 0.05;
+
+      const xMin = Math.min(...qValues);
+      const xMax = Math.max(...qValues);
+      const xPadding = (xMax - xMin) * 0.02;
+
       return {
-        waterfallCurves: [],
-        waterfallXDomain: [0, 1] as Domain,
-        waterfallYDomain: [0, 1] as Domain,
+        waterfallCurves: curves,
+        waterfallXDomain: [xMin - xPadding, xMax + xPadding] as Domain,
+        waterfallYDomain: [yMin - yPadding, yMax + yPadding] as Domain
       };
-    }
-
-    // Create curve data for each result with vertical offset
-    // Use CurveData-compatible structure with scanName stored in label
-    const curves: CurveData[] = successfulResults.map((r, i) => ({
-      id: `scan-${i}`,
-      label: r.scan_name,
-      abscissas: qValues,
-      ordinates: r.intensities.map(v => v + i * waterfallOffset),
-      color: CURVE_COLORS[i % CURVE_COLORS.length],
-    }));
-
-    // Calculate domains
-    const allOrdinates = curves.flatMap(c => c.ordinates);
-    const validOrdinates = allOrdinates.filter(v => isFinite(v) && !isNaN(v));
-    const yMin = validOrdinates.length > 0 ? Math.min(...validOrdinates) : 0;
-    const yMax = validOrdinates.length > 0 ? Math.max(...validOrdinates) : 1;
-    const yPadding = (yMax - yMin) * 0.05;
-
-    const xMin = Math.min(...qValues);
-    const xMax = Math.max(...qValues);
-    const xPadding = (xMax - xMin) * 0.02;
-
-    return {
-      waterfallCurves: curves,
-      waterfallXDomain: [xMin - xPadding, xMax + xPadding] as Domain,
-      waterfallYDomain: [yMin - yPadding, yMax + yPadding] as Domain,
-    };
-  }, [successfulResults, qValues, waterfallOffset]);
+    }, [successfulResults, qValues, waterfallOffset]);
 
   // Prepare data for H5Web HeatmapMesh
   const { heatmapData, heatmapDomain } = useMemo(() => {
@@ -251,7 +270,7 @@ export function BatchResultsView({
 
     return {
       heatmapData: ndarray(flat, [height, width]),
-      heatmapDomain: [min, max] as Domain,
+      heatmapDomain: [min, max] as Domain
     };
   }, [successfulResults]);
 
@@ -281,28 +300,28 @@ export function BatchResultsView({
             <div className="flex gap-1">
               <Button
                 text="Waterfall"
-                cb={() => setViewMode('waterfall')}
+                cb={() => setViewMode("waterfall")}
                 size="small"
                 styles={
-                  viewMode === 'waterfall'
-                    ? 'bg-sky-500 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  viewMode === "waterfall"
+                    ? "bg-sky-500 text-white"
+                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                 }
               />
               <Button
                 text="Heatmap"
-                cb={() => setViewMode('heatmap')}
+                cb={() => setViewMode("heatmap")}
                 size="small"
                 styles={
-                  viewMode === 'heatmap'
-                    ? 'bg-sky-500 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  viewMode === "heatmap"
+                    ? "bg-sky-500 text-white"
+                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                 }
               />
             </div>
 
             {/* Waterfall offset control */}
-            {viewMode === 'waterfall' && (
+            {viewMode === "waterfall" && (
               <div className="flex items-center gap-2">
                 <label className="text-sm text-gray-600">Offset:</label>
                 <NumberInput
@@ -341,18 +360,18 @@ export function BatchResultsView({
           <div className="flex items-center justify-center h-full text-gray-500">
             No successful results to display
           </div>
-        ) : viewMode === 'waterfall' && waterfallCurves.length > 0 ? (
+        ) : viewMode === "waterfall" && waterfallCurves.length > 0 ? (
           <div className="w-full flex-1 h-0 flex flex-col">
             <VisCanvas
               abscissaConfig={{
                 visDomain: waterfallXDomain,
                 showGrid: true,
-                label: xAxisLabel,
+                label: xAxisLabel
               }}
               ordinateConfig={{
                 visDomain: waterfallYDomain,
                 showGrid: true,
-                label: 'Intensity (offset)',
+                label: "Intensity (offset)"
               }}
               aspect="auto"
             >
@@ -378,7 +397,7 @@ export function BatchResultsView({
                     <StandardTooltip
                       label={closestCurve.label}
                       color={closestCurve.color}
-                      xLabel={xAxisLabel.split(' ')[0]}
+                      xLabel={xAxisLabel.split(" ")[0]}
                       xValue={xVal}
                       yValue={yVal}
                     />
@@ -387,7 +406,7 @@ export function BatchResultsView({
               />
             </VisCanvas>
           </div>
-        ) : viewMode === 'heatmap' && heatmapData ? (
+        ) : viewMode === "heatmap" && heatmapData ? (
           <div className="w-full flex-1 h-0 flex flex-col">
             {/* Heatmap Toolbar */}
             <div className="shrink-0">
@@ -427,51 +446,56 @@ export function BatchResultsView({
                 abscissaConfig={{
                   visDomain: qDomain,
                   showGrid,
-                  label: xAxisLabel,
+                  label: xAxisLabel
                 }}
                 ordinateConfig={{
                   visDomain: [-0.5, heatmapData.shape[0] - 0.5],
                   showGrid: false,
-                  label: 'Scan',
+                  label: "Scan",
                   isIndexAxis: true,
-                  formatTick: formatScanTick,
+                  formatTick: formatScanTick
                 }}
                 aspect="auto"
               >
                 <DefaultInteractions />
                 <ResetZoomButton />
                 {/* Custom horizontal grid lines between scan rows */}
-                {showGrid && Array.from({ length: heatmapData.shape[0] + 1 }, (_, i) => {
-                  const yPos = i - 0.5; // Grid lines at -0.5, 0.5, 1.5, ...
-                  return (
-                    <DataToHtml
-                      key={`grid-h-${i}`}
-                      points={[
-                        new Vector3(qDomain[0], yPos),
-                        new Vector3(qDomain[1], yPos),
-                      ]}
-                    >
-                      {(p1, p2) => (
-                        <SvgElement>
-                          <line
-                            x1={p1.x}
-                            y1={p1.y}
-                            x2={p2.x}
-                            y2={p2.y}
-                            stroke="gray"
-                            strokeOpacity={0.33}
-                            strokeWidth="1"
-                          />
-                        </SvgElement>
-                      )}
-                    </DataToHtml>
-                  );
-                })}
+                {showGrid &&
+                  Array.from({ length: heatmapData.shape[0] + 1 }, (_, i) => {
+                    const yPos = i - 0.5; // Grid lines at -0.5, 0.5, 1.5, ...
+                    return (
+                      <DataToHtml
+                        key={`grid-h-${i}`}
+                        points={[
+                          new Vector3(qDomain[0], yPos),
+                          new Vector3(qDomain[1], yPos)
+                        ]}
+                      >
+                        {(p1, p2) => (
+                          <SvgElement>
+                            <line
+                              x1={p1.x}
+                              y1={p1.y}
+                              x2={p2.x}
+                              y2={p2.y}
+                              stroke="gray"
+                              strokeOpacity={0.33}
+                              strokeWidth="1"
+                            />
+                          </SvgElement>
+                        )}
+                      </DataToHtml>
+                    );
+                  })}
                 <HeatmapMesh
                   values={heatmapData}
-                  domain={customDomain[0] !== null || customDomain[1] !== null
-                    ? [customDomain[0] ?? safeHeatmapDomain[0], customDomain[1] ?? safeHeatmapDomain[1]]
-                    : safeHeatmapDomain
+                  domain={
+                    customDomain[0] !== null || customDomain[1] !== null
+                      ? [
+                          customDomain[0] ?? safeHeatmapDomain[0],
+                          customDomain[1] ?? safeHeatmapDomain[1]
+                        ]
+                      : safeHeatmapDomain
                   }
                   colorMap={colorMap}
                   scaleType={scaleType}
@@ -485,16 +509,26 @@ export function BatchResultsView({
                     const xNormalized = (x - qDomain[0]) / qRange;
                     const xi = Math.floor(xNormalized * heatmapData.shape[1]);
                     const yi = Math.round(y);
-                    if (xi < 0 || xi >= heatmapData.shape[1] || yi < 0 || yi >= heatmapData.shape[0]) {
+                    if (
+                      xi < 0 ||
+                      xi >= heatmapData.shape[1] ||
+                      yi < 0 ||
+                      yi >= heatmapData.shape[0]
+                    ) {
                       return null;
                     }
                     const value = heatmapData.get(yi, xi);
-                    const scanName = successfulResults[yi]?.scan_name ?? `Scan ${yi + 1}`;
+                    const scanName =
+                      successfulResults[yi]?.scan_name ?? `Scan ${yi + 1}`;
                     return (
                       <div className="text-xs bg-white/90 p-1 rounded shadow">
                         <div className="font-medium">{scanName}</div>
-                        <div>{xAxisLabel.split(' ')[0]}={x.toFixed(4)}</div>
-                        <div className="font-semibold">{value?.toExponential(3)}</div>
+                        <div>
+                          {xAxisLabel.split(" ")[0]}={x.toFixed(4)}
+                        </div>
+                        <div className="font-semibold">
+                          {value?.toExponential(3)}
+                        </div>
                       </div>
                     );
                   }}
@@ -505,12 +539,16 @@ export function BatchResultsView({
             {/* Color Bar - aligned with plot area */}
             <div
               className="shrink-0 h-12"
-              style={{ paddingLeft: '104px', paddingRight: '24px' }}
+              style={{ paddingLeft: "104px", paddingRight: "24px" }}
             >
               <ColorBar
-                domain={customDomain[0] !== null || customDomain[1] !== null
-                  ? [customDomain[0] ?? safeHeatmapDomain[0], customDomain[1] ?? safeHeatmapDomain[1]]
-                  : safeHeatmapDomain
+                domain={
+                  customDomain[0] !== null || customDomain[1] !== null
+                    ? [
+                        customDomain[0] ?? safeHeatmapDomain[0],
+                        customDomain[1] ?? safeHeatmapDomain[1]
+                      ]
+                    : safeHeatmapDomain
                 }
                 scaleType={scaleType}
                 colorMap={colorMap}

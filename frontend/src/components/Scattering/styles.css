@@ -24,7 +24,9 @@
 [data-has-y-label="true"] [class*="axis"][data-type="ordinate"] {
   width: 81px !important;
 }
-[data-has-y-label="true"] [class*="axis"][data-type="ordinate"] text[class*="label"] {
+[data-has-y-label="true"]
+  [class*="axis"][data-type="ordinate"]
+  text[class*="label"] {
   transform: rotate(-90deg) translateY(20px);
 }
 
@@ -43,7 +45,9 @@
 [data-summary-fig="true"] [class*="axis"][data-type="ordinate"] {
   width: 61px !important;
 }
-[data-summary-fig="true"] [class*="axis"][data-type="ordinate"] text[class*="label"] {
+[data-summary-fig="true"]
+  [class*="axis"][data-type="ordinate"]
+  text[class*="label"] {
   transform: rotate(-90deg) translateY(35px);
 }
 
@@ -54,7 +58,9 @@
 [data-linecut-fig="true"] [class*="axis"][data-type="ordinate"] {
   width: 76px !important;
 }
-[data-linecut-fig="true"] [class*="axis"][data-type="ordinate"] text[class*="label"] {
+[data-linecut-fig="true"]
+  [class*="axis"][data-type="ordinate"]
+  text[class*="label"] {
   transform: rotate(-90deg) translateY(17px);
 }
 

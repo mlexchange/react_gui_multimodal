@@ -7,18 +7,18 @@ import {
   XAxisZoom,
   YAxisZoom,
   Pan,
-  SelectToZoom,
-} from '@h5web/lib';
-import { AzimuthalIntegration, AzimuthalData } from './types';
-import { H5WebLegend, LegendEntry } from './H5WebLegend';
+  SelectToZoom
+} from "@h5web/lib";
+import { AzimuthalIntegration, AzimuthalData } from "./types";
+import { H5WebLegend, LegendEntry } from "./H5WebLegend";
 import {
   CurveData,
   Domain,
   calculateCurveDomains,
   createTooltipRenderer,
-  clampDomainToData,
-} from './utils/linePlotUtils';
-import { calculateZoomedAzimuthalQRange } from './utils/calculateZoomedQRange';
+  clampDomainToData
+} from "./utils/linePlotUtils";
+import { calculateZoomedAzimuthalQRange } from "./utils/calculateZoomedQRange";
 
 interface AzimuthalIntegrationFigProps {
   integrations: AzimuthalIntegration[];
@@ -35,7 +35,7 @@ const AzimuthalIntegrationFig: React.FC<AzimuthalIntegrationFigProps> = ({
   azimuthalData2,
   zoomedXPixelRange,
   zoomedYPixelRange,
-  qMagnitudeMatrix,
+  qMagnitudeMatrix
 }) => {
   // Prepare curve data for H5Web
   const { curves, legendEntries, xDomain, yDomain } = useMemo(() => {
@@ -43,10 +43,10 @@ const AzimuthalIntegrationFig: React.FC<AzimuthalIntegrationFigProps> = ({
     const entries: LegendEntry[] = [];
 
     integrations
-      .filter(integration => !integration.hidden)
-      .forEach(integration => {
-        const data1 = azimuthalData1.find(d => d.id === integration.id);
-        const data2 = azimuthalData2.find(d => d.id === integration.id);
+      .filter((integration) => !integration.hidden)
+      .forEach((integration) => {
+        const data1 = azimuthalData1.find((d) => d.id === integration.id);
+        const data2 = azimuthalData2.find((d) => d.id === integration.id);
 
         if (data1 && data1.q.length > 0) {
           const label = `Left #${integration.id}`;
@@ -55,9 +55,13 @@ const AzimuthalIntegrationFig: React.FC<AzimuthalIntegrationFigProps> = ({
             abscissas: data1.q,
             ordinates: data1.intensity,
             color: integration.leftColor,
-            label,
+            label
           });
-          entries.push({ id: `left-${integration.id}`, label, color: integration.leftColor });
+          entries.push({
+            id: `left-${integration.id}`,
+            label,
+            color: integration.leftColor
+          });
         }
 
         if (data2 && data2.q.length > 0) {
@@ -67,20 +71,25 @@ const AzimuthalIntegrationFig: React.FC<AzimuthalIntegrationFigProps> = ({
             abscissas: data2.q,
             ordinates: data2.intensity,
             color: integration.rightColor,
-            label,
+            label
           });
-          entries.push({ id: `right-${integration.id}`, label, color: integration.rightColor });
+          entries.push({
+            id: `right-${integration.id}`,
+            label,
+            color: integration.rightColor
+          });
         }
       });
 
-    const { xDomain: baseDomain, yDomain: calculatedYDomain } = calculateCurveDomains(curveData);
+    const { xDomain: baseDomain, yDomain: calculatedYDomain } =
+      calculateCurveDomains(curveData);
 
     let finalXDomain: Domain = baseDomain;
     if (zoomedXPixelRange && zoomedYPixelRange && qMagnitudeMatrix) {
       const qRange = calculateZoomedAzimuthalQRange({
         zoomedXPixelRange,
         zoomedYPixelRange,
-        qMagnitudeMatrix,
+        qMagnitudeMatrix
       });
       finalXDomain = clampDomainToData(qRange, baseDomain) ?? baseDomain;
     }
@@ -89,15 +98,24 @@ const AzimuthalIntegrationFig: React.FC<AzimuthalIntegrationFigProps> = ({
       curves: curveData,
       legendEntries: entries,
       xDomain: finalXDomain,
-      yDomain: calculatedYDomain,
+      yDomain: calculatedYDomain
     };
-  }, [integrations, azimuthalData1, azimuthalData2, zoomedXPixelRange, zoomedYPixelRange, qMagnitudeMatrix]);
+  }, [
+    integrations,
+    azimuthalData1,
+    azimuthalData2,
+    zoomedXPixelRange,
+    zoomedYPixelRange,
+    qMagnitudeMatrix
+  ]);
 
   // Show message if no data
   if (curves.length === 0) {
     return (
       <div className="w-full h-full flex items-center justify-center">
-        <p className="text-lg text-gray-500">No azimuthal integration data available</p>
+        <p className="text-lg text-gray-500">
+          No azimuthal integration data available
+        </p>
       </div>
     );
   }
@@ -110,12 +128,12 @@ const AzimuthalIntegrationFig: React.FC<AzimuthalIntegrationFigProps> = ({
           abscissaConfig={{
             visDomain: xDomain,
             showGrid: true,
-            label: 'q (nm⁻¹)',
+            label: "q (nm⁻¹)"
           }}
           ordinateConfig={{
             visDomain: yDomain,
             showGrid: true,
-            label: 'Intensity',
+            label: "Intensity"
           }}
           aspect="auto"
         >
@@ -136,12 +154,18 @@ const AzimuthalIntegrationFig: React.FC<AzimuthalIntegrationFigProps> = ({
           ))}
           <TooltipMesh
             guides="both"
-            renderTooltip={createTooltipRenderer(curves, { xLabel: 'q', xUnit: 'nm⁻¹' })}
+            renderTooltip={createTooltipRenderer(curves, {
+              xLabel: "q",
+              xUnit: "nm⁻¹"
+            })}
           />
         </VisCanvas>
       </div>
       {/* Legend */}
-      <H5WebLegend entries={legendEntries} className="shrink-0 border-t border-gray-100" />
+      <H5WebLegend
+        entries={legendEntries}
+        className="shrink-0 border-t border-gray-100"
+      />
     </div>
   );
 };

@@ -6,7 +6,6 @@ import msgpack
 import numpy as np
 from fastapi import APIRouter
 from fastapi.responses import Response
-
 from xscattering_backend.cache.tiled_cache import (
     get_tiled_base_uri,
     get_tiled_client,
@@ -23,9 +22,9 @@ router = APIRouter()
 
 def natural_sort_key(uri: str):
     """Sort key for natural/human sorting"""
-    name = uri.split('/')[-1].lower()
+    name = uri.split("/")[-1].lower()
     # Split into text and number parts, convert numbers to int for proper sorting
-    return [int(part) if part.isdigit() else part for part in re.split(r'(\d+)', name)]
+    return [int(part) if part.isdigit() else part for part in re.split(r"(\d+)", name)]
 
 
 def process_single_image(args):
@@ -39,7 +38,7 @@ def process_single_image(args):
 
         max_intensity = np.nanmax(image_array)
         avg_intensity = np.nanmean(image_array)
-        scan_name = scan_uri.split('/')[-1]
+        scan_name = scan_uri.split("/")[-1]
 
         return index, max_intensity, avg_intensity, scan_name, scan_uri, True
     except Exception as e:
@@ -63,7 +62,7 @@ async def create_summary(container_path: str):
     tiled_base_uri = get_tiled_base_uri()
 
     scan_uris = get_scans_from_folder(tiled_client, container_path, tiled_base_uri)
-    scan_uris = [uri.lstrip('/') for uri in scan_uris]
+    scan_uris = [uri.lstrip("/") for uri in scan_uris]
     scan_uris.sort(key=natural_sort_key)
     num_of_files = len(scan_uris)
 
@@ -82,9 +81,7 @@ async def create_summary(container_path: str):
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         # Submit all tasks
-        future_to_index = {
-            executor.submit(process_single_image, args): args[0] for args in args_list
-        }
+        future_to_index = {executor.submit(process_single_image, args): args[0] for args in args_list}
 
         for future in concurrent.futures.as_completed(future_to_index):
             index, max_intensity, avg_intensity, scan_name, scan_uri, success = future.result()
@@ -96,9 +93,7 @@ async def create_summary(container_path: str):
 
             processed_count += 1
             progress = (processed_count / num_of_files) * 100
-            asyncio.create_task(send_progress_update(
-                progress, f"Processing {processed_count}/{num_of_files} images"
-            ))
+            asyncio.create_task(send_progress_update(progress, f"Processing {processed_count}/{num_of_files} images"))
             # Yield to event loop to allow progress updates to be sent
             await asyncio.sleep(0)
 

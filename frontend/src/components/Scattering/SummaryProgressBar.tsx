@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 interface ProgressBarProps {
   progress: number; // 0-100
@@ -9,7 +9,7 @@ interface ProgressBarProps {
 const ProgressBar: React.FC<ProgressBarProps> = ({
   progress,
   isVisible,
-  label = 'Loading data...'
+  label = "Loading data..."
 }) => {
   if (!isVisible) return null;
 
@@ -39,9 +39,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
       </div>
 
       {/* Label text */}
-      <div className="text-center text-sm mt-1 text-gray-600">
-        {label}
-      </div>
+      <div className="text-center text-sm mt-1 text-gray-600">{label}</div>
     </div>
   );
 };

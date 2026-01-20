@@ -9,7 +9,6 @@ endpoint as part of the image transformation.
 import msgpack
 from fastapi import APIRouter, Query
 from fastapi.responses import Response
-
 from xscattering_backend.utils.q_space import compute_saxs_q_matrices
 
 router = APIRouter()
@@ -22,25 +21,13 @@ def get_saxs_q_matrices(
         ...,
         description="Distance between sample and detector in millimeters",
     ),
-    beam_center_x: float = Query(
-        ..., description="X-coordinate of beam center in pixels"
-    ),
-    beam_center_y: float = Query(
-        ..., description="Y-coordinate of beam center in pixels"
-    ),
-    pixel_size_x: float = Query(
-        ..., description="Pixel size in X direction (micrometers)"
-    ),
-    pixel_size_y: float = Query(
-        ..., description="Pixel size in Y direction (micrometers)"
-    ),
-    wavelength: float = Query(
-        ..., description="X-ray wavelength in Angstroms"
-    ),
+    beam_center_x: float = Query(..., description="X-coordinate of beam center in pixels"),
+    beam_center_y: float = Query(..., description="Y-coordinate of beam center in pixels"),
+    pixel_size_x: float = Query(..., description="Pixel size in X direction (micrometers)"),
+    pixel_size_y: float = Query(..., description="Pixel size in Y direction (micrometers)"),
+    wavelength: float = Query(..., description="X-ray wavelength in Angstroms"),
     tilt: float = Query(default=0.0, description="Detector tilt angle in degrees"),
-    tilt_plan_rotation: float = Query(
-        default=0.0, description="Rotation of tilt plane in degrees"
-    ),
+    tilt_plan_rotation: float = Query(default=0.0, description="Rotation of tilt plane in degrees"),
     # Image dimensions
     image_height: int = Query(..., description="Height of the image in pixels"),
     image_width: int = Query(..., description="Width of the image in pixels"),

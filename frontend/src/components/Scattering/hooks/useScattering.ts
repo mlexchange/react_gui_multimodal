@@ -1,6 +1,6 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { unpack } from 'msgpackr';
-import { CalibrationParams, isCalibrationComplete } from '../types';
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { unpack } from "msgpackr";
+import { CalibrationParams, isCalibrationComplete } from "../types";
 
 /**
  * State that can be restored from a saved session
@@ -23,28 +23,33 @@ interface QMatricesResponse {
 function isQMatricesResponse(value: unknown): value is QMatricesResponse {
   const response = value as QMatricesResponse;
   return (
-    typeof response === 'object' &&
+    typeof response === "object" &&
     response !== null &&
     Array.isArray(response.q_x) &&
     Array.isArray(response.q_y) &&
-    Array.isArray(response.q_x[0]) &&  // Check that it's a 2D array
-    Array.isArray(response.q_y[0])     // Check that it's a 2D array
+    Array.isArray(response.q_x[0]) && // Check that it's a 2D array
+    Array.isArray(response.q_y[0]) // Check that it's a 2D array
   );
 }
 
 export default function useScattering() {
   // Existing state variables
-  const [experimentType, setExperimentType] = useState('SAXS');
+  const [experimentType, setExperimentType] = useState("SAXS");
   const [selectedLinecuts, setSelectedLinecuts] = useState<string[]>([]);
   const [imageHeight, setImageHeight] = useState<number>(100);
   const [imageWidth, setImageWidth] = useState<number>(100);
   const [imageData1, setImageData1] = useState<number[][]>([]);
   const [imageData2, setImageData2] = useState<number[][]>([]);
-  const [zoomedXPixelRange, setZoomedXPixelRange] = useState<[number, number] | null>(null);
-  const [zoomedYPixelRange, setZoomedYPixelRange] = useState<[number, number] | null>(null);
+  const [zoomedXPixelRange, setZoomedXPixelRange] = useState<
+    [number, number] | null
+  >(null);
+  const [zoomedYPixelRange, setZoomedYPixelRange] = useState<
+    [number, number] | null
+  >(null);
 
   // Calibration parameters
-  const [calibrationParams, setCalibrationParams] = useState<CalibrationParams | null>(null);
+  const [calibrationParams, setCalibrationParams] =
+    useState<CalibrationParams | null>(null);
 
   // Mask state
   const [maskUri, setMaskUri] = useState<string | null>(null);
@@ -56,10 +61,13 @@ export default function useScattering() {
   const [showQSpaceAxes, setShowQSpaceAxes] = useState(false);
 
   // Callback to update mask data and shape together
-  const updateMaskData = useCallback((data: Uint8Array | null, shape: [number, number] | null) => {
-    setMaskData(data);
-    setMaskShape(shape);
-  }, []);
+  const updateMaskData = useCallback(
+    (data: Uint8Array | null, shape: [number, number] | null) => {
+      setMaskData(data);
+      setMaskShape(shape);
+    },
+    []
+  );
 
   // Check if calibration is complete
   const isCalibrationSet = useMemo(
@@ -81,7 +89,9 @@ export default function useScattering() {
       return;
     }
 
-    console.log(`Experiment type changed from ${prevExperimentType.current} to ${experimentType}, clearing calibration state`);
+    console.log(
+      `Experiment type changed from ${prevExperimentType.current} to ${experimentType}, clearing calibration state`
+    );
 
     // Clear Q matrices
     setQXMatrix([]);
@@ -121,13 +131,13 @@ export default function useScattering() {
 
     // For GISAXS, Q matrices come from the image fetch (setGisaxsQMatrices)
     // This ensures consistency with the pyFAI FiberIntegrator calculations
-    if (experimentType === 'GISAXS') {
+    if (experimentType === "GISAXS") {
       return;
     }
 
     try {
       // Create the URL with calibration parameters
-      const url = new URL('/api/q-space', window.location.origin);
+      const url = new URL("/api/q-space", window.location.origin);
 
       // Add all calibration parameters to the URL
       Object.entries(calibrationParams).forEach(([key, value]) => {
@@ -137,11 +147,11 @@ export default function useScattering() {
       });
 
       // Add experiment type to determine SAXS vs GISAXS q-vector calculation
-      url.searchParams.set('experiment_type', experimentType);
+      url.searchParams.set("experiment_type", experimentType);
 
       // Add image dimensions from the loaded image data
-      url.searchParams.set('image_height', imageHeight.toString());
-      url.searchParams.set('image_width', imageWidth.toString());
+      url.searchParams.set("image_height", imageHeight.toString());
+      url.searchParams.set("image_width", imageWidth.toString());
 
       // Fetch the data
       const response = await fetch(url.toString());
@@ -156,27 +166,35 @@ export default function useScattering() {
 
       // Validate the response format using the type guard
       if (!isQMatricesResponse(decodedData)) {
-        throw new Error('Invalid q-matrices response format');
+        throw new Error("Invalid q-matrices response format");
       }
 
       // Store the q-matrices (SAXS: q_x and q_y are standard coordinates)
       setQXMatrix(decodedData.q_x);
       setQYMatrix(decodedData.q_y);
-
     } catch (error) {
-      console.error('Error fetching q-matrices:', error);
+      console.error("Error fetching q-matrices:", error);
     }
-  }, [calibrationParams, experimentType, imageHeight, imageWidth, isCalibrationSet]);
+  }, [
+    calibrationParams,
+    experimentType,
+    imageHeight,
+    imageWidth,
+    isCalibrationSet
+  ]);
 
   /**
    * Set Q matrices directly from GISAXS pixel Q data (from image fetch)
    * This ensures the same pyFAI FiberIntegrator calculations are used for
    * both the image display and the linecut sliders.
    */
-  const setGisaxsQMatrices = useCallback((qipMatrix: number[][], qoopMatrix: number[][]) => {
-    setQXMatrix(qipMatrix);
-    setQYMatrix(qoopMatrix);
-  }, []);
+  const setGisaxsQMatrices = useCallback(
+    (qipMatrix: number[][], qoopMatrix: number[][]) => {
+      setQXMatrix(qipMatrix);
+      setQYMatrix(qoopMatrix);
+    },
+    []
+  );
 
   /**
    * Update calibration parameters and trigger q-matrix refresh
@@ -213,7 +231,13 @@ export default function useScattering() {
     if ((imageHeight > 0 || imageWidth > 0) && isCalibrationSet) {
       fetchQVectors();
     }
-  }, [fetchQVectors, imageHeight, imageWidth, experimentType, isCalibrationSet]);
+  }, [
+    fetchQVectors,
+    imageHeight,
+    imageWidth,
+    experimentType,
+    isCalibrationSet
+  ]);
 
   // Track if we're currently restoring mask to prevent duplicate fetches
   const isRestoringMask = useRef(false);
@@ -230,8 +254,8 @@ export default function useScattering() {
     const restoreMask = async () => {
       try {
         // 1. Try backend cache first (works for ALL mask types)
-        const cacheUrl = new URL('/api/get-mask', window.location.origin);
-        cacheUrl.searchParams.set('mask_id', maskUri);
+        const cacheUrl = new URL("/api/get-mask", window.location.origin);
+        cacheUrl.searchParams.set("mask_id", maskUri);
 
         const cacheResponse = await fetch(cacheUrl.toString());
         if (cacheResponse.ok) {
@@ -248,9 +272,12 @@ export default function useScattering() {
         }
 
         // 2. For Tiled masks only: fallback to fetching from Tiled server
-        if (!maskUri.startsWith('uploaded_')) {
-          const tiledUrl = new URL('/api/load-mask-from-tiled', window.location.origin);
-          tiledUrl.searchParams.set('mask_uri', maskUri);
+        if (!maskUri.startsWith("uploaded_")) {
+          const tiledUrl = new URL(
+            "/api/load-mask-from-tiled",
+            window.location.origin
+          );
+          tiledUrl.searchParams.set("mask_uri", maskUri);
 
           const tiledResponse = await fetch(tiledUrl.toString());
           if (tiledResponse.ok) {
@@ -268,11 +295,10 @@ export default function useScattering() {
         }
 
         // 3. Both failed - clear the invalid URI
-        console.log('Mask not found in cache or Tiled, clearing');
+        console.log("Mask not found in cache or Tiled, clearing");
         setMaskUri(null);
-
       } catch (error) {
-        console.error('Failed to restore mask:', error);
+        console.error("Failed to restore mask:", error);
         setMaskUri(null);
       } finally {
         isRestoringMask.current = false;
@@ -309,7 +335,7 @@ export default function useScattering() {
     // Q-matrices instead of Q-vectors
     qXMatrix,
     qYMatrix,
-    setGisaxsQMatrices,  // For GISAXS: set Q matrices from image fetch
+    setGisaxsQMatrices, // For GISAXS: set Q matrices from image fetch
 
     // Mask
     maskUri,
@@ -325,6 +351,6 @@ export default function useScattering() {
     setShowQSpaceAxes,
 
     // Session restoration
-    restoreState,
+    restoreState
   };
 }

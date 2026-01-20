@@ -2,7 +2,7 @@
  * H5Web visualization utilities and constants
  */
 
-import ndarray, { NdArray } from 'ndarray';
+import ndarray, { NdArray } from "ndarray";
 
 /** H5Web axis offset constants (overridden via styles.css) */
 export const AXIS_LEFT_OFFSET = 86;
@@ -13,7 +13,7 @@ export const AXIS_RIGHT_OFFSET = 4;
  * Format tick value as integer (no scientific notation)
  */
 export const formatTickAsInteger = (val: number): string => {
-  return Math.round(val).toLocaleString('en-US', { useGrouping: false });
+  return Math.round(val).toLocaleString("en-US", { useGrouping: false });
 };
 
 /**
@@ -50,13 +50,17 @@ export const binarySearchClosest = (arr: number[], target: number): number => {
   }
 
   // Return the closer of the two remaining candidates
-  return Math.abs(arr[left] - target) <= Math.abs(arr[right] - target) ? left : right;
+  return Math.abs(arr[left] - target) <= Math.abs(arr[right] - target)
+    ? left
+    : right;
 };
 
 /**
  * Convert 2D number array to ndarray for H5Web visualization
  */
-export const arrayToNdarray = (arr: number[][]): NdArray<Float32Array> | null => {
+export const arrayToNdarray = (
+  arr: number[][]
+): NdArray<Float32Array> | null => {
   if (!arr || arr.length === 0 || !arr[0] || arr[0].length === 0) {
     return null;
   }

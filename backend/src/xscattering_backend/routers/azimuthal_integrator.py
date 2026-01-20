@@ -4,7 +4,6 @@ import msgpack
 import numpy as np
 from fastapi import APIRouter, Query
 from fastapi.responses import Response
-
 from xscattering_backend.cache.image_cache import get_cached_processed_image
 from xscattering_backend.utils.azimuthal_integration import (
     create_azimuthal_integrator,
@@ -23,37 +22,17 @@ async def azimuthal_integration(
         ...,
         description="Distance between sample and detector in millimeters",
     ),
-    beam_center_x: float = Query(
-        ..., description="X-coordinate of beam center in pixels"
-    ),
-    beam_center_y: float = Query(
-        ..., description="Y-coordinate of beam center in pixels"
-    ),
-    pixel_size_x: float = Query(
-        ..., description="Pixel size in X direction (micrometers)"
-    ),
-    pixel_size_y: float = Query(
-        ..., description="Pixel size in Y direction (micrometers)"
-    ),
-    wavelength: float = Query(
-        ..., description="X-ray wavelength in Angstroms"
-    ),
+    beam_center_x: float = Query(..., description="X-coordinate of beam center in pixels"),
+    beam_center_y: float = Query(..., description="Y-coordinate of beam center in pixels"),
+    pixel_size_x: float = Query(..., description="Pixel size in X direction (micrometers)"),
+    pixel_size_y: float = Query(..., description="Pixel size in Y direction (micrometers)"),
+    wavelength: float = Query(..., description="X-ray wavelength in Angstroms"),
     tilt: float = Query(default=0.0, description="Detector tilt angle in degrees"),
-    tilt_plan_rotation: float = Query(
-        default=0.0, description="Rotation of tilt plane in degrees"
-    ),
-    azimuth_start_deg: float = Query(
-        default=-180.0, description="Start of azimuthal range in degrees"
-    ),
-    azimuth_end_deg: float = Query(
-        default=180.0, description="End of azimuthal range in degrees"
-    ),
-    q_range_start: Optional[float] = Query(
-        None, description="Start of Q-range (nm^-1). If None, uses 0."
-    ),
-    q_range_end: Optional[float] = Query(
-        None, description="End of Q-range (nm^-1). If None, uses max Q."
-    ),
+    tilt_plan_rotation: float = Query(default=0.0, description="Rotation of tilt plane in degrees"),
+    azimuth_start_deg: float = Query(default=-180.0, description="Start of azimuthal range in degrees"),
+    azimuth_end_deg: float = Query(default=180.0, description="End of azimuthal range in degrees"),
+    q_range_start: Optional[float] = Query(None, description="Start of Q-range (nm^-1). If None, uses 0."),
+    q_range_end: Optional[float] = Query(None, description="End of Q-range (nm^-1). If None, uses max Q."),
     mask_uri: Optional[str] = Query(None, description="Optional mask URI or mask_id"),
 ):
     """
@@ -90,12 +69,8 @@ async def azimuthal_integration(
         tilt_plan_rotation=tilt_plan_rotation,
     )
 
-    q_1, intensity_1 = integrate_1d(
-        ai, scatter_image_array_1, azimuth_range=azimuth_range, q_range=q_range_tuple
-    )
-    q_2, intensity_2 = integrate_1d(
-        ai, scatter_image_array_2, azimuth_range=azimuth_range, q_range=q_range_tuple
-    )
+    q_1, intensity_1 = integrate_1d(ai, scatter_image_array_1, azimuth_range=azimuth_range, q_range=q_range_tuple)
+    q_2, intensity_2 = integrate_1d(ai, scatter_image_array_2, azimuth_range=azimuth_range, q_range=q_range_tuple)
 
     q_max = max(q_1.max(), q_2.max())
 
@@ -112,12 +87,8 @@ async def azimuthal_integration(
     # Create a boolean mask that selects only the pixels within our desired azimuthal range
     # True values in the mask indicate pixels to keep
     # False values indicate pixels outside the angular region of interest
-    mask_1 = (chi_array_1 >= azimuth_range_rad[0]) & (
-        chi_array_1 <= azimuth_range_rad[1]
-    )
-    mask_2 = (chi_array_2 >= azimuth_range_rad[0]) & (
-        chi_array_2 <= azimuth_range_rad[1]
-    )
+    mask_1 = (chi_array_1 >= azimuth_range_rad[0]) & (chi_array_1 <= azimuth_range_rad[1])
+    mask_2 = (chi_array_2 >= azimuth_range_rad[0]) & (chi_array_2 <= azimuth_range_rad[1])
 
     # Apply the mask to our q-array. This creates an array where:
     # - Pixels within our desired angular range maintain their q-values

@@ -30,3 +30,6 @@ include = ["src/"]
 dev = [
     "pre-commit>=4.5.1",
 ]
+
+[tool.black]
+line-length = 127

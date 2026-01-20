@@ -10,9 +10,11 @@ from typing import Optional
 import msgpack
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response
-
 from xscattering_backend.cache.mask_cache import get_cached_mask
-from xscattering_backend.cache.tiled_cache import get_tiled_base_uri, get_tiled_client_for_uri
+from xscattering_backend.cache.tiled_cache import (
+    get_tiled_base_uri,
+    get_tiled_client_for_uri,
+)
 from xscattering_backend.config.models import MaskResponse
 from xscattering_backend.utils.mask_loader import (
     load_mask_from_bytes,
@@ -141,11 +143,13 @@ async def get_mask(
     if mask_array is None:
         raise HTTPException(status_code=404, detail="Mask not in cache")
 
-    packed_data = msgpack.packb({
-        "mask_id": mask_id,
-        "shape": list(mask_array.shape),
-        "data": mask_array.tobytes(),
-    })
+    packed_data = msgpack.packb(
+        {
+            "mask_id": mask_id,
+            "shape": list(mask_array.shape),
+            "data": mask_array.tobytes(),
+        }
+    )
 
     return Response(content=packed_data, media_type="application/x-msgpack")
 
@@ -153,12 +157,8 @@ async def get_mask(
 @router.post("/upload-mask")
 async def upload_mask(
     file: UploadFile = File(..., description="Mask file (.npy, .tiff, .edf, .cbf, .csv)"),
-    expected_width: Optional[int] = Query(
-        None, description="Expected image width for validation"
-    ),
-    expected_height: Optional[int] = Query(
-        None, description="Expected image height for validation"
-    ),
+    expected_width: Optional[int] = Query(None, description="Expected image width for validation"),
+    expected_height: Optional[int] = Query(None, description="Expected image height for validation"),
 ) -> Response:
     """
     Upload a mask file.
@@ -202,17 +202,18 @@ async def upload_mask(
             if mask_width != expected_width or mask_height != expected_height:
                 status = "warning"
                 message = (
-                    f"Mask size ({mask_height}×{mask_width}) doesn't match "
-                    f"image size ({expected_height}×{expected_width})"
+                    f"Mask size ({mask_height}×{mask_width}) doesn't match " f"image size ({expected_height}×{expected_width})"
                 )
 
-        packed_data = msgpack.packb({
-            "mask_id": mask_id,
-            "shape": list(mask_array.shape),
-            "data": mask_array.tobytes(),
-            "message": message,
-            "status": status,
-        })
+        packed_data = msgpack.packb(
+            {
+                "mask_id": mask_id,
+                "shape": list(mask_array.shape),
+                "data": mask_array.tobytes(),
+                "message": message,
+                "status": status,
+            }
+        )
 
         return Response(content=packed_data, media_type="application/x-msgpack")
 
@@ -228,12 +229,8 @@ async def upload_mask(
 @router.get("/load-mask-from-tiled")
 async def load_mask_from_tiled_endpoint(
     mask_uri: str = Query(..., description="URI of the mask in Tiled"),
-    expected_width: Optional[int] = Query(
-        None, description="Expected image width for validation"
-    ),
-    expected_height: Optional[int] = Query(
-        None, description="Expected image height for validation"
-    ),
+    expected_width: Optional[int] = Query(None, description="Expected image width for validation"),
+    expected_height: Optional[int] = Query(None, description="Expected image height for validation"),
 ) -> Response:
     """
     Load a mask from Tiled and cache it.
@@ -272,18 +269,19 @@ async def load_mask_from_tiled_endpoint(
             if mask_width != expected_width or mask_height != expected_height:
                 status = "warning"
                 message = (
-                    f"Mask size ({mask_height}×{mask_width}) doesn't match "
-                    f"image size ({expected_height}×{expected_width})"
+                    f"Mask size ({mask_height}×{mask_width}) doesn't match " f"image size ({expected_height}×{expected_width})"
                 )
 
-        packed_data = msgpack.packb({
-            "mask_id": mask_id,
-            "mask_uri": mask_uri,
-            "shape": list(mask_array.shape),
-            "data": mask_array.tobytes(),
-            "message": message,
-            "status": status,
-        })
+        packed_data = msgpack.packb(
+            {
+                "mask_id": mask_id,
+                "mask_uri": mask_uri,
+                "shape": list(mask_array.shape),
+                "data": mask_array.tobytes(),
+                "message": message,
+                "status": status,
+            }
+        )
 
         return Response(content=packed_data, media_type="application/x-msgpack")
 

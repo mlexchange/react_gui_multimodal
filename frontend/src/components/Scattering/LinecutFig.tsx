@@ -7,20 +7,20 @@ import {
   XAxisZoom,
   YAxisZoom,
   Pan,
-  SelectToZoom,
-} from '@h5web/lib';
-import { Linecut } from './types';
-import { LinecutData } from './hooks/useHorizontalLinecut';
-import { H5WebLegend, LegendEntry } from './H5WebLegend';
+  SelectToZoom
+} from "@h5web/lib";
+import { Linecut } from "./types";
+import { LinecutData } from "./hooks/useHorizontalLinecut";
+import { H5WebLegend, LegendEntry } from "./H5WebLegend";
 import {
   CurveData,
   Domain,
   calculateCurveDomains,
   createTooltipRenderer,
-  clampDomainToData,
-} from './utils/linePlotUtils';
+  clampDomainToData
+} from "./utils/linePlotUtils";
 
-type LinecutDirection = 'horizontal' | 'vertical';
+type LinecutDirection = "horizontal" | "vertical";
 
 interface LinecutFigProps {
   direction: LinecutDirection;
@@ -37,9 +37,18 @@ interface LinecutFigProps {
 interface DirectionConfig {
   xAxisLabel: (units: string) => string;
   positionLabel: (pos: number, units: string) => string;
-  extractZoomVector: (matrices: { qXMatrix: number[][]; qYMatrix: number[][] }) => number[];
-  getZoomPixelRange: (ranges: { xRange: [number, number] | null; yRange: [number, number] | null }) => [number, number] | null;
-  isInRange: (linecut: Linecut, ranges: { xRange: [number, number] | null; yRange: [number, number] | null }) => boolean;
+  extractZoomVector: (matrices: {
+    qXMatrix: number[][];
+    qYMatrix: number[][];
+  }) => number[];
+  getZoomPixelRange: (ranges: {
+    xRange: [number, number] | null;
+    yRange: [number, number] | null;
+  }) => [number, number] | null;
+  isInRange: (
+    linecut: Linecut,
+    ranges: { xRange: [number, number] | null; yRange: [number, number] | null }
+  ) => boolean;
 }
 
 const directionConfig: Record<LinecutDirection, DirectionConfig> = {
@@ -59,14 +68,14 @@ const directionConfig: Record<LinecutDirection, DirectionConfig> = {
       const yMin = Math.min(yRange[0], yRange[1]);
       const yMax = Math.max(yRange[0], yRange[1]);
       return linecut.pixelPosition >= yMin && linecut.pixelPosition <= yMax;
-    },
+    }
   },
   vertical: {
     xAxisLabel: (units) => `qᵧ (${units})`,
     positionLabel: (pos, units) => `qₓ=${pos.toFixed(1)} ${units}`,
     extractZoomVector: ({ qYMatrix }) => {
       if (qYMatrix && qYMatrix.length > 0) {
-        return qYMatrix.map(row => row[0]);
+        return qYMatrix.map((row) => row[0]);
       }
       return [];
     },
@@ -77,8 +86,8 @@ const directionConfig: Record<LinecutDirection, DirectionConfig> = {
       const xMin = Math.min(xRange[0], xRange[1]);
       const xMax = Math.max(xRange[0], xRange[1]);
       return linecut.pixelPosition >= xMin && linecut.pixelPosition <= xMax;
-    },
-  },
+    }
+  }
 };
 
 const LinecutFig: React.FC<LinecutFigProps> = ({
@@ -90,7 +99,7 @@ const LinecutFig: React.FC<LinecutFigProps> = ({
   qYMatrix,
   units = "nm⁻¹",
   leftLinecutData,
-  rightLinecutData,
+  rightLinecutData
 }) => {
   const config = directionConfig[direction];
 
@@ -101,11 +110,11 @@ const LinecutFig: React.FC<LinecutFigProps> = ({
 
   // Prepare curve data for H5Web
   const { curves, legendEntries, xDomain, yDomain } = useMemo(() => {
-    const visibleLinecuts = linecuts.filter(linecut => !linecut.hidden);
+    const visibleLinecuts = linecuts.filter((linecut) => !linecut.hidden);
     const curveData: CurveData[] = [];
     const entries: LegendEntry[] = [];
 
-    visibleLinecuts.forEach(linecut => {
+    visibleLinecuts.forEach((linecut) => {
       const positionLabel = config.positionLabel(linecut.position, units);
       const leftApiData = leftLinecutData?.get(linecut.id);
       const rightApiData = rightLinecutData?.get(linecut.id);
@@ -117,9 +126,13 @@ const LinecutFig: React.FC<LinecutFigProps> = ({
           abscissas: leftApiData.qValues,
           ordinates: leftApiData.intensities,
           color: linecut.leftColor,
-          label,
+          label
         });
-        entries.push({ id: `left-${linecut.id}`, label, color: linecut.leftColor });
+        entries.push({
+          id: `left-${linecut.id}`,
+          label,
+          color: linecut.leftColor
+        });
       }
 
       if (rightApiData && rightApiData.qValues.length > 0) {
@@ -129,30 +142,49 @@ const LinecutFig: React.FC<LinecutFigProps> = ({
           abscissas: rightApiData.qValues,
           ordinates: rightApiData.intensities,
           color: linecut.rightColor,
-          label,
+          label
         });
-        entries.push({ id: `right-${linecut.id}`, label, color: linecut.rightColor });
+        entries.push({
+          id: `right-${linecut.id}`,
+          label,
+          color: linecut.rightColor
+        });
       }
     });
 
-    const { xDomain: baseDomain, yDomain: calculatedYDomain } = calculateCurveDomains(curveData);
+    const { xDomain: baseDomain, yDomain: calculatedYDomain } =
+      calculateCurveDomains(curveData);
 
-    const hasLinecutInRange = visibleLinecuts.some(
-      linecut => config.isInRange(linecut, { xRange: zoomedXPixelRange, yRange: zoomedYPixelRange })
+    const hasLinecutInRange = visibleLinecuts.some((linecut) =>
+      config.isInRange(linecut, {
+        xRange: zoomedXPixelRange,
+        yRange: zoomedYPixelRange
+      })
     );
-    const zoomPixelRange = config.getZoomPixelRange({ xRange: zoomedXPixelRange, yRange: zoomedYPixelRange });
+    const zoomPixelRange = config.getZoomPixelRange({
+      xRange: zoomedXPixelRange,
+      yRange: zoomedYPixelRange
+    });
 
     let finalXDomain: Domain = baseDomain;
     if (zoomPixelRange && hasLinecutInRange && zoomVector.length > 0) {
       const rawIdx0 = Math.round(zoomPixelRange[0]);
       const rawIdx1 = Math.round(zoomPixelRange[1]);
       const minIdx = Math.max(0, Math.min(rawIdx0, rawIdx1));
-      const maxIdx = Math.min(zoomVector.length - 1, Math.max(rawIdx0, rawIdx1));
+      const maxIdx = Math.min(
+        zoomVector.length - 1,
+        Math.max(rawIdx0, rawIdx1)
+      );
 
       if (minIdx < maxIdx && minIdx >= 0 && maxIdx < zoomVector.length) {
         const qMin = zoomVector[minIdx];
         const qMax = zoomVector[maxIdx];
-        if (qMin !== undefined && qMax !== undefined && Number.isFinite(qMin) && Number.isFinite(qMax)) {
+        if (
+          qMin !== undefined &&
+          qMax !== undefined &&
+          Number.isFinite(qMin) &&
+          Number.isFinite(qMax)
+        ) {
           const sortedQ: Domain = qMin < qMax ? [qMin, qMax] : [qMax, qMin];
           finalXDomain = clampDomainToData(sortedQ, baseDomain) ?? baseDomain;
         }
@@ -163,9 +195,18 @@ const LinecutFig: React.FC<LinecutFigProps> = ({
       curves: curveData,
       legendEntries: entries,
       xDomain: finalXDomain,
-      yDomain: calculatedYDomain,
+      yDomain: calculatedYDomain
     };
-  }, [linecuts, units, config, leftLinecutData, rightLinecutData, zoomedXPixelRange, zoomedYPixelRange, zoomVector]);
+  }, [
+    linecuts,
+    units,
+    config,
+    leftLinecutData,
+    rightLinecutData,
+    zoomedXPixelRange,
+    zoomedYPixelRange,
+    zoomVector
+  ]);
 
   // Show message if no data
   if (curves.length === 0) {
@@ -184,12 +225,12 @@ const LinecutFig: React.FC<LinecutFigProps> = ({
           abscissaConfig={{
             visDomain: xDomain,
             showGrid: true,
-            label: config.xAxisLabel(units),
+            label: config.xAxisLabel(units)
           }}
           ordinateConfig={{
             visDomain: yDomain,
             showGrid: true,
-            label: 'Intensity',
+            label: "Intensity"
           }}
           aspect="auto"
         >
@@ -210,12 +251,18 @@ const LinecutFig: React.FC<LinecutFigProps> = ({
           ))}
           <TooltipMesh
             guides="both"
-            renderTooltip={createTooltipRenderer(curves, { xLabel: 'q', xUnit: units })}
+            renderTooltip={createTooltipRenderer(curves, {
+              xLabel: "q",
+              xUnit: units
+            })}
           />
         </VisCanvas>
       </div>
       {/* Legend */}
-      <H5WebLegend entries={legendEntries} className="shrink-0 border-t border-gray-100" />
+      <H5WebLegend
+        entries={legendEntries}
+        className="shrink-0 border-t border-gray-100"
+      />
     </div>
   );
 };

@@ -12,7 +12,6 @@ import msgpack
 import numpy as np
 from fastapi import APIRouter
 from fastapi.responses import Response
-
 from xscattering_backend.cache.image_cache import get_cached_processed_image
 from xscattering_backend.cache.saxs_q_cache import get_or_compute_saxs_q_matrices
 from xscattering_backend.config.models import SingleLinecutRequest
@@ -69,10 +68,8 @@ async def extract_linecut(request: SingleLinecutRequest) -> Response:
 
         # Convert numpy arrays to lists
         result = {
-            "q_values": q_values.tolist() if isinstance(q_values, np.ndarray) else q_values,
-            "intensities": (
-                intensities.tolist() if isinstance(intensities, np.ndarray) else intensities
-            ),
+            "q_values": (q_values.tolist() if isinstance(q_values, np.ndarray) else q_values),
+            "intensities": (intensities.tolist() if isinstance(intensities, np.ndarray) else intensities),
             "success": True,
             "error_message": None,
         }
@@ -89,9 +86,7 @@ async def extract_linecut(request: SingleLinecutRequest) -> Response:
     return Response(content=packed_data, media_type="application/x-msgpack")
 
 
-def _extract_saxs_linecut(
-    request: SingleLinecutRequest, calibration_dict: dict
-) -> tuple[np.ndarray, np.ndarray]:
+def _extract_saxs_linecut(request: SingleLinecutRequest, calibration_dict: dict) -> tuple[np.ndarray, np.ndarray]:
     """
     Extract linecut from SAXS pixel-space image.
 
@@ -154,9 +149,7 @@ def _extract_saxs_linecut(
         raise ValueError(f"Unknown linecut type: {request.linecut_type}")
 
 
-def _extract_gisaxs_linecut(
-    request: SingleLinecutRequest, calibration_dict: dict
-) -> tuple[np.ndarray, np.ndarray]:
+def _extract_gisaxs_linecut(request: SingleLinecutRequest, calibration_dict: dict) -> tuple[np.ndarray, np.ndarray]:
     """
     Extract linecut from GISAXS transformed Q-space image.
 
@@ -209,9 +202,7 @@ def _extract_gisaxs_linecut(
         )
     elif request.linecut_type == "inclined":
         if request.q_x_position is None or request.q_y_position is None:
-            raise ValueError(
-                "q_x_position (qip) and q_y_position (qoop) are required for inclined linecuts"
-            )
+            raise ValueError("q_x_position (qip) and q_y_position (qoop) are required for inclined linecuts")
         if request.angle is None:
             raise ValueError("angle is required for inclined linecuts")
         return extract_gisaxs_inclined_linecut(

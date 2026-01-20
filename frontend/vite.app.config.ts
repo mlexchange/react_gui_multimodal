@@ -1,6 +1,6 @@
-import path from 'node:path';
-import { defineConfig, loadEnv } from 'vite';
-import react from '@vitejs/plugin-react';
+import path from "node:path";
+import { defineConfig, loadEnv } from "vite";
+import react from "@vitejs/plugin-react";
 
 /**
  * Vite configuration for building the standalone application (Docker deployment).
@@ -8,46 +8,46 @@ import react from '@vitejs/plugin-react';
  * Usage: vite build --config vite.app.config.ts
  */
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, '../', 'SCATTERING_');
+  const env = loadEnv(mode, "../", "SCATTERING_");
 
-  const tiledUrl = env.SCATTERING_TILED_URL || 'http://localhost:8000';
-  const tiledApiKey = env.SCATTERING_TILED_API_KEY || '';
+  const tiledUrl = env.SCATTERING_TILED_URL || "http://localhost:8000";
+  const tiledApiKey = env.SCATTERING_TILED_API_KEY || "";
 
   return {
     resolve: {
       alias: {
-        "@": path.resolve(__dirname, "./src"),
-      },
+        "@": path.resolve(__dirname, "./src")
+      }
     },
     define: {
-      'import.meta.env.SCATTERING_TILED_URL': JSON.stringify(tiledUrl),
-      'import.meta.env.SCATTERING_TILED_API_KEY': JSON.stringify(tiledApiKey),
+      "import.meta.env.SCATTERING_TILED_URL": JSON.stringify(tiledUrl),
+      "import.meta.env.SCATTERING_TILED_API_KEY": JSON.stringify(tiledApiKey)
     },
     plugins: [react()],
     optimizeDeps: {
       esbuildOptions: {
         define: {
-          global: 'globalThis',
-        },
-      },
+          global: "globalThis"
+        }
+      }
     },
     build: {
-      outDir: 'dist-app',
-      emptyOutDir: true,
+      outDir: "dist-app",
+      emptyOutDir: true
     },
     server: {
       port: 4000,
-      host: '0.0.0.0',
+      host: "0.0.0.0",
       proxy: {
-        '/api': {
-          target: 'http://127.0.0.1:8000',
-          changeOrigin: true,
+        "/api": {
+          target: "http://127.0.0.1:8000",
+          changeOrigin: true
         },
-        '/ws': {
-          target: 'http://127.0.0.1:8000',
-          ws: true,
-        },
-      },
-    },
+        "/ws": {
+          target: "http://127.0.0.1:8000",
+          ws: true
+        }
+      }
+    }
   };
 });

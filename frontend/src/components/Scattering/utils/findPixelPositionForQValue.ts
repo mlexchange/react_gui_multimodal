@@ -1,4 +1,4 @@
-import { binarySearchClosest } from './h5webUtils';
+import { binarySearchClosest } from "./h5webUtils";
 
 /**
  * Generic helper function to find pixel position from q-value using a matrix
@@ -10,7 +10,7 @@ import { binarySearchClosest } from './h5webUtils';
 export function findPixelPositionForQValue(
   qValue: number,
   qMatrix: number[][],
-  direction: 'horizontal' | 'vertical' = 'horizontal'
+  direction: "horizontal" | "vertical" = "horizontal"
 ): number {
   if (!qMatrix || qMatrix.length === 0) {
     return 0;
@@ -20,13 +20,15 @@ export function findPixelPositionForQValue(
     return 0;
   }
 
-  if (direction === 'horizontal') {
+  if (direction === "horizontal") {
     // Extract first column values for binary search
-    const columnValues = qMatrix.map(row => row[0]).filter(v => v !== undefined);
+    const columnValues = qMatrix
+      .map((row) => row[0])
+      .filter((v) => v !== undefined);
     return binarySearchClosest(columnValues, qValue);
   } else {
     // Use first row for binary search
-    const rowValues = qMatrix[0].filter(v => v !== undefined);
+    const rowValues = qMatrix[0].filter((v) => v !== undefined);
     return binarySearchClosest(rowValues, qValue);
   }
 }

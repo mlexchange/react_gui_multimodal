@@ -10,7 +10,6 @@ import threading
 from typing import List, Optional
 
 import numpy as np
-
 from xscattering_backend.config.logging import get_logger
 from xscattering_backend.config.settings import get_config
 
@@ -157,9 +156,7 @@ def cache_uploaded_mask(mask_array: np.ndarray, file_content: bytes) -> str:
 
     with _mask_cache_lock:
         if mask_id not in _uploaded_mask_cache:
-            _evict_lru_if_needed(
-                _uploaded_mask_cache, _uploaded_mask_order, max_size, "Uploaded mask"
-            )
+            _evict_lru_if_needed(_uploaded_mask_cache, _uploaded_mask_order, max_size, "Uploaded mask")
             _uploaded_mask_cache[mask_id] = mask_array
             _uploaded_mask_order.append(mask_id)
         else:
@@ -168,7 +165,9 @@ def cache_uploaded_mask(mask_array: np.ndarray, file_content: bytes) -> str:
     return mask_id
 
 
-def get_uploaded_mask_from_cache(file_content: bytes) -> Optional[tuple[np.ndarray, str]]:
+def get_uploaded_mask_from_cache(
+    file_content: bytes,
+) -> Optional[tuple[np.ndarray, str]]:
     """
     Check if an uploaded mask is already cached.
 
