@@ -7,6 +7,30 @@
   padding: 4px 0 !important;
 }
 
+/* Regular font for labels */
+[class*="visCanvas"] {
+  --h5w-axisLabels--fontWeight: 400;
+}
+
+/* Y-axis sizing for panels WITH label (left panel only) */
+[data-has-y-label="true"] [class*="visCanvas"] {
+  grid-template-columns: 81px minmax(0, 1fr) 4px !important;
+}
+[data-has-y-label="true"] [class*="axis"][data-type="ordinate"] {
+  width: 81px !important;
+}
+[data-has-y-label="true"] [class*="axis"][data-type="ordinate"] text[class*="label"] {
+  transform: rotate(-90deg) translateY(20px);
+}
+
+/* Y-axis sizing for panels WITHOUT label (middle/right panels) */
+[data-has-y-label="false"] [class*="visCanvas"] {
+  grid-template-columns: 49px minmax(0, 1fr) 4px !important;
+}
+[data-has-y-label="false"] [class*="axis"][data-type="ordinate"] {
+  width: 49px !important;
+}
+
 .react-tooltip {
   z-index: 9999;
 }

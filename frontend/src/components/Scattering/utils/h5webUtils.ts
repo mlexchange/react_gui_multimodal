@@ -4,12 +4,10 @@
 
 import ndarray, { NdArray } from 'ndarray';
 
-/**
- * H5Web axis offset constants (from h5web/packages/lib/src/vis/utils.ts)
- * With labels: left = 80 (ticks) + 24 (label) = 104, right = 24
- */
-export const AXIS_LEFT_OFFSET = 104;  // px for y-axis ticks + label
-export const AXIS_RIGHT_OFFSET = 24;  // px for right padding
+/** H5Web axis offset constants (overridden via styles.css) */
+export const AXIS_LEFT_OFFSET = 86;
+export const AXIS_LEFT_OFFSET_NO_LABEL = 44;
+export const AXIS_RIGHT_OFFSET = 4;
 
 /**
  * Format tick value as integer (no scientific notation)

@@ -784,8 +784,11 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
         </Toolbar>
       </div>
 
-      {/* Heatmap grid */}
-      <div className="grid grid-cols-3 gap-0 w-full flex-1 min-h-0 overflow-hidden py-2 px-0">
+      {/* Heatmap grid - unequal columns so image areas are same size */}
+      <div
+        className="grid gap-0 w-full flex-1 min-h-0 overflow-visible py-2 px-2"
+        style={{ gridTemplateColumns: 'calc(33.33% + 21px) calc(33.33% - 10.5px) calc(33.33% - 10.5px)' }}
+      >
         <HeatmapPanel
           header={leftHeader}
           dataArray={leftNdarray}
@@ -851,6 +854,7 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
           showMaskOverlay={showMaskOverlay}
           gisaxsQipValues={rightGisaxsTransformed?.qipValues}
           gisaxsQoopValues={rightGisaxsTransformed?.qoopValues}
+          showYAxisLabel={false}
         />
         <HeatmapPanel
           header={comparisonHeader ?? <span className="font-medium">{comparisonLabel}</span>}
@@ -872,6 +876,7 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
           experimentType={experimentType}
           gisaxsQipValues={leftGisaxsTransformed?.qipValues}
           gisaxsQoopValues={leftGisaxsTransformed?.qoopValues}
+          showYAxisLabel={false}
         />
       </div>
     </div>

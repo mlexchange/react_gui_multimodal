@@ -28,6 +28,7 @@ import {
 import { type ColorScaleType } from './utils/constants';
 import {
   AXIS_LEFT_OFFSET,
+  AXIS_LEFT_OFFSET_NO_LABEL,
   AXIS_RIGHT_OFFSET,
   formatTickAsInteger,
 } from './utils/h5webUtils';
@@ -76,6 +77,7 @@ export interface HeatmapPanelProps {
   // GISAXS-specific Q value arrays (for transformed Q-space images)
   gisaxsQipValues?: number[];  // 1D array for X axis in Q-space mode
   gisaxsQoopValues?: number[]; // 1D array for Y axis in Q-space mode
+  showYAxisLabel?: boolean;  // Whether to show the y-axis label (default true)
 }
 
 // ============================================================================
@@ -127,6 +129,7 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
   showOverlays = true,
   gisaxsQipValues,
   gisaxsQoopValues,
+  showYAxisLabel = true,
 }) => {
   // Check if we're in GISAXS Q-space mode with transformed data
   const isGisaxsQSpace = experimentType?.toLowerCase() === 'gisaxs' && showQSpaceAxes && gisaxsQipValues && gisaxsQoopValues;
@@ -135,9 +138,12 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
   const xAxisLabel = showQSpaceAxes
     ? (experimentType?.toLowerCase() === 'gisaxs' ? `q (in-plane) (${unit})` : `qₓ (${unit})`)
     : 'X (pixels)';
-  const yAxisLabel = showQSpaceAxes
-    ? (experimentType?.toLowerCase() === 'gisaxs' ? `q (out-of-plane) (${unit})` : `qᵧ (${unit})`)
-    : 'Y (pixels)';
+  // Only show y-axis label if showYAxisLabel is true
+  const yAxisLabel = showYAxisLabel
+    ? (showQSpaceAxes
+        ? (experimentType?.toLowerCase() === 'gisaxs' ? `q (out-of-plane) (${unit})` : `qᵧ (${unit})`)
+        : 'Y (pixels)')
+    : undefined;
 
   // visDomain stays in PIXEL coordinates always
   const xVisDomain: [number, number] = flipXAxis ? [cols, 0] : [0, cols];
@@ -215,12 +221,18 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
   // User's flipYAxis toggle inverts this
   const shouldFlipYAxis = !flipYAxis;
 
+  // Determine left offset based on whether y-axis label is shown
+  const leftOffset = showYAxisLabel ? AXIS_LEFT_OFFSET : AXIS_LEFT_OFFSET_NO_LABEL;
+
   return (
-    <div className="flex flex-col min-h-0 min-w-0 overflow-hidden relative">
+    <div
+      className="flex flex-col min-h-0 min-w-0 overflow-visible relative"
+      data-has-y-label={showYAxisLabel}
+    >
       {isLoading && <LoadingSpinner message={loadingMessage} />}
       <div
         className="shrink-0 flex justify-center items-center pt-2 pb-1 h-11"
-        style={{ paddingLeft: `${AXIS_LEFT_OFFSET}px`, paddingRight: `${AXIS_RIGHT_OFFSET}px` }}
+        style={{ paddingLeft: `${leftOffset}px`, paddingRight: `${AXIS_RIGHT_OFFSET}px` }}
       >
         {header}
       </div>
@@ -335,7 +347,7 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
       </div>
       <div
         className="shrink-0 h-12"
-        style={{ paddingLeft: `${AXIS_LEFT_OFFSET}px`, paddingRight: `${AXIS_RIGHT_OFFSET}px` }}
+        style={{ paddingLeft: `${leftOffset}px`, paddingRight: `${AXIS_RIGHT_OFFSET}px` }}
       >
         <ColorBar
           domain={domain}
