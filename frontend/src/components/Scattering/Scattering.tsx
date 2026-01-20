@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Select, IconButton, notifications } from '@/components/ui';
-import { PrevNextSelect, ContentCard, LoadingOverlay, Modal } from '@/components/shared';
-import { CircleHalfTiltIcon, GitDiffIcon, ListIcon, TreeStructureIcon, WarningIcon, WrenchIcon } from '@phosphor-icons/react';
+import { ContentCard, Modal } from '@/components/shared';
+import { CircleHalfTiltIcon, ListIcon, TreeStructureIcon, WarningIcon, WrenchIcon } from '@phosphor-icons/react';
 import { CalibrationParams, OperationType } from './types';
 
 import { Button, ButtonWithIcon } from '@blueskyproject/finch';
@@ -33,7 +33,6 @@ import { BatchProcessingWidget } from './BatchProcessingWidget';
 
 // Import utilities
 import { handleExperimentTypeChange, addLinecut } from './utils/linecutHandlers';
-import { leftImageColorPalette, rightImageColorPalette } from './utils/constants';
 
 // Import assets
 import alsLogo from '@/assets/als-logo.png';
@@ -672,68 +671,40 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
               {/* Plots container */}
               <div className="flex-1 flex flex-col min-h-0">
                 <H5WebScatterSubplot
+                    // Image selection
+                    leftImageIndex={leftImageIndex}
+                    rightImageIndex={rightImageIndex}
+                    onLeftIndexChange={setLeftImageIndex}
+                    onRightIndexChange={setRightImageIndex}
+                    scanUris={scanUris}
+                    imageNames={imageNames}
+                    isFetchingData={isFetchingData}
+                    isLoadingImages={isLoadingImages}
+                    setIsLoadingImages={setIsLoadingImages}
+                    // Operation type
                     operationType={operationType}
-                    setOperationType={setOperationType}
+                    onOperationTypeChange={setOperationType}
+                    // Image data callbacks
                     setImageHeight={setImageHeight}
                     setImageWidth={setImageWidth}
                     setImageData1={setImageData1}
                     setImageData2={setImageData2}
+                    // Linecuts and overlays
                     horizontalLinecuts={horizontalLinecuts}
                     verticalLinecuts={verticalLinecuts}
                     inclinedLinecuts={inclinedLinecuts}
-                    leftImageColorPalette={leftImageColorPalette}
-                    rightImageColorPalette={rightImageColorPalette}
-                    setZoomedXPixelRange={setZoomedXPixelRange}
-                    setZoomedYPixelRange={setZoomedYPixelRange}
                     azimuthalIntegrations={azimuthalIntegrations}
-                    azimuthalData1={azimuthalData1}
-                    azimuthalData2={azimuthalData2}
+                    // Q-space data
                     qMagnitudeMatrix={qMagnitudeMatrix}
                     maxQValue={maxQValue}
                     calibrationParams={calibrationParams}
                     qYMatrix={qYMatrix}
                     qXMatrix={qXMatrix}
-                    units="nm⁻¹"
-                    leftImageIndex={leftImageIndex}
-                    rightImageIndex={rightImageIndex}
-                    scanUris={scanUris}
-                    isLoadingImages={isLoadingImages}
-                    setIsLoadingImages={setIsLoadingImages}
-                    leftHeader={
-                      <PrevNextSelect
-                        value={leftImageIndex}
-                        onChange={setLeftImageIndex}
-                        options={imageNames.map((name, index) => ({ value: String(index), label: name }))}
-                        disabled={isFetchingData || isLoadingImages || numOfFiles === 0}
-                        numItems={numOfFiles}
-                      />
-                    }
-                    rightHeader={
-                      <PrevNextSelect
-                        value={rightImageIndex}
-                        onChange={setRightImageIndex}
-                        options={imageNames.map((name, index) => ({ value: String(index), label: name }))}
-                        disabled={isFetchingData || isLoadingImages || numOfFiles === 0}
-                        numItems={numOfFiles}
-                      />
-                    }
-                    comparisonHeader={
-                      <div className="flex items-center gap-1">
-                        <span className="font-medium">
-                          {operationType === 'subtract' ? 'Difference' : 'Ratio'}
-                        </span>
-                        <IconButton
-                          variant="subtle"
-                          size="sm"
-                          onClick={() => setOperationType(operationType === 'subtract' ? 'divide' : 'subtract')}
-                        >
-                          <GitDiffIcon size={16} className='text-sky-950'/>
-                        </IconButton>
-                      </div>
-                    }
+                    // Mask
                     maskUri={maskUri}
                     maskData={maskData}
                     maskShape={maskShape}
+                    // Display options
                     experimentType={experimentType}
                     showQSpaceAxes={showQSpaceAxes}
                     setShowQSpaceAxes={setShowQSpaceAxes}
@@ -791,7 +762,6 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                 contentClassName="p-2 relative"
                 isLoading={loadingHorizontalLinecuts.size > 0}
               >
-                {isLoadingImages && <LoadingOverlay />}
                 <LinecutFig
                   direction="horizontal"
                   linecuts={horizontalLinecuts}
@@ -814,7 +784,6 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                 contentClassName="p-2 relative"
                 isLoading={loadingVerticalLinecuts.size > 0}
               >
-                {isLoadingImages && <LoadingOverlay />}
                 <LinecutFig
                   direction="vertical"
                   linecuts={verticalLinecuts}
@@ -837,7 +806,6 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                 contentClassName="p-2 relative"
                 isLoading={loadingInclinedLinecuts.size > 0}
               >
-                {isLoadingImages && <LoadingOverlay />}
                 <InclinedLinecutFig
                   linecuts={inclinedLinecuts}
                   inclinedLinecutData1={inclinedLinecutData1 || []}

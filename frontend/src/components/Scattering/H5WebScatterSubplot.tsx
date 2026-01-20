@@ -7,12 +7,12 @@ import {
   ColorMapSelector,
   ScaleSelector,
   ToggleBtn,
-  getSafeDomain,
   SnapshotBtn,
   type ColorMap,
   type CustomDomain,
   type HistogramParams,
 } from '@h5web/lib';
+import { getSafeDomainForScale } from './utils/linePlotUtils';
 import {
   ArrowsHorizontalIcon,
   ArrowsVerticalIcon,
@@ -20,9 +20,12 @@ import {
   StackIcon,
   ChartLineIcon,
   MaskHappyIcon,
+  GitDiffIcon,
 } from '@phosphor-icons/react';
 
 import { HeatmapPanel } from './HeatmapPanel';
+import { PrevNextSelect, LoadingOverlay } from '@/components/shared';
+import { IconButton } from '@/components/ui';
 import { type LinecutOverlayProps } from './utils/generateOverlays';
 import { calculateQSpaceToPixelWidth } from './utils/calculateQSpaceToPixelWidth';
 import { calculateInclinedQSpaceToPixelWidth } from './utils/calculateQSpaceToPixelWidthInclinedLinecut';
@@ -38,7 +41,6 @@ import {
   Linecut,
   InclinedLinecut,
   AzimuthalIntegration,
-  AzimuthalData,
   OperationType,
   isGisaxsCalibrationComplete,
 } from './types';
@@ -51,83 +53,108 @@ import {
   type GISAXSTransformedData,
 } from './services/scatteringImageCache';
 
-// Props interface - same as ScatterSubplot for compatibility
+// Props interface
 interface H5WebScatterSubplotProps {
+  // Image selection
+  leftImageIndex?: number | "";
+  rightImageIndex?: number | "";
+  onLeftIndexChange: (index: number | "") => void;
+  onRightIndexChange: (index: number | "") => void;
+  scanUris?: string[];
+  imageNames?: string[];
+  isFetchingData?: boolean;
+  isLoadingImages?: boolean;
+  setIsLoadingImages?: (isLoading: boolean) => void;
+  // Operation type (difference/ratio)
   operationType: OperationType;
-  setOperationType: (value: OperationType) => void;
+  onOperationTypeChange: (value: OperationType) => void;
+  // Image data callbacks
   setImageHeight: (height: number) => void;
   setImageWidth: (width: number) => void;
   setImageData1: (data: number[][]) => void;
   setImageData2: (data: number[][]) => void;
+  // Linecuts and overlays
   horizontalLinecuts: Linecut[];
   verticalLinecuts: Linecut[];
   inclinedLinecuts: InclinedLinecut[];
-  leftImageColorPalette: string[];
-  rightImageColorPalette: string[];
-  setZoomedXPixelRange: (range: [number, number] | null) => void;
-  setZoomedYPixelRange: (range: [number, number] | null) => void;
   azimuthalIntegrations: AzimuthalIntegration[];
-  azimuthalData1: AzimuthalData[];  // Kept for backward compatibility
-  azimuthalData2: AzimuthalData[];  // Kept for backward compatibility
-  qMagnitudeMatrix?: number[][] | null;  // Cached Q-magnitude matrix for overlay rendering
+  // Q-space data
+  qMagnitudeMatrix?: number[][] | null;
   maxQValue: number;
   calibrationParams: CalibrationParams | null;
   qYMatrix: number[][];
   qXMatrix: number[][];
-  units: string;
-  leftImageIndex?: number | "";
-  rightImageIndex?: number | "";
-  scanUris?: string[];
-  imageNames?: string[];
-  isLoadingImages?: boolean;
-  setIsLoadingImages?: (isLoading: boolean) => void;
-  leftHeader?: React.ReactNode;
-  rightHeader?: React.ReactNode;
-  comparisonHeader?: React.ReactNode;
+  // Mask
   maskUri?: string | null;
   maskData?: Uint8Array | null;
   maskShape?: [number, number] | null;
+  // Display options
   experimentType?: string;
   showQSpaceAxes: boolean;
   setShowQSpaceAxes: (value: boolean) => void;
   showMaskOverlay: boolean;
   setShowMaskOverlay: (value: boolean) => void;
+  // GISAXS callback
   onGisaxsPixelQUpdate?: (qipMatrix: number[][], qoopMatrix: number[][]) => void;
 }
 
 const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
+  // Image selection
+  leftImageIndex,
+  rightImageIndex,
+  onLeftIndexChange,
+  onRightIndexChange,
+  scanUris,
+  imageNames = [],
+  isFetchingData = false,
+  isLoadingImages,
+  setIsLoadingImages,
+  // Operation type
   operationType,
+  onOperationTypeChange,
+  // Image data callbacks
   setImageHeight,
   setImageWidth,
   setImageData1,
   setImageData2,
+  // Linecuts and overlays
   horizontalLinecuts,
   verticalLinecuts,
   inclinedLinecuts,
   azimuthalIntegrations,
+  // Q-space data
   qMagnitudeMatrix,
   calibrationParams,
   maxQValue,
   qYMatrix,
   qXMatrix,
-  leftImageIndex,
-  rightImageIndex,
-  scanUris,
-  isLoadingImages,
-  setIsLoadingImages,
-  leftHeader,
-  rightHeader,
-  comparisonHeader,
+  // Mask
   maskUri,
   maskData,
   maskShape,
+  // Display options
   experimentType = 'SAXS',
   showQSpaceAxes,
   setShowQSpaceAxes,
   showMaskOverlay,
   setShowMaskOverlay,
+  // GISAXS callback
   onGisaxsPixelQUpdate,
 }) => {
+  // Internal state for comparison loading
+  const [isComparisonLoading, setIsComparisonLoading] = useState(false);
+
+  // Handler to toggle operation type with loading state
+  const handleOperationTypeToggle = useCallback(() => {
+    setIsComparisonLoading(true);
+    setTimeout(() => {
+      onOperationTypeChange(operationType === 'subtract' ? 'divide' : 'subtract');
+      setIsComparisonLoading(false);
+    }, 100);
+  }, [operationType, onOperationTypeChange]);
+
+  // Compute number of files for selectors
+  const numOfFiles = imageNames.length;
   // Raw data from fetch (pixel space images)
   const [leftArray, setLeftArray] = useState<number[][]>([]);
   const [rightArray, setRightArray] = useState<number[][]>([]);
@@ -369,26 +396,10 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
     return [globalMin, globalMax];
   }, [transformedData]);
 
-  // Make domain safe for the current scale type using h5web's getSafeDomain
+  // Make domain safe for the current scale type
   const safeSharedDomain = useMemo((): Domain | undefined => {
     if (!sharedDomain) return undefined;
-
-    // For Linear/SymLog, use original domain as-is (they support negative values)
-    if (scaleType === ScaleType.Linear || scaleType === ScaleType.SymLog) {
-      return sharedDomain;
-    }
-
-    // For Log/Sqrt, create a fallback that preserves positive values
-    const [dataMin, dataMax] = sharedDomain;
-
-    // If max is positive, preserve it; otherwise use a small default
-    const safeMax = dataMax > 0 ? dataMax : 1;
-    // Min should be positive and less than max
-    const safeMin = dataMin > 0 ? dataMin : Math.min(1e-10, safeMax * 0.01);
-    const fallbackDomain: Domain = [safeMin, safeMax];
-
-    const [safeDomain] = getSafeDomain(sharedDomain, fallbackDomain, scaleType);
-    return safeDomain;
+    return getSafeDomainForScale(sharedDomain, scaleType);
   }, [sharedDomain, scaleType]);
 
   // Compute histogram bounds using tighter percentiles to exclude extreme outliers
@@ -786,11 +797,20 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
 
       {/* Heatmap grid - unequal columns so image areas are same size */}
       <div
-        className="grid gap-0 w-full flex-1 min-h-0 overflow-visible py-2 px-2"
+        className="grid gap-0 w-full flex-1 min-h-0 overflow-visible py-2 px-2 relative"
         style={{ gridTemplateColumns: 'calc(33.33% + 21px) calc(33.33% - 10.5px) calc(33.33% - 10.5px)' }}
       >
+        {isLoadingImages && <LoadingOverlay message="Loading images..." />}
         <HeatmapPanel
-          header={leftHeader}
+          header={
+            <PrevNextSelect
+              value={leftImageIndex ?? ""}
+              onChange={onLeftIndexChange}
+              options={imageNames.map((name, index) => ({ value: String(index), label: name }))}
+              disabled={isFetchingData || isLoadingImages || numOfFiles === 0}
+              numItems={numOfFiles}
+            />
+          }
           dataArray={leftNdarray}
           domain={effectiveDomain}
           colorMap={colorMap}
@@ -810,8 +830,6 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
           beamCenterX={calibrationParams?.beam_center_x}
           beamCenterY={calibrationParams?.beam_center_y}
           maxQValue={maxQValue}
-          isLoading={isLoadingImages}
-          loadingMessage="Loading image..."
           showQSpaceAxes={showQSpaceAxes}
           qXMatrix={qXMatrix}
           qYMatrix={qYMatrix}
@@ -823,7 +841,15 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
           gisaxsQoopValues={leftGisaxsTransformed?.qoopValues}
         />
         <HeatmapPanel
-          header={rightHeader}
+          header={
+            <PrevNextSelect
+              value={rightImageIndex ?? ""}
+              onChange={onRightIndexChange}
+              options={imageNames.map((name, index) => ({ value: String(index), label: name }))}
+              disabled={isFetchingData || isLoadingImages || numOfFiles === 0}
+              numItems={numOfFiles}
+            />
+          }
           dataArray={rightNdarray}
           domain={effectiveDomain}
           colorMap={colorMap}
@@ -843,8 +869,6 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
           beamCenterX={calibrationParams?.beam_center_x}
           beamCenterY={calibrationParams?.beam_center_y}
           maxQValue={maxQValue}
-          isLoading={isLoadingImages}
-          loadingMessage="Loading image..."
           showQSpaceAxes={showQSpaceAxes}
           qXMatrix={qXMatrix}
           qYMatrix={qYMatrix}
@@ -857,7 +881,19 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
           showYAxisLabel={false}
         />
         <HeatmapPanel
-          header={comparisonHeader ?? <span className="font-medium">{comparisonLabel}</span>}
+          header={
+            <div className="flex items-center gap-1">
+              <span className="font-medium">{comparisonLabel}</span>
+              <IconButton
+                variant="subtle"
+                size="sm"
+                onClick={handleOperationTypeToggle}
+                disabled={isComparisonLoading}
+              >
+                <GitDiffIcon size={16} className="text-sky-950" />
+              </IconButton>
+            </div>
+          }
           dataArray={diffNdarray}
           domain={comparisonDomain}
           colorMap={diffColorMap}
@@ -868,8 +904,8 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
           flipXAxis={flipXAxis}
           flipYAxis={flipYAxis}
           showGrid={showGrid}
-          isLoading={isLoadingImages}
-          loadingMessage="Loading..."
+          isLoading={isComparisonLoading}
+          loadingMessage="Calculating..."
           showQSpaceAxes={showQSpaceAxes}
           qXMatrix={qXMatrix}
           qYMatrix={qYMatrix}

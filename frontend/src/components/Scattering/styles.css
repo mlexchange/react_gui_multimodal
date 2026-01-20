@@ -31,6 +31,28 @@
   width: 49px !important;
 }
 
+/* Summary figure - narrower Y-axis, wider right margin for annotations */
+[data-summary-fig="true"] [class*="visCanvas"] {
+  grid-template-columns: 61px minmax(0, 1fr) 24px !important;
+}
+[data-summary-fig="true"] [class*="axis"][data-type="ordinate"] {
+  width: 61px !important;
+}
+[data-summary-fig="true"] [class*="axis"][data-type="ordinate"] text[class*="label"] {
+  transform: rotate(-90deg) translateY(35px);
+}
+
+/* Linecut figures - narrower Y-axis (5px less than heatmap) */
+[data-linecut-fig="true"] [class*="visCanvas"] {
+  grid-template-columns: 76px minmax(0, 1fr) 4px !important;
+}
+[data-linecut-fig="true"] [class*="axis"][data-type="ordinate"] {
+  width: 76px !important;
+}
+[data-linecut-fig="true"] [class*="axis"][data-type="ordinate"] text[class*="label"] {
+  transform: rotate(-90deg) translateY(17px);
+}
+
 .react-tooltip {
   z-index: 9999;
 }

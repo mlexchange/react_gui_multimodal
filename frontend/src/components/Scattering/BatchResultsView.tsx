@@ -25,7 +25,6 @@ import {
   ColorMapSelector,
   ScaleSelector,
   ColorBar,
-  getSafeDomain,
   TooltipMesh,
   ToggleBtn,
   SvgElement,
@@ -33,6 +32,13 @@ import {
   type ColorMap,
   type CustomDomain,
 } from '@h5web/lib';
+import {
+  findClosestCurve,
+  getClosestPoint,
+  getSafeDomainForScale,
+  StandardTooltip,
+  type CurveData,
+} from './utils/linePlotUtils';
 import { Vector3 } from 'three';
 import ndarray from 'ndarray';
 import {
@@ -189,9 +195,10 @@ export function BatchResultsView({
     }
 
     // Create curve data for each result with vertical offset
-    const curves = successfulResults.map((r, i) => ({
-      scanName: r.scan_name,
-      scanIndex: i,
+    // Use CurveData-compatible structure with scanName stored in label
+    const curves: CurveData[] = successfulResults.map((r, i) => ({
+      id: `scan-${i}`,
+      label: r.scan_name,
       abscissas: qValues,
       ordinates: r.intensities.map(v => v + i * waterfallOffset),
       color: CURVE_COLORS[i % CURVE_COLORS.length],
@@ -249,21 +256,10 @@ export function BatchResultsView({
   }, [successfulResults]);
 
   // Safe domain for heatmap (handles log scale)
-  const safeHeatmapDomain = useMemo((): Domain => {
-    const [dataMin, dataMax] = heatmapDomain;
-
-    if (scaleType === ScaleType.Linear || scaleType === ScaleType.SymLog) {
-      return heatmapDomain;
-    }
-
-    // Log/Sqrt require positive values
-    const safeMax = dataMax > 0 ? dataMax : 1;
-    const safeMin = dataMin > 0 ? dataMin : Math.min(1e-10, safeMax * 0.01);
-    const fallbackDomain: Domain = [safeMin, safeMax];
-
-    const [safeDomain] = getSafeDomain(heatmapDomain, fallbackDomain, scaleType);
-    return safeDomain;
-  }, [heatmapDomain, scaleType]);
+  const safeHeatmapDomain = useMemo(
+    () => getSafeDomainForScale(heatmapDomain, scaleType),
+    [heatmapDomain, scaleType]
+  );
 
   // Export handler
   const handleExportCSV = useCallback(() => {
@@ -364,7 +360,7 @@ export function BatchResultsView({
               <ResetZoomButton />
               {waterfallCurves.map((curve) => (
                 <DataCurve
-                  key={curve.scanIndex}
+                  key={curve.id}
                   abscissas={curve.abscissas}
                   ordinates={curve.ordinates}
                   color={curve.color}
@@ -373,52 +369,19 @@ export function BatchResultsView({
               <TooltipMesh
                 guides="both"
                 renderTooltip={(x, y) => {
-                  // Find the closest curve to the y position
-                  let closestCurve = waterfallCurves[0];
-                  let minDist = Infinity;
+                  const closestCurve = findClosestCurve(waterfallCurves, x, y);
+                  if (!closestCurve) return null;
 
-                  for (const curve of waterfallCurves) {
-                    // Find the q-index closest to x
-                    let qIdx = 0;
-                    let minQDist = Math.abs(curve.abscissas[0] - x);
-                    for (let i = 1; i < curve.abscissas.length; i++) {
-                      const dist = Math.abs(curve.abscissas[i] - x);
-                      if (dist < minQDist) {
-                        minQDist = dist;
-                        qIdx = i;
-                      }
-                    }
-                    // Check distance to this curve at this q
-                    const curveY = curve.ordinates[qIdx];
-                    const dist = Math.abs(curveY - y);
-                    if (dist < minDist) {
-                      minDist = dist;
-                      closestCurve = curve;
-                    }
-                  }
-
-                  // Find q-index for the closest curve
-                  let qIdx = 0;
-                  let minQDist = Math.abs(closestCurve.abscissas[0] - x);
-                  for (let i = 1; i < closestCurve.abscissas.length; i++) {
-                    const dist = Math.abs(closestCurve.abscissas[i] - x);
-                    if (dist < minQDist) {
-                      minQDist = dist;
-                      qIdx = i;
-                    }
-                  }
-
-                  const qVal = closestCurve.abscissas[qIdx];
-                  const intensity = closestCurve.ordinates[qIdx];
+                  const { xVal, yVal } = getClosestPoint(closestCurve, x);
 
                   return (
-                    <div className="text-xs bg-white/90 p-1 rounded shadow">
-                      <div className="font-medium" style={{ color: closestCurve.color }}>
-                        {closestCurve.scanName}
-                      </div>
-                      <div>{xAxisLabel.split(' ')[0]}={qVal.toFixed(4)}</div>
-                      <div className="font-semibold">{intensity?.toExponential(3)}</div>
-                    </div>
+                    <StandardTooltip
+                      label={closestCurve.label}
+                      color={closestCurve.color}
+                      xLabel={xAxisLabel.split(' ')[0]}
+                      xValue={xVal}
+                      yValue={yVal}
+                    />
                   );
                 }}
               />

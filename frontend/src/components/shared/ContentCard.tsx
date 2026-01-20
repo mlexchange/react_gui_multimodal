@@ -33,7 +33,7 @@ export function ContentCard({
         <div className="flex items-center gap-2">
           {headerChildren}
           {isLoading && (
-            <SpinnerGapIcon size={18} className="animate-spin text-sky-600" />
+            <SpinnerGapIcon size={18} className="animate-spin text-sky-950" />
           )}
         </div>
       </div>

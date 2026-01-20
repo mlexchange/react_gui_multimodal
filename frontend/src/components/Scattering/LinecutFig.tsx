@@ -1,7 +1,23 @@
-import React, { useEffect, useRef, useState, useMemo } from "react";
-import Plot from "@/components/ui/Plot";
+import React, { useMemo } from "react";
+import {
+  VisCanvas,
+  DataCurve,
+  ResetZoomButton,
+  TooltipMesh,
+  XAxisZoom,
+  YAxisZoom,
+  Pan,
+  SelectToZoom,
+} from '@h5web/lib';
 import { Linecut } from './types';
 import { LinecutData } from './hooks/useHorizontalLinecut';
+import { H5WebLegend, LegendEntry } from './H5WebLegend';
+import {
+  CurveData,
+  Domain,
+  calculateCurveDomains,
+  createTooltipRenderer,
+} from './utils/linePlotUtils';
 
 type LinecutDirection = 'horizontal' | 'vertical';
 
@@ -13,50 +29,22 @@ interface LinecutFigProps {
   qXMatrix: number[][];
   qYMatrix: number[][];
   units?: string;
-  // API data for linecuts
   leftLinecutData?: Map<number, LinecutData>;
   rightLinecutData?: Map<number, LinecutData>;
-}
-
-interface Dimensions {
-  width: number | undefined;
-  height: number | undefined;
-}
-
-interface AxisConfig {
-  title: {
-    text: string;
-    font: { size: number };
-    standoff?: number;
-  };
-  tickfont: { size: number };
-  autorange: boolean;
-  range?: [number, number];
 }
 
 interface DirectionConfig {
   xAxisLabel: (units: string) => string;
   positionLabel: (pos: number, units: string) => string;
-  qSpaceToPixelDirection: 'horizontal' | 'vertical';
-  extractPlotVector: (matrices: { qXMatrix: number[][]; qYMatrix: number[][] }) => number[];
   extractZoomVector: (matrices: { qXMatrix: number[][]; qYMatrix: number[][] }) => number[];
   getZoomPixelRange: (ranges: { xRange: [number, number] | null; yRange: [number, number] | null }) => [number, number] | null;
   isInRange: (linecut: Linecut, ranges: { xRange: [number, number] | null; yRange: [number, number] | null }) => boolean;
-  computeAveragedIntensity: (imageData: number[][], pixelPosition: number, pixelWidth: number) => number[];
-  getWidthMatrix: (matrices: { qXMatrix: number[][]; qYMatrix: number[][] }) => number[][];
 }
 
 const directionConfig: Record<LinecutDirection, DirectionConfig> = {
   horizontal: {
-    xAxisLabel: (units) => `q<sub>x</sub> (${units})`,
-    positionLabel: (pos, units) => `(q<sub>y</sub>=${pos.toFixed(1)} ${units})`,
-    qSpaceToPixelDirection: 'horizontal',
-    extractPlotVector: ({ qXMatrix }) => {
-      if (qXMatrix && qXMatrix.length > 0 && qXMatrix[0]) {
-        return qXMatrix[0];
-      }
-      return [];
-    },
+    xAxisLabel: (units) => `qₓ (${units})`,
+    positionLabel: (pos, units) => `qᵧ=${pos.toFixed(1)} ${units}`,
     extractZoomVector: ({ qXMatrix }) => {
       if (qXMatrix && qXMatrix.length > 0 && qXMatrix[0]) {
         return qXMatrix[0];
@@ -69,37 +57,10 @@ const directionConfig: Record<LinecutDirection, DirectionConfig> = {
       const [yStart, yEnd] = yRange;
       return linecut.pixelPosition <= yStart && linecut.pixelPosition >= yEnd;
     },
-    computeAveragedIntensity: (imageData, pixelPosition, pixelWidth) => {
-      if (pixelWidth === 0) {
-        return imageData[pixelPosition].map(value => Number.isNaN(value) ? 0 : value);
-      }
-      const halfWidth = pixelWidth / 2;
-      const startRow = Math.max(0, Math.round(pixelPosition - halfWidth));
-      const endRow = Math.min(imageData.length - 1, Math.ceil(pixelPosition + halfWidth));
-
-      return Array.from({ length: imageData[0].length }, (_, colIndex) => {
-        let sum = 0;
-        let count = 0;
-        for (let row = startRow; row <= endRow; row++) {
-          const value = Number.isNaN(imageData[row][colIndex]) ? 0 : imageData[row][colIndex];
-          sum += value;
-          count++;
-        }
-        return sum / count;
-      });
-    },
-    getWidthMatrix: ({ qYMatrix }) => qYMatrix,
   },
   vertical: {
-    xAxisLabel: (units) => `q<sub>y</sub> (${units})`,
-    positionLabel: (pos, units) => `(q<sub>x</sub>=${pos.toFixed(1)} ${units})`,
-    qSpaceToPixelDirection: 'vertical',
-    extractPlotVector: ({ qYMatrix }) => {
-      if (qYMatrix && qYMatrix.length > 0) {
-        return qYMatrix.map(row => row[0]);
-      }
-      return [];
-    },
+    xAxisLabel: (units) => `qᵧ (${units})`,
+    positionLabel: (pos, units) => `qₓ=${pos.toFixed(1)} ${units}`,
     extractZoomVector: ({ qYMatrix }) => {
       if (qYMatrix && qYMatrix.length > 0) {
         return qYMatrix.map(row => row[0]);
@@ -112,31 +73,6 @@ const directionConfig: Record<LinecutDirection, DirectionConfig> = {
       const [xStart, xEnd] = xRange;
       return linecut.pixelPosition >= xStart && linecut.pixelPosition <= xEnd;
     },
-    computeAveragedIntensity: (imageData, pixelPosition, pixelWidth) => {
-      if (pixelWidth === 0) {
-        return imageData.map(row => {
-          const value = Number.isNaN(row[pixelPosition]) ? 0 : row[pixelPosition];
-          return value;
-        });
-      }
-      const halfWidth = pixelWidth / 2;
-      const startCol = Math.max(0, Math.round(pixelPosition - halfWidth));
-      const endCol = Math.min(imageData[0].length - 1, Math.ceil(pixelPosition + halfWidth));
-
-      return Array.from({ length: imageData.length }, (_, rowIndex) => {
-        let sum = 0;
-        let count = 0;
-        for (let col = startCol; col <= endCol; col++) {
-          if (col >= 0 && col < imageData[rowIndex].length) {
-            const value = Number.isNaN(imageData[rowIndex][col]) ? 0 : imageData[rowIndex][col];
-            sum += value;
-            count++;
-          }
-        }
-        return count > 0 ? sum / count : 0;
-      });
-    },
-    getWidthMatrix: ({ qXMatrix }) => qXMatrix,
   },
 };
 
@@ -151,12 +87,6 @@ const LinecutFig: React.FC<LinecutFigProps> = ({
   leftLinecutData,
   rightLinecutData,
 }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [dimensions, setDimensions] = useState<Dimensions>({
-    width: undefined,
-    height: undefined,
-  });
-
   const config = directionConfig[direction];
 
   const zoomVector = useMemo(
@@ -164,143 +94,116 @@ const LinecutFig: React.FC<LinecutFigProps> = ({
     [qXMatrix, qYMatrix, config]
   );
 
-  // Update dimensions when container size changes
-  useEffect(() => {
-    const resizeObserver = new ResizeObserver((entries) => {
-      if (entries[0]) {
-        const { width, height } = entries[0].contentRect;
-        setDimensions({
-          width: Math.floor(width),
-          height: Math.floor(height),
-        });
-      }
-    });
-
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current);
-    }
-
-    return () => resizeObserver.disconnect();
-  }, []);
-
-  // Memoize the plot data
-  const plotData = useMemo(() => {
+  // Prepare curve data for H5Web
+  const { curves, legendEntries, xDomain, yDomain } = useMemo(() => {
     const visibleLinecuts = linecuts.filter(linecut => !linecut.hidden);
+    const curveData: CurveData[] = [];
+    const entries: LegendEntry[] = [];
 
-    return visibleLinecuts.flatMap(linecut => {
+    visibleLinecuts.forEach(linecut => {
       const positionLabel = config.positionLabel(linecut.position, units);
-
-      // Get linecut data from API
       const leftApiData = leftLinecutData?.get(linecut.id);
       const rightApiData = rightLinecutData?.get(linecut.id);
 
-      const leftX = leftApiData?.qValues ?? [];
-      const leftY = leftApiData?.intensities ?? [];
-      const rightX = rightApiData?.qValues ?? [];
-      const rightY = rightApiData?.intensities ?? [];
+      if (leftApiData && leftApiData.qValues.length > 0) {
+        const label = `Left #${linecut.id} (${positionLabel})`;
+        curveData.push({
+          id: `left-${linecut.id}`,
+          abscissas: leftApiData.qValues,
+          ordinates: leftApiData.intensities,
+          color: linecut.leftColor,
+          label,
+        });
+        entries.push({ id: `left-${linecut.id}`, label, color: linecut.leftColor });
+      }
 
-      return [
-        {
-          x: leftX,
-          y: leftY,
-          type: "scatter" as const,
-          mode: "lines" as const,
-          name: `Left #${linecut.id} ${positionLabel}`,
-          line: {
-            color: linecut.leftColor,
-            width: 2,
-          },
-        },
-        {
-          x: rightX,
-          y: rightY,
-          type: "scatter" as const,
-          mode: "lines" as const,
-          name: `Right #${linecut.id} ${positionLabel}`,
-          line: {
-            color: linecut.rightColor,
-            width: 2,
-          },
-        },
-      ];
+      if (rightApiData && rightApiData.qValues.length > 0) {
+        const label = `Right #${linecut.id} (${positionLabel})`;
+        curveData.push({
+          id: `right-${linecut.id}`,
+          abscissas: rightApiData.qValues,
+          ordinates: rightApiData.intensities,
+          color: linecut.rightColor,
+          label,
+        });
+        entries.push({ id: `right-${linecut.id}`, label, color: linecut.rightColor });
+      }
     });
-  }, [linecuts, units, config, leftLinecutData, rightLinecutData]);
 
-  // Update layout
-  const layout = useMemo(() => {
-    const defaultXAxis: AxisConfig = {
-      title: {
-        text: config.xAxisLabel(units),
-        font: { size: 12 }
-      },
-      tickfont: { size: 11 },
-      autorange: true,
-    };
+    // Calculate domains using shared utility
+    const { xDomain: baseDomain, yDomain: calculatedYDomain } = calculateCurveDomains(curveData);
 
-    // Check for linecuts in range
-    const hasLinecutInRange = linecuts
-      .filter(linecut => !linecut.hidden)
-      .some(linecut => config.isInRange(linecut, { xRange: zoomedXPixelRange, yRange: zoomedYPixelRange }));
-
-    let xAxisConfig: AxisConfig = { ...defaultXAxis };
-
+    // Check if we should apply zoom range
+    const hasLinecutInRange = visibleLinecuts.some(
+      linecut => config.isInRange(linecut, { xRange: zoomedXPixelRange, yRange: zoomedYPixelRange })
+    );
     const zoomPixelRange = config.getZoomPixelRange({ xRange: zoomedXPixelRange, yRange: zoomedYPixelRange });
 
+    let finalXDomain: Domain = baseDomain;
     if (zoomPixelRange && hasLinecutInRange && zoomVector.length > 0) {
-      const qRange: [number, number] = [
+      finalXDomain = [
         zoomVector[Math.min(zoomPixelRange[0], zoomVector.length - 1)],
         zoomVector[Math.min(zoomPixelRange[1], zoomVector.length - 1)]
       ];
-
-      xAxisConfig = {
-        ...defaultXAxis,
-        range: qRange,
-        autorange: false,
-      };
     }
 
     return {
-      width: dimensions.width,
-      height: dimensions.height,
-      xaxis: xAxisConfig,
-      yaxis: {
-        title: { text: "Intensity", font: { size: 12 }, standoff: 40 },
-        tickfont: { size: 11 },
-        autorange: true,
-      },
-      margin: { l: 60, r: 10, t: 10, b: 40 },
-      legend: { font: { size: 10 }, orientation: 'h' as const, y: -0.25 },
-      font: { size: 11 },
-      showlegend: true,
+      curves: curveData,
+      legendEntries: entries,
+      xDomain: finalXDomain,
+      yDomain: calculatedYDomain,
     };
-  }, [dimensions, zoomedXPixelRange, zoomedYPixelRange, linecuts, zoomVector, units, config]);
+  }, [linecuts, units, config, leftLinecutData, rightLinecutData, zoomedXPixelRange, zoomedYPixelRange, zoomVector]);
+
+  // Show message if no data
+  if (curves.length === 0) {
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <p className="text-lg text-gray-500">No linecut data available</p>
+      </div>
+    );
+  }
 
   return (
-    <div ref={containerRef} className="w-full h-full">
-      <Plot
-        data={plotData}
-        layout={layout}
-        config={{
-          scrollZoom: true,
-          responsive: true,
-          displayModeBar: true,
-          displaylogo: false,
-          modeBarButtons: [
-            [
-              'pan2d',
-              'zoom2d',
-              'zoomIn2d',
-              'zoomOut2d',
-              'autoScale2d',
-              'resetScale2d',
-              'toImage',
-            ],
-          ],
-          showTips: true,
-        }}
-        useResizeHandler
-        style={{ width: "100%", height: "100%" }}
-      />
+    <div className="w-full h-full flex flex-col" data-linecut-fig="true">
+      {/* Plot area */}
+      <div className="w-full flex-1 h-0 flex flex-col">
+        <VisCanvas
+          abscissaConfig={{
+            visDomain: xDomain,
+            showGrid: true,
+            label: config.xAxisLabel(units),
+          }}
+          ordinateConfig={{
+            visDomain: yDomain,
+            showGrid: true,
+            label: 'Intensity',
+          }}
+          aspect="auto"
+        >
+          {/* Custom interactions: scroll zooms X-axis only, Shift+scroll zooms Y-axis */}
+          <Pan />
+          <XAxisZoom />
+          <YAxisZoom modifierKey="Shift" />
+          <SelectToZoom modifierKey="Control" />
+          <ResetZoomButton />
+          {curves.map((curve) => (
+            <DataCurve
+              key={curve.id}
+              abscissas={curve.abscissas}
+              ordinates={curve.ordinates}
+              color={curve.color}
+              width={2}
+            />
+          ))}
+          <TooltipMesh
+            guides="both"
+            renderTooltip={createTooltipRenderer(curves, { xLabel: 'q', xUnit: units })}
+          />
+        </VisCanvas>
+      </div>
+      {/* Legend */}
+      <H5WebLegend entries={legendEntries} className="shrink-0 border-t border-gray-100" />
     </div>
   );
 };

@@ -1,6 +1,22 @@
-import React, { useRef, useState, useEffect, useMemo } from "react";
-import Plot from "@/components/ui/Plot";
+import React, { useMemo } from "react";
+import {
+  VisCanvas,
+  DataCurve,
+  ResetZoomButton,
+  TooltipMesh,
+  XAxisZoom,
+  YAxisZoom,
+  Pan,
+  SelectToZoom,
+} from '@h5web/lib';
 import { AzimuthalIntegration, AzimuthalData } from './types';
+import { H5WebLegend, LegendEntry } from './H5WebLegend';
+import {
+  CurveData,
+  Domain,
+  calculateCurveDomains,
+  createTooltipRenderer,
+} from './utils/linePlotUtils';
 
 interface AzimuthalIntegrationFigProps {
   integrations: AzimuthalIntegration[];
@@ -9,143 +25,111 @@ interface AzimuthalIntegrationFigProps {
   zoomedQRange: [number, number] | null;
 }
 
-interface Dimensions {
-  width: number | undefined;
-  height: number | undefined;
-}
-
 const AzimuthalIntegrationFig: React.FC<AzimuthalIntegrationFigProps> = ({
   integrations,
   azimuthalData1,
   azimuthalData2,
   zoomedQRange,
 }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [dimensions, setDimensions] = useState<Dimensions>({
-    width: undefined,
-    height: undefined,
-  });
+  // Prepare curve data for H5Web
+  const { curves, legendEntries, xDomain, yDomain } = useMemo(() => {
+    const curveData: CurveData[] = [];
+    const entries: LegendEntry[] = [];
 
-  // Update dimensions when container size changes
-  useEffect(() => {
-    const resizeObserver = new ResizeObserver((entries) => {
-      if (entries[0]) {
-        const { width, height } = entries[0].contentRect;
-        setDimensions({
-          width: Math.floor(width),
-          height: Math.floor(height),
-        });
-      }
-    });
-
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current);
-    }
-
-    return () => resizeObserver.disconnect();
-  }, []);
-
-  // Memoize plot data
-  const plotData = useMemo(() =>
     integrations
       .filter(integration => !integration.hidden)
-      .flatMap(integration => {
-        // Find corresponding data for this integration
+      .forEach(integration => {
         const data1 = azimuthalData1.find(d => d.id === integration.id);
         const data2 = azimuthalData2.find(d => d.id === integration.id);
 
-        if (!data1 || !data2) return [];
+        if (data1 && data1.q.length > 0) {
+          const label = `Left #${integration.id}`;
+          curveData.push({
+            id: `left-${integration.id}`,
+            abscissas: data1.q,
+            ordinates: data1.intensity,
+            color: integration.leftColor,
+            label,
+          });
+          entries.push({ id: `left-${integration.id}`, label, color: integration.leftColor });
+        }
 
-        // Return plot traces for both datasets
-        return [
-          {
-            x: data1.q,
-            y: data1.intensity,
-            type: "scatter" as const,
-            mode: "lines" as const,
-            name: `Left #${integration.id}`,
-            line: {
-              color: integration.leftColor,
-              width: 2,
-            },
-          },
-          {
-            x: data2.q,
-            y: data2.intensity,
-            type: "scatter" as const,
-            mode: "lines" as const,
-            name: `Right #${integration.id}`,
-            line: {
-              color: integration.rightColor,
-              width: 2,
-            },
-          },
-        ];
-      }),
-    [integrations, azimuthalData1, azimuthalData2]
-  );
+        if (data2 && data2.q.length > 0) {
+          const label = `Right #${integration.id}`;
+          curveData.push({
+            id: `right-${integration.id}`,
+            abscissas: data2.q,
+            ordinates: data2.intensity,
+            color: integration.rightColor,
+            label,
+          });
+          entries.push({ id: `right-${integration.id}`, label, color: integration.rightColor });
+        }
+      });
 
-  // Memoize layout
-  const layout = useMemo(() => {
-    const defaultRange = {
-      xaxis: {
-        title: { text: "q (nm⁻¹)", font: { size: 12 } },
-        tickfont: { size: 11 },
-        autorange: true,
-      },
-    };
+    // Calculate domains using shared utility
+    const { xDomain: baseDomain, yDomain: calculatedYDomain } = calculateCurveDomains(curveData);
 
     // Apply zoom range if available
-    const xAxisConfig = zoomedQRange
-      ? {
-          ...defaultRange.xaxis,
-          range: zoomedQRange,
-          autorange: false,
-        }
-      : defaultRange.xaxis;
+    const finalXDomain: Domain = zoomedQRange ?? baseDomain;
 
     return {
-      width: dimensions.width,
-      height: dimensions.height,
-      xaxis: xAxisConfig,
-      yaxis: {
-        title: { text: "Intensity", font: { size: 12 }, standoff: 40 },
-        tickfont: { size: 11 },
-        autorange: true,
-      },
-      margin: { l: 60, r: 10, t: 10, b: 40 },
-      legend: { font: { size: 10 }, orientation: 'h' as const, y: -0.25 },
-      font: { size: 11 },
-      showlegend: true,
+      curves: curveData,
+      legendEntries: entries,
+      xDomain: finalXDomain,
+      yDomain: calculatedYDomain,
     };
-  }, [dimensions, zoomedQRange]);
+  }, [integrations, azimuthalData1, azimuthalData2, zoomedQRange]);
+
+  // Show message if no data
+  if (curves.length === 0) {
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <p className="text-lg text-gray-500">No azimuthal integration data available</p>
+      </div>
+    );
+  }
 
   return (
-    <div ref={containerRef} className="w-full h-full">
-      <Plot
-        data={plotData}
-        layout={layout}
-        config={{
-          scrollZoom: true,
-          responsive: true,
-          displayModeBar: true,
-          displaylogo: false,
-          modeBarButtons: [
-            [
-              'pan2d',
-              'zoom2d',
-              'zoomIn2d',
-              'zoomOut2d',
-              'autoScale2d',
-              'resetScale2d',
-              'toImage',
-            ],
-          ],
-          showTips: true,
-        }}
-        useResizeHandler
-        style={{ width: "100%", height: "100%" }}
-      />
+    <div className="w-full h-full flex flex-col" data-linecut-fig="true">
+      {/* Plot area */}
+      <div className="w-full flex-1 h-0 flex flex-col">
+        <VisCanvas
+          abscissaConfig={{
+            visDomain: xDomain,
+            showGrid: true,
+            label: 'q (nm⁻¹)',
+          }}
+          ordinateConfig={{
+            visDomain: yDomain,
+            showGrid: true,
+            label: 'Intensity',
+          }}
+          aspect="auto"
+        >
+          {/* Custom interactions: scroll zooms X-axis only, Shift+scroll zooms Y-axis */}
+          <Pan />
+          <XAxisZoom />
+          <YAxisZoom modifierKey="Shift" />
+          <SelectToZoom modifierKey="Control" />
+          <ResetZoomButton />
+          {curves.map((curve) => (
+            <DataCurve
+              key={curve.id}
+              abscissas={curve.abscissas}
+              ordinates={curve.ordinates}
+              color={curve.color}
+              width={2}
+            />
+          ))}
+          <TooltipMesh
+            guides="both"
+            renderTooltip={createTooltipRenderer(curves, { xLabel: 'q', xUnit: 'nm⁻¹' })}
+          />
+        </VisCanvas>
+      </div>
+      {/* Legend */}
+      <H5WebLegend entries={legendEntries} className="shrink-0 border-t border-gray-100" />
     </div>
   );
 };

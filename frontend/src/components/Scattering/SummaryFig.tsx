@@ -1,8 +1,63 @@
-import React, { useEffect, useRef, useState } from "react";
-import Plot, { PlotMouseEvent } from "@/components/ui/Plot";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
+import {
+  VisCanvas,
+  DataCurve,
+  DefaultInteractions,
+  ResetZoomButton,
+  TooltipMesh,
+  CurveType,
+  GlyphType,
+  Annotation,
+  useVisCanvasContext,
+} from '@h5web/lib';
+import { useThree } from '@react-three/fiber';
+import { Vector3 } from 'three';
 import { DisplayOption } from "./types";
 import ProgressBar from "./SummaryProgressBar";
 import { ToggleGroup } from "@/components/ui";
+import { H5WebLegend, LegendEntry } from './H5WebLegend';
+
+/**
+ * Click handler component that goes inside VisCanvas.
+ * Converts click coordinates to data space and finds the nearest point.
+ */
+interface ClickHandlerProps {
+  dataLength: number;
+  onPointClick: (pointIndex: number, screenX: number, screenY: number) => void;
+}
+
+function CanvasClickHandler({ dataLength, onPointClick }: ClickHandlerProps) {
+  const { canvasArea, htmlToData } = useVisCanvasContext();
+  const camera = useThree((state) => state.camera);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      // Get click position relative to canvas
+      const rect = canvasArea.getBoundingClientRect();
+      const htmlX = e.clientX - rect.left;
+      const htmlY = e.clientY - rect.top;
+
+      // Convert to data coordinates
+      const dataPt = htmlToData(camera, new Vector3(htmlX, htmlY, 0));
+
+      // The Y coordinate in data space is the image index (1-based)
+      // Round to nearest integer and convert to 0-based index
+      const pointIndex = Math.round(dataPt.y) - 1;
+
+      // Check if click is on a valid point
+      if (pointIndex >= 0 && pointIndex < dataLength) {
+        // Stop propagation to prevent the global click handler from closing the menu
+        e.stopPropagation();
+        onPointClick(pointIndex, e.clientX, e.clientY);
+      }
+    };
+
+    canvasArea.addEventListener('click', handleClick);
+    return () => canvasArea.removeEventListener('click', handleClick);
+  }, [canvasArea, htmlToData, camera, dataLength, onPointClick]);
+
+  return null;
+}
 
 interface SummaryFigProps {
   maxIntensities: number[];
@@ -18,10 +73,8 @@ interface SummaryFigProps {
   progressMessage?: string;
 }
 
-interface Dimensions {
-  width: number | undefined;
-  height: number | undefined;
-}
+// Domain type
+type Domain = [number, number];
 
 interface ContextMenuPosition {
   isVisible: boolean;
@@ -29,6 +82,12 @@ interface ContextMenuPosition {
   x: number;
   y: number;
 }
+
+// Colors
+const MAX_COLOR = 'rgb(31, 119, 180)';  // Blue
+const AVG_COLOR = 'rgb(255, 127, 14)';  // Orange
+const LEFT_MARKER_COLOR = 'red';
+const RIGHT_MARKER_COLOR = 'rgb(0, 200, 0)';  // Bright green
 
 const SummaryFig: React.FC<SummaryFigProps> = ({
   maxIntensities,
@@ -43,12 +102,6 @@ const SummaryFig: React.FC<SummaryFigProps> = ({
   progress = 0,
   progressMessage = 'Loading data...'
 }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [dimensions, setDimensions] = useState<Dimensions>({
-    width: undefined,
-    height: undefined,
-  });
-
   // State for context menu
   const [contextMenu, setContextMenu] = useState<ContextMenuPosition>({
     isVisible: false,
@@ -56,25 +109,6 @@ const SummaryFig: React.FC<SummaryFigProps> = ({
     x: 0,
     y: 0
   });
-
-  // Update dimensions when container size changes
-  useEffect(() => {
-    const resizeObserver = new ResizeObserver((entries) => {
-      if (entries[0]) {
-        const { width, height } = entries[0].contentRect;
-        setDimensions({
-          width: Math.floor(width),
-          height: Math.floor(height),
-        });
-      }
-    });
-
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current);
-    }
-
-    return () => resizeObserver.disconnect();
-  }, []);
 
   // Add global click listener to close context menu
   useEffect(() => {
@@ -90,246 +124,157 @@ const SummaryFig: React.FC<SummaryFigProps> = ({
     };
   }, [contextMenu.isVisible]);
 
-
-  // Handle point click for image selection
-  const handlePointClick = (data: Readonly<PlotMouseEvent>) => {
-    data.event.stopPropagation();
-
-    if (data.points && data.points.length > 0) {
-      const pointIndex = data.points[0].pointIndex;
-
-      setContextMenu({
-        isVisible: true,
-        pointIndex: pointIndex,
-        x: data.event.clientX,
-        y: data.event.clientY
-      });
-    }
-  };
-
   // Handle menu option clicks
-  const handleShowOnLeft = (e: React.MouseEvent) => {
+  const handleShowOnLeft = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     onSelectImages(contextMenu.pointIndex, rightImageIndex);
     setContextMenu(prev => ({ ...prev, isVisible: false }));
-  };
+  }, [contextMenu.pointIndex, rightImageIndex, onSelectImages]);
 
-  const handleShowOnRight = (e: React.MouseEvent) => {
+  const handleShowOnRight = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     onSelectImages(leftImageIndex, contextMenu.pointIndex);
     setContextMenu(prev => ({ ...prev, isVisible: false }));
-  };
+  }, [contextMenu.pointIndex, leftImageIndex, onSelectImages]);
 
-  // Create x-axis values (image indices)
-  const indices = Array.from({ length: maxIntensities.length }, (_, i) => i + 1);
+  // Create x-axis values (image indices, 1-based for display but 0-based internally)
+  const indices = useMemo(() =>
+    Array.from({ length: maxIntensities.length }, (_, i) => i + 1),
+    [maxIntensities.length]
+  );
 
-  // Create plot data based on display option
-  const createPlotData = () => {
-    const data = [];
+  // Prepare curve data for H5Web
+  const { curves, curveEntries, markerEntries, xDomain, yDomain, leftMarkerData, rightMarkerData } = useMemo(() => {
+    const curveData: Array<{
+      id: string;
+      abscissas: number[];
+      ordinates: number[];
+      color: string;
+      label: string;
+      curveType: CurveType;
+      glyphType: GlyphType;
+      glyphSize: number;
+    }> = [];
+    const curveLegend: LegendEntry[] = [];
+    const markerLegend: LegendEntry[] = [];
 
-    // Use bright green for better visibility
-    const RIGHT_IMAGE_COLOR = 'rgb(0, 200, 0)'; // Bright green
-
-    // Add annotations array for L/R labels
-    const annotations = [];
-
-    // Check if we have valid indices to annotate
-    if (typeof leftImageIndex === 'number') {
-      annotations.push({
-        x: displayOption === 'max' ? maxIntensities[leftImageIndex] :
-          displayOption === 'avg' ? avgIntensities[leftImageIndex] :
-          maxIntensities[leftImageIndex],
-        y: leftImageIndex + 1,
-        text: 'L',
-        showarrow: false,
-        font: {
-          color: 'black',
-          size: 14,
-          weight: 'bold'
-        },
-        xshift: 15
-      });
-    }
-
-    if (typeof rightImageIndex === 'number') {
-      annotations.push({
-        x: displayOption === 'max' ? maxIntensities[rightImageIndex] :
-          displayOption === 'avg' ? avgIntensities[rightImageIndex] :
-          maxIntensities[rightImageIndex],
-        y: rightImageIndex + 1,
-        text: 'R',
-        showarrow: false,
-        font: {
-          color: 'black',
-          size: 14,
-          weight: 'bold'
-        },
-        xshift: 15
-      });
-    }
-
+    // Prepare data - note: H5Web uses horizontal X axis for intensity, Y for index
+    // But we want vertical plot (Y = image index, X = intensity)
+    // So we swap: abscissas = intensities, ordinates = indices
     if (displayOption === 'both' || displayOption === 'max') {
-      data.push({
-        x: maxIntensities,
-        y: indices,
-        mode: 'lines+markers' as const,
-        type: 'scatter' as const,
-        name: 'Max',
-        marker: {
-          size: 6,
-          color: 'rgb(31, 119, 180)',
-          line: {
-            width: indices.map(i => {
-              const leftMatch = typeof leftImageIndex === 'number' && i === leftImageIndex + 1;
-              const rightMatch = typeof rightImageIndex === 'number' && i === rightImageIndex + 1;
-              return (leftMatch || rightMatch) ? 4 : 0;
-            }),
-            color: indices.map(i => {
-              if (typeof leftImageIndex === 'number' && i === leftImageIndex + 1) return 'red';
-              if (typeof rightImageIndex === 'number' && i === rightImageIndex + 1) {
-                return RIGHT_IMAGE_COLOR;
-              }
-              return 'rgba(0,0,0,0)';
-            })
-          }
-        },
-        text: imageNames.length > 0 ? imageNames : undefined,
-        hovertemplate: imageNames.length > 0
-          ? 'Image %{y}<br>Name: %{text}<br>Max: %{x:.2f}<extra></extra>'
-          : 'Image %{y}<br>Max: %{x:.2f}<extra></extra>',
+      curveData.push({
+        id: 'max',
+        abscissas: maxIntensities,
+        ordinates: indices,
+        color: MAX_COLOR,
+        label: 'Max',
+        curveType: CurveType.LineAndGlyphs,
+        glyphType: GlyphType.Circle,
+        glyphSize: 6,
+      });
+      curveLegend.push({
+        id: 'max',
+        label: 'Max',
+        color: MAX_COLOR,
       });
     }
 
     if (displayOption === 'both' || displayOption === 'avg') {
-      data.push({
-        x: avgIntensities,
-        y: indices,
-        mode: 'lines+markers' as const,
-        type: 'scatter' as const,
-        name: 'Avg',
-        marker: {
-          size: 6,
-          color: 'rgb(255, 127, 14)',
-          line: {
-            width: indices.map(i => {
-              const leftMatch = typeof leftImageIndex === 'number' && i === leftImageIndex + 1;
-              const rightMatch = typeof rightImageIndex === 'number' && i === rightImageIndex + 1;
-              return (leftMatch || rightMatch) ? 4 : 0;
-            }),
-            color: indices.map(i => {
-              if (typeof leftImageIndex === 'number' && i === leftImageIndex + 1) return 'red';
-              if (typeof rightImageIndex === 'number' && i === rightImageIndex + 1) return RIGHT_IMAGE_COLOR;
-              return 'rgba(0,0,0,0)';
-            })
-          }
-        },
-        text: imageNames.length > 0 ? imageNames : undefined,
-        hovertemplate: imageNames.length > 0
-          ? 'Image #%{y}<br>%{text}<br>Avg: %{x:.2f}<extra></extra>'
-          : 'Image #%{y}<br>Avg: %{x:.2f}<extra></extra>',
+      curveData.push({
+        id: 'avg',
+        abscissas: avgIntensities,
+        ordinates: indices,
+        color: AVG_COLOR,
+        label: 'Avg',
+        curveType: CurveType.LineAndGlyphs,
+        glyphType: GlyphType.Circle,
+        glyphSize: 6,
+      });
+      curveLegend.push({
+        id: 'avg',
+        label: 'Avg',
+        color: AVG_COLOR,
       });
     }
 
-    // Add legend-only traces for L and R indicators
+    // Prepare marker data for selected images
+    let leftMarker: { x: number; y: number } | null = null;
+    let rightMarker: { x: number; y: number } | null = null;
+
     if (typeof leftImageIndex === 'number') {
-      data.push({
-        x: [null],
-        y: [null],
-        type: 'scatter',
-        mode: 'markers',
-        name: 'L = Left Image',
-        marker: {
-          size: 10,
-          color: 'white',
-          line: {
-            color: 'red',
-            width: 4
-          }
-        },
-        showlegend: true,
-        hoverinfo: 'none',
-        legendgroup: 'selected'
+      const intensity = displayOption === 'avg' ? avgIntensities[leftImageIndex] : maxIntensities[leftImageIndex];
+      leftMarker = { x: intensity, y: leftImageIndex + 1 };
+      markerLegend.push({
+        id: 'left-indicator',
+        label: 'L = Left',
+        color: 'white',
+        isMarker: true,
+        outlineColor: LEFT_MARKER_COLOR,
       });
     }
 
     if (typeof rightImageIndex === 'number') {
-      data.push({
-        x: [null],
-        y: [null],
-        type: 'scatter',
-        mode: 'markers',
-        name: 'R = Right Image',
-        marker: {
-          size: 10,
-          color: 'white',
-          line: {
-            color: RIGHT_IMAGE_COLOR,
-            width: 4
-          }
-        },
-        showlegend: true,
-        hoverinfo: 'none',
-        legendgroup: 'selected'
+      const intensity = displayOption === 'avg' ? avgIntensities[rightImageIndex] : maxIntensities[rightImageIndex];
+      rightMarker = { x: intensity, y: rightImageIndex + 1 };
+      markerLegend.push({
+        id: 'right-indicator',
+        label: 'R = Right',
+        color: 'white',
+        isMarker: true,
+        outlineColor: RIGHT_MARKER_COLOR,
       });
     }
 
+    // Calculate domains
+    let xMin = Infinity, xMax = -Infinity;
 
+    const allIntensities = displayOption === 'both'
+      ? [...maxIntensities, ...avgIntensities]
+      : displayOption === 'max' ? maxIntensities : avgIntensities;
 
-    return { plotData: data, annotations };
-  };
+    allIntensities.forEach(v => {
+      if (isFinite(v) && !isNaN(v)) {
+        xMin = Math.min(xMin, v);
+        xMax = Math.max(xMax, v);
+      }
+    });
 
-  const { plotData, annotations } = createPlotData();
+    if (!isFinite(xMin)) xMin = 0;
+    if (!isFinite(xMax)) xMax = 1;
 
-  // Generate a consistent UI revision ID based only on the data dimensions
-  const uiRevisionId = `${maxIntensities.length}-${avgIntensities.length}-${displayOption}`;
+    const xPadding = (xMax - xMin) * 0.05 || 0.1;
 
-  // Generate a data revision ID that includes selected points
-  const dataRevisionId = `${uiRevisionId}-${leftImageIndex}-${rightImageIndex}-color-update`;
+    // Y domain: image indices (reversed so index 1 is at top)
+    const yMax = Math.max(indices.length, 10) + 0.5;
+    const yMin = 0.5;
 
-  const layout = {
-    width: dimensions.width,
-    height: dimensions.height ? dimensions.height - 40 : undefined,
-    xaxis: {
-      title: {
-        text: 'Intensity',
-        font: { size: 12 }
-      },
-      tickfont: { size: 11 },
-      autorange: true,
-    },
-    yaxis: {
-      title: {
-        text: 'Image Index',
-        font: { size: 12 }
-      },
-      tickfont: { size: 11 },
-      tickmode: 'linear' as const,
-      dtick: Math.ceil(indices.length / 20),
-      range: [Math.max(indices.length, 10) + 0.5, 0.5],
-      autorange: false
-    },
-    legend: {
-      x: 0.5,
-      y: -0.10,
-      orientation: 'h' as const,
-      font: { size: 10 },
-      xanchor: 'center' as const,
-    },
-    margin: { l: 40, r: 20, t: 30, b: 60 },
-    hovermode: 'closest' as const,
-    clickmode: 'event' as const,
-    uirevision: uiRevisionId,
-    datarevision: dataRevisionId,
-    annotations: annotations, // Add annotations to the layout
-  };
+    return {
+      curves: curveData,
+      curveEntries: curveLegend,
+      markerEntries: markerLegend,
+      xDomain: [xMin - xPadding, xMax + xPadding] as Domain,
+      yDomain: [yMax, yMin] as Domain,  // Reversed for top-to-bottom
+      leftMarkerData: leftMarker,
+      rightMarkerData: rightMarker,
+    };
+  }, [maxIntensities, avgIntensities, indices, displayOption, leftImageIndex, rightImageIndex]);
+
+  // Handle canvas click - show context menu
+  const handleCanvasClick = useCallback((pointIndex: number, screenX: number, screenY: number) => {
+    setContextMenu({
+      isVisible: true,
+      pointIndex,
+      x: screenX,
+      y: screenY,
+    });
+  }, []);
 
   // Determine if we should show the progress bar
   const showProgressBar = isFetchingData && progress < 100;
-
   const hasData = maxIntensities.length > 0 || avgIntensities.length > 0;
 
   return (
-    <div ref={containerRef} className="w-full h-full relative flex flex-col">
+    <div className="w-full h-full relative flex flex-col" data-summary-fig="true">
       {/* Progress Bar */}
       <div className="w-full pt-3">
         <ProgressBar
@@ -356,7 +301,7 @@ const SummaryFig: React.FC<SummaryFigProps> = ({
         </div>
       )}
 
-      <div className="flex-grow relative">
+      <div className="flex-grow relative flex flex-col min-h-0">
         {isFetchingData && progress < 100 && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-50 z-10">
             <div className="text-lg font-semibold">
@@ -366,29 +311,130 @@ const SummaryFig: React.FC<SummaryFigProps> = ({
         )}
 
         {hasData ? (
-          <Plot
-            data={plotData}
-            layout={layout}
-            config={{
-              displayModeBar: "hover",
-              responsive: true,
-              displaylogo: false,
-              scrollZoom: true,
-              doubleClick: 'autosize',
-              modeBarButtons: [
-                ['pan2d', 'zoom2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'toImage'],
-              ],
-              showTips: true,
-            }}
-            onClick={handlePointClick}
-            style={{ width: '100%', height: '100%' }}
-            useResizeHandler={true}
-          />
+          <div className="flex-1 min-h-0 flex flex-col">
+            {/* Plot area */}
+            <div className="w-full flex-1 h-0 flex flex-col">
+              <VisCanvas
+                abscissaConfig={{
+                  visDomain: xDomain,
+                  showGrid: true,
+                  label: 'Intensity',
+                }}
+                ordinateConfig={{
+                  visDomain: yDomain,
+                  showGrid: true,
+                  label: 'Image index',
+                }}
+                aspect="auto"
+              >
+                <DefaultInteractions />
+                <ResetZoomButton />
+
+                {/* Click handler for context menu */}
+                <CanvasClickHandler
+                  dataLength={maxIntensities.length}
+                  onPointClick={handleCanvasClick}
+                />
+
+                {/* Main data curves */}
+                {curves.map((curve) => (
+                  <DataCurve
+                    key={curve.id}
+                    abscissas={curve.abscissas}
+                    ordinates={curve.ordinates}
+                    color={curve.color}
+                    curveType={curve.curveType}
+                    glyphType={curve.glyphType}
+                    glyphSize={curve.glyphSize}
+                  />
+                ))}
+
+                {/* Left image marker (larger circle with red outline) */}
+                {leftMarkerData && (
+                  <DataCurve
+                    abscissas={[leftMarkerData.x]}
+                    ordinates={[leftMarkerData.y]}
+                    color={LEFT_MARKER_COLOR}
+                    curveType={CurveType.GlyphsOnly}
+                    glyphType={GlyphType.Circle}
+                    glyphSize={14}
+                  />
+                )}
+
+                {/* Right image marker (larger circle with green outline) */}
+                {rightMarkerData && (
+                  <DataCurve
+                    abscissas={[rightMarkerData.x]}
+                    ordinates={[rightMarkerData.y]}
+                    color={RIGHT_MARKER_COLOR}
+                    curveType={CurveType.GlyphsOnly}
+                    glyphType={GlyphType.Circle}
+                    glyphSize={14}
+                  />
+                )}
+
+                {/* L annotation */}
+                {leftMarkerData && (
+                  <Annotation
+                    x={leftMarkerData.x}
+                    y={leftMarkerData.y}
+                    overflowCanvas
+                    style={{ transform: 'translate(12px, -50%)', fontWeight: 'bold', fontSize: 14 }}
+                  >
+                    L
+                  </Annotation>
+                )}
+
+                {/* R annotation */}
+                {rightMarkerData && (
+                  <Annotation
+                    x={rightMarkerData.x}
+                    y={rightMarkerData.y}
+                    overflowCanvas
+                    style={{ transform: 'translate(12px, -50%)', fontWeight: 'bold', fontSize: 14 }}
+                  >
+                    R
+                  </Annotation>
+                )}
+
+                <TooltipMesh
+                  guides="both"
+                  renderTooltip={(x, y) => {
+                    // Find closest point
+                    const imageIdx = Math.round(y) - 1;  // Convert to 0-based
+                    if (imageIdx < 0 || imageIdx >= maxIntensities.length) return null;
+
+                    const maxVal = maxIntensities[imageIdx];
+                    const avgVal = avgIntensities[imageIdx];
+                    const name = imageNames[imageIdx];
+
+                    return (
+                      <div className="text-xs bg-white/90 p-1 rounded shadow">
+                        <div className="font-medium">Image #{imageIdx + 1}</div>
+                        {name && <div className="text-gray-600">{name}</div>}
+                        {(displayOption === 'both' || displayOption === 'max') && (
+                          <div>Max: {maxVal?.toFixed(2)}</div>
+                        )}
+                        {(displayOption === 'both' || displayOption === 'avg') && (
+                          <div>Avg: {avgVal?.toFixed(2)}</div>
+                        )}
+                      </div>
+                    );
+                  }}
+                />
+              </VisCanvas>
+            </div>
+            {/* Legend - two rows */}
+            <div className="shrink-0 border-t border-gray-100 flex flex-col">
+              <H5WebLegend entries={curveEntries} />
+              {markerEntries.length > 0 && <H5WebLegend entries={markerEntries} />}
+            </div>
+          </div>
         ) : (
           !isFetchingData && (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-lg text-gray-500">No data available</p>
-          </div>
+            <div className="flex items-center justify-center h-full">
+              <p className="text-lg text-gray-500">No data available</p>
+            </div>
           )
         )}
       </div>
@@ -396,29 +442,29 @@ const SummaryFig: React.FC<SummaryFigProps> = ({
       {/* Context Menu */}
       {contextMenu.isVisible && (
         <div
-          className="fixed z-[9999] bg-white shadow-lg rounded-md border border-gray-200"
+          className="fixed z-[9999] bg-white shadow-md rounded border border-gray-200"
           style={{
-            left: `${contextMenu.x - 250}px`,
+            left: `${contextMenu.x - 180}px`,
             top: `${contextMenu.y}px`,
-            width: "250px"
+            width: "180px"
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="p-3 text-center text-base font-semibold border-b border-gray-200 bg-gray-50">
+          <div className="px-2 py-1.5 text-center text-xs font-medium border-b border-gray-200 bg-gray-50 text-gray-700">
             {imageNames.length > contextMenu.pointIndex
-              ? `Image #${contextMenu.pointIndex + 1} ${imageNames[contextMenu.pointIndex]}`
+              ? `#${contextMenu.pointIndex + 1} ${imageNames[contextMenu.pointIndex]}`
               : `Image #${contextMenu.pointIndex + 1}`}
           </div>
 
           <div
-            className="p-3 text-base hover:bg-blue-50 cursor-pointer transition-colors"
+            className="px-2 py-1.5 text-sm hover:bg-blue-50 cursor-pointer transition-colors text-gray-700"
             onClick={handleShowOnLeft}
           >
             Show on Left
           </div>
 
           <div
-            className="p-3 text-base hover:bg-blue-50 cursor-pointer transition-colors"
+            className="px-2 py-1.5 text-sm hover:bg-blue-50 cursor-pointer transition-colors text-gray-700"
             onClick={handleShowOnRight}
           >
             Show on Right
