@@ -11,12 +11,14 @@ import {
 } from '@h5web/lib';
 import { InclinedLinecut } from './types';
 import { calculateInclinedLineEndpoints } from './utils/calculateInclinedLinecutEndpoints';
+import { calculateZoomedInclinedQRange } from './utils/calculateZoomedQRange';
 import { H5WebLegend, LegendEntry } from './H5WebLegend';
 import {
   CurveData,
   Domain,
   calculateCurveDomains,
   createTooltipRenderer,
+  clampDomainToData,
 } from './utils/linePlotUtils';
 
 interface InclinedLinecutFigProps {
@@ -25,7 +27,8 @@ interface InclinedLinecutFigProps {
     inclinedLinecutData2: { id: number; data: number[] }[];
     beamCenterX: number;
     beamCenterY: number;
-    zoomedXQRange: [number, number] | null;
+    zoomedXPixelRange: [number, number] | null;
+    zoomedYPixelRange: [number, number] | null;
     qXVector: number[];
     qYVector: number[];
     units: string;
@@ -37,7 +40,8 @@ const InclinedLinecutFig: React.FC<InclinedLinecutFigProps> = ({
     inclinedLinecutData2,
     beamCenterX,
     beamCenterY,
-    zoomedXQRange,
+    zoomedXPixelRange,
+    zoomedYPixelRange,
     qXVector,
     qYVector,
     units,
@@ -172,11 +176,36 @@ const InclinedLinecutFig: React.FC<InclinedLinecutFigProps> = ({
                 entries.push({ id: `right-${linecut.id}`, label: rightLabel, color: linecut.rightColor });
             });
 
-        // Calculate domains using shared utility
         const { xDomain: baseDomain, yDomain: calculatedYDomain } = calculateCurveDomains(curveData);
 
-        // Apply zoom range if available
-        const finalXDomain: Domain = zoomedXQRange ?? baseDomain;
+        let finalXDomain: Domain = baseDomain;
+        if (zoomedXPixelRange && zoomedYPixelRange && beamCenterX !== undefined && beamCenterY !== undefined) {
+            let minQ = Infinity;
+            let maxQ = -Infinity;
+
+            linecuts
+                .filter(linecut => !linecut.hidden)
+                .forEach(linecut => {
+                    const qRange = calculateZoomedInclinedQRange({
+                        linecut,
+                        zoomedXPixelRange,
+                        zoomedYPixelRange,
+                        qXVector,
+                        qYVector,
+                        beamCenterX,
+                        beamCenterY,
+                    });
+
+                    if (qRange) {
+                        minQ = Math.min(minQ, qRange[0]);
+                        maxQ = Math.max(maxQ, qRange[1]);
+                    }
+                });
+
+            if (Number.isFinite(minQ) && Number.isFinite(maxQ)) {
+                finalXDomain = clampDomainToData([minQ, maxQ], baseDomain) ?? baseDomain;
+            }
+        }
 
         return {
             curves: curveData,
@@ -184,7 +213,7 @@ const InclinedLinecutFig: React.FC<InclinedLinecutFigProps> = ({
             xDomain: finalXDomain,
             yDomain: calculatedYDomain,
         };
-    }, [linecuts, inclinedLinecutData1, inclinedLinecutData2, zoomedXQRange, computeQRadialDistance]);
+    }, [linecuts, inclinedLinecutData1, inclinedLinecutData2, zoomedXPixelRange, zoomedYPixelRange, qXVector, qYVector, beamCenterX, beamCenterY, computeQRadialDistance]);
 
     // Show a message if no data is available
     if (linecuts.filter(l => !l.hidden).length === 0) {

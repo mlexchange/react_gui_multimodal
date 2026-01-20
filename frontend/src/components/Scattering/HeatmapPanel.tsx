@@ -1,10 +1,3 @@
-/**
- * HeatmapPanel component for H5Web visualization.
- *
- * Provides a reusable heatmap panel with overlays for linecuts,
- * inclined linecuts, azimuthal integrations, and mask visualization.
- */
-
 import React, { useMemo } from 'react';
 import {
   VisCanvas,
@@ -32,10 +25,7 @@ import {
   AXIS_RIGHT_OFFSET,
   formatTickAsInteger,
 } from './utils/h5webUtils';
-
-// ============================================================================
-// Types
-// ============================================================================
+import { ZoomBroadcaster, ZoomReceiver, type ZoomState } from './utils/zoomSync';
 
 type Domain = [number, number];
 
@@ -77,12 +67,12 @@ export interface HeatmapPanelProps {
   // GISAXS-specific Q value arrays (for transformed Q-space images)
   gisaxsQipValues?: number[];  // 1D array for X axis in Q-space mode
   gisaxsQoopValues?: number[]; // 1D array for Y axis in Q-space mode
-  showYAxisLabel?: boolean;  // Whether to show the y-axis label (default true)
+  showYAxisLabel?: boolean;
+  isZoomSource?: boolean;
+  onZoomChange?: (state: ZoomState | null) => void;
+  syncedZoomState?: ZoomState | null;
+  disableInteractions?: boolean;
 }
-
-// ============================================================================
-// Loading Spinner Component
-// ============================================================================
 
 export const LoadingSpinner: React.FC<{ message?: string }> = ({ message = 'Loading...' }) => (
   <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">
@@ -92,10 +82,6 @@ export const LoadingSpinner: React.FC<{ message?: string }> = ({ message = 'Load
     </div>
   </div>
 );
-
-// ============================================================================
-// Heatmap Panel Component
-// ============================================================================
 
 export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
   header,
@@ -130,6 +116,11 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
   gisaxsQipValues,
   gisaxsQoopValues,
   showYAxisLabel = true,
+  // Zoom synchronization
+  isZoomSource = false,
+  onZoomChange,
+  syncedZoomState,
+  disableInteractions = false,
 }) => {
   // Check if we're in GISAXS Q-space mode with transformed data
   const isGisaxsQSpace = experimentType?.toLowerCase() === 'gisaxs' && showQSpaceAxes && gisaxsQipValues && gisaxsQoopValues;
@@ -255,8 +246,18 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
             flip: shouldFlipYAxis,
           }}
         >
-          <DefaultInteractions />
-          <ResetZoomButton />
+          {!disableInteractions && (
+            <>
+              <DefaultInteractions />
+              <ResetZoomButton />
+            </>
+          )}
+          {isZoomSource && onZoomChange && (
+            <ZoomBroadcaster onZoomChange={onZoomChange} />
+          )}
+          {!isZoomSource && syncedZoomState !== undefined && (
+            <ZoomReceiver zoomState={syncedZoomState} />
+          )}
           <HeatmapMesh
             values={dataArray}
             domain={domain}
@@ -363,3 +364,4 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
 };
 
 export default HeatmapPanel;
+export type { ZoomState } from './utils/zoomSync';

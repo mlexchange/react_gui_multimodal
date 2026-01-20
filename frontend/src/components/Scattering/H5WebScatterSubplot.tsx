@@ -23,7 +23,7 @@ import {
   GitDiffIcon,
 } from '@phosphor-icons/react';
 
-import { HeatmapPanel } from './HeatmapPanel';
+import { HeatmapPanel, type ZoomState } from './HeatmapPanel';
 import { PrevNextSelect, LoadingOverlay } from '@/components/shared';
 import { IconButton } from '@/components/ui';
 import { type LinecutOverlayProps } from './utils/generateOverlays';
@@ -96,6 +96,11 @@ interface H5WebScatterSubplotProps {
   setShowMaskOverlay: (value: boolean) => void;
   // GISAXS callback
   onGisaxsPixelQUpdate?: (qipMatrix: number[][], qoopMatrix: number[][]) => void;
+  // Zoom callback - broadcasts visible pixel range to parent
+  onZoomChange?: (
+    xVisibleDomain: [number, number] | null,
+    yVisibleDomain: [number, number] | null
+  ) => void;
 }
 
 const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
@@ -140,9 +145,22 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
   setShowMaskOverlay,
   // GISAXS callback
   onGisaxsPixelQUpdate,
+  // Zoom callback
+  onZoomChange,
 }) => {
-  // Internal state for comparison loading
   const [isComparisonLoading, setIsComparisonLoading] = useState(false);
+  const [sharedZoomState, setSharedZoomState] = useState<ZoomState | null>(null);
+
+  const handleLeftPanelZoom = useCallback((state: ZoomState | null) => {
+    setSharedZoomState(state);
+    if (onZoomChange) {
+      if (state === null) {
+        onZoomChange(null, null);
+      } else {
+        onZoomChange(state.xVisibleDomain, state.yVisibleDomain);
+      }
+    }
+  }, [onZoomChange]);
 
   // Handler to toggle operation type with loading state
   const handleOperationTypeToggle = useCallback(() => {
@@ -839,6 +857,8 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
           showMaskOverlay={showMaskOverlay}
           gisaxsQipValues={leftGisaxsTransformed?.qipValues}
           gisaxsQoopValues={leftGisaxsTransformed?.qoopValues}
+          isZoomSource={true}
+          onZoomChange={handleLeftPanelZoom}
         />
         <HeatmapPanel
           header={
@@ -879,6 +899,8 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
           gisaxsQipValues={rightGisaxsTransformed?.qipValues}
           gisaxsQoopValues={rightGisaxsTransformed?.qoopValues}
           showYAxisLabel={false}
+          syncedZoomState={sharedZoomState}
+          disableInteractions={true}
         />
         <HeatmapPanel
           header={
@@ -913,6 +935,8 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(({
           gisaxsQipValues={leftGisaxsTransformed?.qipValues}
           gisaxsQoopValues={leftGisaxsTransformed?.qoopValues}
           showYAxisLabel={false}
+          syncedZoomState={sharedZoomState}
+          disableInteractions={true}
         />
       </div>
     </div>

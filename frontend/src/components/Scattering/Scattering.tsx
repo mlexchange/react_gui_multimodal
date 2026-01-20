@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Select, IconButton, notifications } from '@/components/ui';
 import { ContentCard, Modal } from '@/components/shared';
 import { CircleHalfTiltIcon, ListIcon, TreeStructureIcon, WarningIcon, WrenchIcon } from '@phosphor-icons/react';
@@ -192,12 +192,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     deleteInclinedLinecut,
     toggleInclinedLinecutVisibility,
     restoreLinecuts: restoreInclinedLinecuts,
-    zoomedXQRange,
   } = useInclinedLinecut({
-    qXVector,
-    qYVector,
-    zoomedXPixelRange,
-    zoomedYPixelRange,
     leftScanUri,
     rightScanUri,
     calibrationParams,
@@ -249,6 +244,15 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     }
     return max > 0 ? max : 2;
   }, [qMagnitudeMatrix]);
+
+  // Handle zoom changes from the heatmap (left panel is source of truth)
+  const handleHeatmapZoomChange = useCallback((
+    xVisibleDomain: [number, number] | null,
+    yVisibleDomain: [number, number] | null
+  ) => {
+    setZoomedXPixelRange(xVisibleDomain);
+    setZoomedYPixelRange(yVisibleDomain);
+  }, [setZoomedXPixelRange, setZoomedYPixelRange]);
 
   // Batch processing hook
   const batchProcessing = useBatchProcessing({
@@ -711,6 +715,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                     showMaskOverlay={showMaskOverlay}
                     setShowMaskOverlay={setShowMaskOverlay}
                     onGisaxsPixelQUpdate={setGisaxsQMatrices}
+                    onZoomChange={handleHeatmapZoomChange}
                   />
               </div>
           </ContentCard>
@@ -812,7 +817,8 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                   inclinedLinecutData2={inclinedLinecutData2 || []}
                   beamCenterX={calibrationParams?.beam_center_x}
                   beamCenterY={calibrationParams?.beam_center_y}
-                  zoomedXQRange={zoomedXQRange}
+                  zoomedXPixelRange={zoomedXPixelRange}
+                  zoomedYPixelRange={zoomedYPixelRange}
                   qXVector={qXVector}
                   qYVector={qYVector}
                   units="nm⁻¹"
@@ -834,7 +840,9 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                   integrations={azimuthalIntegrations}
                   azimuthalData1={azimuthalData1}
                   azimuthalData2={azimuthalData2}
-                  zoomedQRange={null}
+                  zoomedXPixelRange={zoomedXPixelRange}
+                  zoomedYPixelRange={zoomedYPixelRange}
+                  qMagnitudeMatrix={qMagnitudeMatrix}
                 />
               </ContentCard>
             )}

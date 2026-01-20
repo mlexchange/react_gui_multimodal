@@ -20,10 +20,6 @@ export interface InclinedLinecutData {
  * Props for the useInclinedLinecut hook.
  */
 export interface UseInclinedLinecutProps {
-  qXVector: number[];
-  qYVector: number[];
-  zoomedXPixelRange: [number, number] | null;
-  zoomedYPixelRange: [number, number] | null;
   leftScanUri: string | null;
   rightScanUri: string | null;
   calibrationParams: CalibrationParams | null;
@@ -36,10 +32,6 @@ export interface UseInclinedLinecutProps {
  * Fetches linecut data from the backend API with debouncing.
  */
 export default function useInclinedLinecut({
-  qXVector,
-  qYVector,
-  zoomedXPixelRange,
-  zoomedYPixelRange,
   leftScanUri,
   rightScanUri,
   calibrationParams,
@@ -60,22 +52,8 @@ export default function useInclinedLinecut({
   // Loading state per linecut
   const [loadingInclinedLinecuts, setLoadingInclinedLinecuts] = useState<Set<number>>(new Set());
 
-  // Q-space zoom ranges
-  const [zoomedXQRange, setZoomedXQRange] = useState<[number, number] | null>(null);
-
   // Check if API can be used (calibration complete and scan URIs available)
   const useApi = isCalibrationComplete(calibrationParams) && !!(leftScanUri || rightScanUri);
-
-  // Convert pixel ranges to Q ranges
-  useEffect(() => {
-    const xQRange = zoomedXPixelRange
-      ? [
-          qXVector[Math.min(zoomedXPixelRange[0], qXVector.length - 1)],
-          qXVector[Math.min(zoomedXPixelRange[1], qXVector.length - 1)]
-        ] as [number, number]
-      : null;
-    setZoomedXQRange(xQRange);
-  }, [zoomedXPixelRange, zoomedYPixelRange, qXVector, qYVector]);
 
   /**
    * Fetch linecut data from API for both scans.
@@ -375,6 +353,5 @@ export default function useInclinedLinecut({
     deleteInclinedLinecut,
     toggleInclinedLinecutVisibility,
     restoreLinecuts,
-    zoomedXQRange,
   };
 }

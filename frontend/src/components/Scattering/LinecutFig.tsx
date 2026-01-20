@@ -17,6 +17,7 @@ import {
   Domain,
   calculateCurveDomains,
   createTooltipRenderer,
+  clampDomainToData,
 } from './utils/linePlotUtils';
 
 type LinecutDirection = 'horizontal' | 'vertical';
@@ -54,8 +55,10 @@ const directionConfig: Record<LinecutDirection, DirectionConfig> = {
     getZoomPixelRange: ({ xRange }) => xRange,
     isInRange: (linecut, { yRange }) => {
       if (!yRange) return false;
-      const [yStart, yEnd] = yRange;
-      return linecut.pixelPosition <= yStart && linecut.pixelPosition >= yEnd;
+      // Handle potentially inverted range (due to Y-axis flip)
+      const yMin = Math.min(yRange[0], yRange[1]);
+      const yMax = Math.max(yRange[0], yRange[1]);
+      return linecut.pixelPosition >= yMin && linecut.pixelPosition <= yMax;
     },
   },
   vertical: {
@@ -70,8 +73,10 @@ const directionConfig: Record<LinecutDirection, DirectionConfig> = {
     getZoomPixelRange: ({ yRange }) => yRange,
     isInRange: (linecut, { xRange }) => {
       if (!xRange) return false;
-      const [xStart, xEnd] = xRange;
-      return linecut.pixelPosition >= xStart && linecut.pixelPosition <= xEnd;
+      // Handle potentially inverted range
+      const xMin = Math.min(xRange[0], xRange[1]);
+      const xMax = Math.max(xRange[0], xRange[1]);
+      return linecut.pixelPosition >= xMin && linecut.pixelPosition <= xMax;
     },
   },
 };
@@ -130,10 +135,8 @@ const LinecutFig: React.FC<LinecutFigProps> = ({
       }
     });
 
-    // Calculate domains using shared utility
     const { xDomain: baseDomain, yDomain: calculatedYDomain } = calculateCurveDomains(curveData);
 
-    // Check if we should apply zoom range
     const hasLinecutInRange = visibleLinecuts.some(
       linecut => config.isInRange(linecut, { xRange: zoomedXPixelRange, yRange: zoomedYPixelRange })
     );
@@ -141,10 +144,19 @@ const LinecutFig: React.FC<LinecutFigProps> = ({
 
     let finalXDomain: Domain = baseDomain;
     if (zoomPixelRange && hasLinecutInRange && zoomVector.length > 0) {
-      finalXDomain = [
-        zoomVector[Math.min(zoomPixelRange[0], zoomVector.length - 1)],
-        zoomVector[Math.min(zoomPixelRange[1], zoomVector.length - 1)]
-      ];
+      const rawIdx0 = Math.round(zoomPixelRange[0]);
+      const rawIdx1 = Math.round(zoomPixelRange[1]);
+      const minIdx = Math.max(0, Math.min(rawIdx0, rawIdx1));
+      const maxIdx = Math.min(zoomVector.length - 1, Math.max(rawIdx0, rawIdx1));
+
+      if (minIdx < maxIdx && minIdx >= 0 && maxIdx < zoomVector.length) {
+        const qMin = zoomVector[minIdx];
+        const qMax = zoomVector[maxIdx];
+        if (qMin !== undefined && qMax !== undefined && Number.isFinite(qMin) && Number.isFinite(qMax)) {
+          const sortedQ: Domain = qMin < qMax ? [qMin, qMax] : [qMax, qMin];
+          finalXDomain = clampDomainToData(sortedQ, baseDomain) ?? baseDomain;
+        }
+      }
     }
 
     return {

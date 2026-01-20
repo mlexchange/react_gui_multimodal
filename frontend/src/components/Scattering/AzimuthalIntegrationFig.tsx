@@ -16,20 +16,26 @@ import {
   Domain,
   calculateCurveDomains,
   createTooltipRenderer,
+  clampDomainToData,
 } from './utils/linePlotUtils';
+import { calculateZoomedAzimuthalQRange } from './utils/calculateZoomedQRange';
 
 interface AzimuthalIntegrationFigProps {
   integrations: AzimuthalIntegration[];
   azimuthalData1: AzimuthalData[];
   azimuthalData2: AzimuthalData[];
-  zoomedQRange: [number, number] | null;
+  zoomedXPixelRange: [number, number] | null;
+  zoomedYPixelRange: [number, number] | null;
+  qMagnitudeMatrix: number[][] | null;
 }
 
 const AzimuthalIntegrationFig: React.FC<AzimuthalIntegrationFigProps> = ({
   integrations,
   azimuthalData1,
   azimuthalData2,
-  zoomedQRange,
+  zoomedXPixelRange,
+  zoomedYPixelRange,
+  qMagnitudeMatrix,
 }) => {
   // Prepare curve data for H5Web
   const { curves, legendEntries, xDomain, yDomain } = useMemo(() => {
@@ -67,11 +73,17 @@ const AzimuthalIntegrationFig: React.FC<AzimuthalIntegrationFigProps> = ({
         }
       });
 
-    // Calculate domains using shared utility
     const { xDomain: baseDomain, yDomain: calculatedYDomain } = calculateCurveDomains(curveData);
 
-    // Apply zoom range if available
-    const finalXDomain: Domain = zoomedQRange ?? baseDomain;
+    let finalXDomain: Domain = baseDomain;
+    if (zoomedXPixelRange && zoomedYPixelRange && qMagnitudeMatrix) {
+      const qRange = calculateZoomedAzimuthalQRange({
+        zoomedXPixelRange,
+        zoomedYPixelRange,
+        qMagnitudeMatrix,
+      });
+      finalXDomain = clampDomainToData(qRange, baseDomain) ?? baseDomain;
+    }
 
     return {
       curves: curveData,
@@ -79,7 +91,7 @@ const AzimuthalIntegrationFig: React.FC<AzimuthalIntegrationFigProps> = ({
       xDomain: finalXDomain,
       yDomain: calculatedYDomain,
     };
-  }, [integrations, azimuthalData1, azimuthalData2, zoomedQRange]);
+  }, [integrations, azimuthalData1, azimuthalData2, zoomedXPixelRange, zoomedYPixelRange, qMagnitudeMatrix]);
 
   // Show message if no data
   if (curves.length === 0) {
