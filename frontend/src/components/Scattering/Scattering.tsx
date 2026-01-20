@@ -459,7 +459,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
           <h1 className="text-2xl font-bold text-sky-950">X-ray Scattering Analysis</h1>
         </header>
       )}
-      <div className="flex flex-1 w-full overflow-hidden">
+      <div className="flex flex-1 w-full">
       {/* First Column - Sidebar */}
         <div className={`border border-gray-300 bg-slate-200 shadow-lg relative transition-all duration-300 flex-shrink-0 flex flex-col h-full ${isSidebarCollapsed ? 'w-[48px]' : 'w-[280px]'}`}>
         {/* Scrollable Content Section */}
@@ -664,14 +664,15 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
       </div>
 
       {/* Second Column - Main Content Area */}
-      <div className="h-full flex-grow flex flex-col overflow-hidden p-2 gap-2 bg-slate-500">
+      <div className="h-full flex-grow flex flex-col p-2 gap-2 bg-slate-500">
         {/* Top Row - Scatter Images + Summary */}
-        <div className="flex-1 flex overflow-hidden gap-2">
+        <div className="flex-1 flex gap-2">
           {/* Scatter Images Card */}
           <ContentCard
             title="2D Scattering Data"
             className="flex-1"
-            contentClassName="flex flex-col">
+            contentClassName="flex flex-col"
+            allowOverflow>
               {/* Plots container */}
               <div className="flex-1 flex flex-col min-h-0">
                 <H5WebScatterSubplot

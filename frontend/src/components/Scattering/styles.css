@@ -1,5 +1,10 @@
 /* H5Web customizations for Scattering visualizations */
 
+/* White toolbar background to match content */
+:root {
+  --h5w-toolbar--bgColor: white;
+}
+
 /* Make horizontal ColorBar thinner */
 [data-horizontal] {
   height: 3rem !important;
@@ -42,7 +47,7 @@
   transform: rotate(-90deg) translateY(35px);
 }
 
-/* Linecut figures - narrower Y-axis (5px less than heatmap) */
+/* Linecut figures - narrower Y-axis */
 [data-linecut-fig="true"] [class*="visCanvas"] {
   grid-template-columns: 76px minmax(0, 1fr) 4px !important;
 }
@@ -51,6 +56,11 @@
 }
 [data-linecut-fig="true"] [class*="axis"][data-type="ordinate"] text[class*="label"] {
   transform: rotate(-90deg) translateY(17px);
+}
+
+/* Domain widget popup z-index to appear above other elements */
+[id="h5w-domain-popup"] {
+  z-index: 9999 !important;
 }
 
 .react-tooltip {
