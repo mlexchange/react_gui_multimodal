@@ -32,23 +32,25 @@ def get_config() -> dict:
             API key for Tiled authentication.
 
     Optional (with defaults):
-        DEVELOPMENT : bool
+        SCATTERING_BACKEND_DEVELOPMENT : bool
             Enable development mode with hot reload. Default: false.
-        BACKEND_HOST : str
+        SCATTERING_BACKEND_HOST : str
             Host address to bind the server. Default: "0.0.0.0".
-        BACKEND_PORT : int
+        SCATTERING_BACKEND_PORT : int
             Port number for the server. Default: 8000.
-        CACHE_IMAGE_SIZE : int
+        SCATTERING_BACKEND_LOG_LEVEL : str
+            Logging level (DEBUG/INFO/WARNING/ERROR). Default: INFO.
+        SCATTERING_BACKEND_CACHE_IMAGE_SIZE : int
             Maximum number of processed images to cache. Default: 50.
-        CACHE_QSPACE_SIZE : int
+        SCATTERING_BACKEND_CACHE_QSPACE_SIZE : int
             Maximum number of Q-space matrices to cache. Default: 20.
-        CACHE_GISAXS_SIZE : int
+        SCATTERING_BACKEND_CACHE_GISAXS_SIZE : int
             Maximum number of GISAXS transforms to cache. Default: 20.
-        CACHE_MASK_SIZE : int
+        SCATTERING_BACKEND_CACHE_MASK_SIZE : int
             Maximum number of masks to cache (per cache type). Default: 50.
-        CACHE_TILED_URIS : int
+        SCATTERING_BACKEND_CACHE_TILED_URIS : int
             Maximum number of Tiled URI clients to cache. Default: 4.
-        BATCH_MAX_WORKERS : int
+        SCATTERING_BACKEND_BATCH_MAX_WORKERS : int
             Maximum thread pool workers for batch processing. Default: 16.
 
     Returns
@@ -83,17 +85,17 @@ def get_config() -> dict:
         "tiled_url": tiled_url,
         "tiled_api_key": tiled_api_key,
         # Server settings
-        "development": os.getenv("DEVELOPMENT", "false").lower() in ("true", "1", "yes"),
-        "backend_host": os.getenv("BACKEND_HOST", "0.0.0.0"),
-        "backend_port": int(os.getenv("BACKEND_PORT", "8000")),
+        "development": os.getenv("SCATTERING_BACKEND_DEVELOPMENT", "false").lower() in ("true", "1", "yes"),
+        "backend_host": os.getenv("SCATTERING_BACKEND_HOST", "0.0.0.0"),
+        "backend_port": int(os.getenv("SCATTERING_BACKEND_PORT", "8000")),
         # Cache sizes
-        "cache_image_size": int(os.getenv("CACHE_IMAGE_SIZE", "50")),
-        "cache_qspace_size": int(os.getenv("CACHE_QSPACE_SIZE", "20")),
-        "cache_gisaxs_size": int(os.getenv("CACHE_GISAXS_SIZE", "20")),
-        "cache_mask_size": int(os.getenv("CACHE_MASK_SIZE", "50")),
-        "cache_tiled_uris": int(os.getenv("CACHE_TILED_URIS", "4")),
+        "cache_image_size": int(os.getenv("SCATTERING_BACKEND_CACHE_IMAGE_SIZE", "50")),
+        "cache_qspace_size": int(os.getenv("SCATTERING_BACKEND_CACHE_QSPACE_SIZE", "20")),
+        "cache_gisaxs_size": int(os.getenv("SCATTERING_BACKEND_CACHE_GISAXS_SIZE", "20")),
+        "cache_mask_size": int(os.getenv("SCATTERING_BACKEND_CACHE_MASK_SIZE", "50")),
+        "cache_tiled_uris": int(os.getenv("SCATTERING_BACKEND_CACHE_TILED_URIS", "4")),
         # Thread pool
-        "batch_max_workers": int(os.getenv("BATCH_MAX_WORKERS", "16")),
+        "batch_max_workers": int(os.getenv("SCATTERING_BACKEND_BATCH_MAX_WORKERS", "16")),
     }
 
 

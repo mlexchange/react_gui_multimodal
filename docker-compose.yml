@@ -5,7 +5,7 @@
 # The frontend service depends on the backend service.
 # The backend service is built from the Dockerfile in the backend directory.
 # The frontend service is built from the Dockerfile in the frontend directory.
-# The frontend service maps port 3000 on the host to port 80 in the container.
+# The frontend service maps port 4000 on the host to port 80 in the container.
 # The backend service maps port 8000 on the host to port 8000 in the container.
 # The backend service has environment variables for Tiled API configuration.
 # The TILED_URI_IMAGES and TILED_URI_MASK environment variables are set to the host's IP address.
@@ -35,8 +35,8 @@ services:
         - SCATTERING_TILED_API_KEY=${SCATTERING_TILED_API_KEY}
     # Port mapping from host to container
     ports:
-      - "127.0.0.1:3000:80" # Maps port 3000 on your host machine to port 80 in the container
-        # This means you can access the frontend at http://localhost:3000
+      - "127.0.0.1:4000:80" # Maps port 4000 on your host machine to port 80 in the container
+        # This means you can access the frontend at http://localhost:4000
     # Dependency configuration - ensures backend starts before frontend
     depends_on:
       - backend

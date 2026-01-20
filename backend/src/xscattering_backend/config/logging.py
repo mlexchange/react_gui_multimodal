@@ -13,11 +13,11 @@ def setup_logging() -> None:
     """
     Configure the root logger for the application.
 
-    Log level can be set via LOG_LEVEL environment variable.
+    Log level can be set via SCATTERING_BACKEND_LOG_LEVEL environment variable.
     Valid levels: DEBUG, INFO, WARNING, ERROR, CRITICAL.
     Default: INFO.
     """
-    log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+    log_level = os.getenv("SCATTERING_BACKEND_LOG_LEVEL", "INFO").upper()
 
     # Validate log level
     valid_levels = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
