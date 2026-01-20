@@ -273,7 +273,6 @@ export default function useVerticalLinecut({
    * Removes a linecut and renumbers the remaining ones.
    */
   const deleteVerticalLinecut = useCallback((id: number) => {
-    // Cancel any pending requests for this linecut
     cancelLinecutRequest('vertical', id, 'left');
     cancelLinecutRequest('vertical', id, 'right');
 
@@ -285,17 +284,17 @@ export default function useVerticalLinecut({
       }));
     });
 
-    // Clean up data for deleted linecut
-    setLeftLinecutData(prev => {
-      const updated = new Map(prev);
-      updated.delete(id);
-      return updated;
-    });
-    setRightLinecutData(prev => {
-      const updated = new Map(prev);
-      updated.delete(id);
-      return updated;
-    });
+    // Renumber data Map keys to match new linecut IDs
+    const renumberMap = (prev: Map<number, LinecutData>) => {
+      const entries = Array.from(prev.entries())
+        .filter(([key]) => key !== id)
+        .sort(([a], [b]) => a - b)
+        .map(([, value], index) => [index + 1, value] as [number, LinecutData]);
+      return new Map(entries);
+    };
+
+    setLeftLinecutData(renumberMap);
+    setRightLinecutData(renumberMap);
     setLoadingVerticalLinecuts(prev => {
       const updated = new Set(prev);
       updated.delete(id);
