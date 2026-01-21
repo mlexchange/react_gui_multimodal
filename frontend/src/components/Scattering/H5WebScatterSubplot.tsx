@@ -214,6 +214,7 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
     const [flipXAxis, setFlipXAxis] = useState(false);
     const [flipYAxis, setFlipYAxis] = useState(false);
     const [showGrid, setShowGrid] = useState(false);
+    const [showLinecutOverlays, setShowLinecutOverlays] = useState(true);
     const [showBeamCenterOverlay, setShowBeamCenterOverlay] = useState(false);
     const [customDomain, setCustomDomain] = useState<CustomDomain>([
       null,
@@ -429,13 +430,13 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
       };
     }, [showQSpaceAxes, maskData, maskShape]);
 
-    // Determine if overlays should actually be rendered
+    // Determine if linecut overlays should actually be rendered
     // Disable for GISAXS pixel-space (constant-Q lines are curved in pixel coordinates)
-    const shouldShowOverlays = useMemo(() => {
-      if (!showOverlays) return false;
+    const shouldShowLinecutOverlays = useMemo(() => {
+      if (!showLinecutOverlays) return false;
       if (experimentType === "GISAXS" && !showQSpaceAxes) return false;
       return true;
-    }, [showOverlays, experimentType, showQSpaceAxes]);
+    }, [showLinecutOverlays, experimentType, showQSpaceAxes]);
 
     // Prepare data for visualization (just replace NaN with 0, let toolbar handle scale/domain)
     const transformedData = useMemo(() => {
@@ -867,6 +868,31 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
         <div className="shrink-0">
           <Toolbar>
             <ToggleBtn
+              label="Q-Space"
+              Icon={ChartLineIcon as ToolbarIcon}
+              value={showQSpaceAxes}
+              onToggle={handleQSpaceToggle}
+              disabled={!canToggleQSpace || isTogglingQSpace}
+            />
+
+            <ToggleBtn
+              label="Linecuts"
+              Icon={StackIcon as ToolbarIcon}
+              value={showLinecutOverlays}
+              onToggle={() => setShowLinecutOverlays(!showLinecutOverlays)}
+              disabled={experimentType === "GISAXS" && !showQSpaceAxes}
+            />
+
+            <ToggleBtn
+              label="Mask"
+              Icon={MaskHappyIcon as ToolbarIcon}
+              value={showMaskOverlay}
+              onToggle={() => setShowMaskOverlay(!showMaskOverlay)}
+              // Disable mask in Q-space (already applied as NaN) or when no mask loaded
+              disabled={!maskData || showQSpaceAxes}
+            />
+
+            <ToggleBtn
               label="Beam center"
               Icon={CrosshairSimpleIcon as ToolbarIcon}
               value={showBeamCenterOverlay}
@@ -877,12 +903,31 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
                 calibrationParams?.beam_center_y === undefined
               }
             />
+
+            <Separator />
+
+            <ScaleSelector
+              value={scaleType}
+              onScaleChange={handleScaleChange}
+              options={SCALE_OPTIONS}
+            />
+
             <ColorMapSelector
               value={colorMap}
               onValueChange={setColorMap}
               invert={invertColorMap}
               onInversionChange={() => setInvertColorMap(!invertColorMap)}
             />
+
+            <DomainWidget
+              dataDomain={safeSharedDomain}
+              customDomain={customDomain}
+              scaleType={scaleType}
+              histogram={histogramParams}
+              onCustomDomainChange={setCustomDomain}
+            />
+
+            <Separator />
 
             <ColorMapSelector
               value={diffColorMap}
@@ -892,22 +937,7 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
                 setInvertDiffColorMap(!invertDiffColorMap)
               }
             />
-            <Separator />
 
-            <DomainWidget
-              dataDomain={safeSharedDomain}
-              customDomain={customDomain}
-              scaleType={scaleType}
-              histogram={histogramParams}
-              onCustomDomainChange={setCustomDomain}
-            />
-            <Separator />
-
-            <ScaleSelector
-              value={scaleType}
-              onScaleChange={handleScaleChange}
-              options={SCALE_OPTIONS}
-            />
             <Separator />
 
             <ToggleBtn
@@ -930,30 +960,6 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
               onToggle={() => setShowGrid(!showGrid)}
             />
 
-            <ToggleBtn
-              label="Overlays"
-              Icon={StackIcon as ToolbarIcon}
-              value={showOverlays}
-              onToggle={() => setShowOverlays(!showOverlays)}
-              disabled={experimentType === "GISAXS" && !showQSpaceAxes}
-            />
-            <ToggleBtn
-              label="Mask"
-              Icon={MaskHappyIcon as ToolbarIcon}
-              value={showMaskOverlay}
-              onToggle={() => setShowMaskOverlay(!showMaskOverlay)}
-              // Disable mask in Q-space (already applied as NaN) or when no mask loaded
-              disabled={!maskData || showQSpaceAxes}
-            />
-            <Separator />
-
-            <ToggleBtn
-              label="Q-Space"
-              Icon={ChartLineIcon as ToolbarIcon}
-              value={showQSpaceAxes}
-              onToggle={handleQSpaceToggle}
-              disabled={!canToggleQSpace || isTogglingQSpace}
-            />
             <Separator />
 
             <SnapshotBtn />
@@ -1005,7 +1011,7 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
             inclinedLinecuts={leftInclinedLinecuts}
             inclinedPixelWidthCalculator={calculateInclinedPixelWidth}
             azimuthalIntegrations={leftAzimuthalIntegrations}
-            showOverlays={shouldShowOverlays}
+            showLinecutOverlays={shouldShowLinecutOverlays}
             qMagnitudeMatrix={qMagnitudeMatrix}
             beamCenterX={calibrationParams?.beam_center_x}
             beamCenterY={calibrationParams?.beam_center_y}
@@ -1050,7 +1056,7 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
             inclinedLinecuts={rightInclinedLinecuts}
             inclinedPixelWidthCalculator={calculateInclinedPixelWidth}
             azimuthalIntegrations={rightAzimuthalIntegrations}
-            showOverlays={shouldShowOverlays}
+            showLinecutOverlays={shouldShowLinecutOverlays}
             qMagnitudeMatrix={qMagnitudeMatrix}
             beamCenterX={calibrationParams?.beam_center_x}
             beamCenterY={calibrationParams?.beam_center_y}

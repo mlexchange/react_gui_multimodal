@@ -73,6 +73,7 @@ export interface HeatmapPanelProps {
   maskShape?: [number, number] | null;
   showMaskOverlay?: boolean;
   showBeamCenterOverlay?: boolean;
+  showLinecutOverlays?: boolean; // Controls visibility of linecut/azimuthal overlays
   // GISAXS-specific Q value arrays (for transformed Q-space images)
   gisaxsQipValues?: number[]; // 1D array for X axis in Q-space mode
   gisaxsQoopValues?: number[]; // 1D array for Y axis in Q-space mode
@@ -124,6 +125,7 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
   maskShape,
   showMaskOverlay = false,
   showBeamCenterOverlay = false,
+  showLinecutOverlays = true,
   gisaxsQipValues,
   gisaxsQoopValues,
   showYAxisLabel = true,
@@ -346,10 +348,10 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
               );
             }}
           />
-          {showOverlays && linecuts.length > 0 && (
+          {showLinecutOverlays && linecuts.length > 0 && (
             <LinecutOverlay linecuts={linecuts} rows={rows} cols={cols} />
           )}
-          {showOverlays &&
+          {showLinecutOverlays &&
             inclinedPixelWidthCalculator &&
             inclinedLinecuts.length > 0 && (
               <InclinedLinecutOverlay
@@ -361,7 +363,7 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
                 pixelWidthCalculator={inclinedPixelWidthCalculator}
               />
             )}
-          {showOverlays && azimuthalIntegrations.length > 0 && (
+          {showLinecutOverlays && azimuthalIntegrations.length > 0 && (
             <AzimuthalSectorOverlay
               integrations={azimuthalIntegrations}
               qMagnitudeMatrix={qMagnitudeMatrix}
