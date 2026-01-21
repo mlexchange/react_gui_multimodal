@@ -8,7 +8,6 @@ interface ContentCardProps {
   className?: string;
   contentClassName?: string;
   isLoading?: boolean;
-  allowOverflow?: boolean;
 }
 
 export function ContentCard({
@@ -18,13 +17,11 @@ export function ContentCard({
   children,
   className = "",
   contentClassName = "p-2",
-  isLoading = false,
-  allowOverflow = false
+  isLoading = false
 }: ContentCardProps) {
-  const overflowClass = allowOverflow ? "overflow-visible" : "overflow-hidden";
   return (
     <div
-      className={`bg-white border border-gray-200 rounded-lg shadow-sm ${overflowClass} flex flex-col ${className}`}
+      className={`bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden flex flex-col ${className}`}
     >
       {/* Header */}
       <div
@@ -41,7 +38,7 @@ export function ContentCard({
         </div>
       </div>
       {/* Content */}
-      <div className={`flex-1 ${overflowClass} ${contentClassName}`}>
+      <div className={`flex-1 overflow-hidden ${contentClassName}`}>
         {children}
       </div>
     </div>

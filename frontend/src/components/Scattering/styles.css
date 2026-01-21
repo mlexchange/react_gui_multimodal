@@ -64,11 +64,6 @@
   transform: rotate(-90deg) translateY(17px);
 }
 
-/* Domain widget popup z-index to appear above other elements */
-[id="h5w-domain-popup"] {
-  z-index: 9999 !important;
-}
-
 .react-tooltip {
   z-index: 9999;
 }

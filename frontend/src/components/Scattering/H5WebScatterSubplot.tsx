@@ -856,15 +856,6 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
         {/* Toolbar - shrink-0 ensures it only takes needed height */}
         <div className="shrink-0">
           <Toolbar>
-            <DomainWidget
-              dataDomain={safeSharedDomain}
-              customDomain={customDomain}
-              scaleType={scaleType}
-              histogram={histogramParams}
-              onCustomDomainChange={setCustomDomain}
-            />
-            <Separator />
-
             <ColorMapSelector
               value={colorMap}
               onValueChange={setColorMap}
@@ -879,6 +870,15 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
               onInversionChange={() =>
                 setInvertDiffColorMap(!invertDiffColorMap)
               }
+            />
+            <Separator />
+
+            <DomainWidget
+              dataDomain={safeSharedDomain}
+              customDomain={customDomain}
+              scaleType={scaleType}
+              histogram={histogramParams}
+              onCustomDomainChange={setCustomDomain}
             />
             <Separator />
 
