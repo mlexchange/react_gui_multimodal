@@ -3,7 +3,11 @@
  * Eliminates code duplication across horizontal, vertical, and inclined linecut hooks.
  */
 import { useCallback, useState, useEffect, useRef } from "react";
-import { CalibrationParams, isCalibrationComplete, LinecutResult } from "../types";
+import {
+  CalibrationParams,
+  isCalibrationComplete,
+  LinecutResult
+} from "../types";
 import {
   leftImageColorPalette,
   rightImageColorPalette
@@ -302,9 +306,7 @@ export function useLinecutBase<TLinecut extends BaseLinecut, TData>(
     (id: number, side: "left" | "right", color: string) => {
       setLinecuts((prev) =>
         prev.map((linecut) =>
-          linecut.id === id
-            ? { ...linecut, [`${side}Color`]: color }
-            : linecut
+          linecut.id === id ? { ...linecut, [`${side}Color`]: color } : linecut
         )
       );
     },

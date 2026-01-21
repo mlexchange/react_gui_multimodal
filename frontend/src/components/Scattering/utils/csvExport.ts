@@ -56,7 +56,10 @@ export function exportBatchToCSV(
     ...successful.map((r) => r.intensities[i] ?? "")
   ]);
 
-  downloadFile(toCSV(header, rows), `batch_${operationType}_${getTimestamp()}.csv`);
+  downloadFile(
+    toCSV(header, rows),
+    `batch_${operationType}_${getTimestamp()}.csv`
+  );
 }
 
 /**
@@ -74,7 +77,10 @@ export function exportLinecutsToCSV(
   const firstData = leftData.get(visible[0].id) ?? rightData.get(visible[0].id);
   if (!firstData) return;
 
-  const header = ["q", ...visible.flatMap((l) => [`linecut_${l.id}_left`, `linecut_${l.id}_right`])];
+  const header = [
+    "q",
+    ...visible.flatMap((l) => [`linecut_${l.id}_left`, `linecut_${l.id}_right`])
+  ];
   const rows = firstData.qValues.map((q, i) => [
     q,
     ...visible.flatMap((l) => [
@@ -83,7 +89,10 @@ export function exportLinecutsToCSV(
     ])
   ]);
 
-  downloadFile(toCSV(header, rows), `${direction}_linecuts_${getTimestamp()}.csv`);
+  downloadFile(
+    toCSV(header, rows),
+    `${direction}_linecuts_${getTimestamp()}.csv`
+  );
 }
 
 /**
@@ -100,7 +109,10 @@ export function exportInclinedLinecutsToCSV(
   const firstData = leftData.get(visible[0].id) ?? rightData.get(visible[0].id);
   if (!firstData) return;
 
-  const header = ["path_distance", ...visible.flatMap((l) => [`linecut_${l.id}_left`, `linecut_${l.id}_right`])];
+  const header = [
+    "path_distance",
+    ...visible.flatMap((l) => [`linecut_${l.id}_left`, `linecut_${l.id}_right`])
+  ];
   const rows = firstData.pathDistances.map((d, i) => [
     d,
     ...visible.flatMap((l) => [
@@ -123,10 +135,18 @@ export function exportAzimuthalToCSV(
   const visible = integrations.filter((i) => !i.hidden);
   if (visible.length === 0) return;
 
-  const firstData = data1.find((d) => d.id === visible[0].id) ?? data2.find((d) => d.id === visible[0].id);
+  const firstData =
+    data1.find((d) => d.id === visible[0].id) ??
+    data2.find((d) => d.id === visible[0].id);
   if (!firstData) return;
 
-  const header = ["q", ...visible.flatMap((i) => [`integration_${i.id}_image1`, `integration_${i.id}_image2`])];
+  const header = [
+    "q",
+    ...visible.flatMap((i) => [
+      `integration_${i.id}_image1`,
+      `integration_${i.id}_image2`
+    ])
+  ];
   const rows = firstData.q.map((q, i) => [
     q,
     ...visible.flatMap((int) => [
@@ -135,5 +155,8 @@ export function exportAzimuthalToCSV(
     ])
   ]);
 
-  downloadFile(toCSV(header, rows), `azimuthal_integrations_${getTimestamp()}.csv`);
+  downloadFile(
+    toCSV(header, rows),
+    `azimuthal_integrations_${getTimestamp()}.csv`
+  );
 }

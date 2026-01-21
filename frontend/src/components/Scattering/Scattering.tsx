@@ -60,7 +60,12 @@ import { scatteringIcons } from "./icons";
 const tiledUrl = import.meta.env.SCATTERING_TILED_URL;
 const tiledApiKey = import.meta.env.SCATTERING_TILED_API_KEY;
 
-const LINECUT_ORDER = ["Horizontal", "Vertical", "Inclined", "Azimuthal"] as const;
+const LINECUT_ORDER = [
+  "Horizontal",
+  "Vertical",
+  "Inclined",
+  "Azimuthal"
+] as const;
 
 interface ScatteringProps {
   standalone?: boolean;
@@ -132,42 +137,48 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
   const qYVector = useMemo(() => qYMatrix.map((row) => row[0]), [qYMatrix]);
 
   // Snapshot handler for linecut figures
-  const handleLinecutSnapshot = useCallback(async (
-    ref: React.RefObject<HTMLDivElement>,
-    name: string
-  ) => {
-    const timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, "");
-    await captureSnapshot(ref.current, {
-      filename: `${name}-${timestamp}`,
-      yAxisLabelOffset: 27
-    });
-  }, []);
+  const handleLinecutSnapshot = useCallback(
+    async (ref: React.RefObject<HTMLDivElement>, name: string) => {
+      const timestamp = new Date()
+        .toISOString()
+        .slice(0, 19)
+        .replace(/[:-]/g, "");
+      await captureSnapshot(ref.current, {
+        filename: `${name}-${timestamp}`,
+        yAxisLabelOffset: 27
+      });
+    },
+    []
+  );
 
   // Reusable header buttons for ContentCard (snapshot + download)
-  const renderHeaderButtons = useCallback((
-    ref: React.RefObject<HTMLDivElement>,
-    name: string,
-    onDownload: () => void
-  ) => (
-    <div className="flex items-center gap-1">
-      <button
-        onClick={onDownload}
-        className="p-1 hover:bg-gray-100 rounded transition-colors"
-        title="Download CSV"
-        aria-label="Download CSV"
-      >
-        <DownloadSimpleIcon size={20} className="text-sky-950" />
-      </button>
-      <button
-        onClick={() => handleLinecutSnapshot(ref, name)}
-        className="p-1 hover:bg-gray-100 rounded transition-colors"
-        title="Snapshot"
-        aria-label="Snapshot"
-      >
-        <CameraIcon size={20} className="text-sky-950" />
-      </button>
-    </div>
-  ), [handleLinecutSnapshot]);
+  const renderHeaderButtons = useCallback(
+    (
+      ref: React.RefObject<HTMLDivElement>,
+      name: string,
+      onDownload: () => void
+    ) => (
+      <div className="flex items-center gap-1">
+        <button
+          onClick={onDownload}
+          className="p-1 hover:bg-gray-100 rounded transition-colors"
+          title="Download CSV"
+          aria-label="Download CSV"
+        >
+          <DownloadSimpleIcon size={20} className="text-sky-950" />
+        </button>
+        <button
+          onClick={() => handleLinecutSnapshot(ref, name)}
+          className="p-1 hover:bg-gray-100 rounded transition-colors"
+          title="Snapshot"
+          aria-label="Snapshot"
+        >
+          <CameraIcon size={20} className="text-sky-950" />
+        </button>
+      </div>
+    ),
+    [handleLinecutSnapshot]
+  );
 
   const {
     leftImageIndex,
@@ -199,16 +210,18 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
 
   // Get scan URIs for selected images
   // These will be used for azimuthal integration API calls
-  const leftScanUri = useMemo(() =>
-    leftImageIndex !== "" && scanUris.length > 0
-      ? scanUris[leftImageIndex]
-      : null,
+  const leftScanUri = useMemo(
+    () =>
+      leftImageIndex !== "" && scanUris.length > 0
+        ? scanUris[leftImageIndex]
+        : null,
     [leftImageIndex, scanUris]
   );
-  const rightScanUri = useMemo(() =>
-    rightImageIndex !== "" && scanUris.length > 0
-      ? scanUris[rightImageIndex]
-      : null,
+  const rightScanUri = useMemo(
+    () =>
+      rightImageIndex !== "" && scanUris.length > 0
+        ? scanUris[rightImageIndex]
+        : null,
     [rightImageIndex, scanUris]
   );
 
@@ -544,75 +557,87 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     triggerAutoSave
   ]);
 
-  const handleCalibrationUpdate = useCallback(async (params: CalibrationParams) => {
-    try {
-      notifications.show({
-        id: "calibration-update",
-        loading: true,
-        title: "Updating Calibration",
-        message: "Please wait while calibration parameters are updated...",
-        autoClose: false
-      });
+  const handleCalibrationUpdate = useCallback(
+    async (params: CalibrationParams) => {
+      try {
+        notifications.show({
+          id: "calibration-update",
+          loading: true,
+          title: "Updating Calibration",
+          message: "Please wait while calibration parameters are updated...",
+          autoClose: false
+        });
 
-      // Update the calibration parameters in the hook
-      // This will trigger q-vectors fetch via the useEffect in useScattering
-      updateCalibration(params);
+        // Update the calibration parameters in the hook
+        // This will trigger q-vectors fetch via the useEffect in useScattering
+        updateCalibration(params);
 
-      // Close the calibration overlay
-      setIsCalibrationOpen(false);
+        // Close the calibration overlay
+        setIsCalibrationOpen(false);
 
-      notifications.update({
-        id: "calibration-update",
-        color: "green",
-        title: "Calibration Updated",
-        message: "Calibration parameters have been updated successfully",
-        autoClose: 2000
-      });
-    } catch (error) {
-      let errorMessage: string;
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === "string") {
-        errorMessage = error;
-      } else {
-        errorMessage = "An unexpected error occurred during calibration update";
+        notifications.update({
+          id: "calibration-update",
+          color: "green",
+          title: "Calibration Updated",
+          message: "Calibration parameters have been updated successfully",
+          autoClose: 2000
+        });
+      } catch (error) {
+        let errorMessage: string;
+        if (error instanceof Error) {
+          errorMessage = error.message;
+        } else if (typeof error === "string") {
+          errorMessage = error;
+        } else {
+          errorMessage =
+            "An unexpected error occurred during calibration update";
+        }
+
+        console.error("Error updating calibration:", error);
+
+        notifications.update({
+          id: "calibration-update",
+          color: "red",
+          title: "Calibration Update Failed",
+          message: errorMessage,
+          autoClose: 4000
+        });
       }
-
-      console.error("Error updating calibration:", error);
-
-      notifications.update({
-        id: "calibration-update",
-        color: "red",
-        title: "Calibration Update Failed",
-        message: errorMessage,
-        autoClose: 4000
-      });
-    }
-  }, [updateCalibration]);
-
-  const linecutButtonsConfig = useMemo(() => [
-    {
-      type: "Horizontal" as const,
-      icon: scatteringIcons.horizontalLinecut,
-      addFn: addHorizontalLinecut
     },
-    {
-      type: "Vertical" as const,
-      icon: scatteringIcons.verticalLinecut,
-      addFn: addVerticalLinecut
-    },
-    {
-      type: "Inclined" as const,
-      icon: scatteringIcons.inclinedLinecut,
-      addFn: addInclinedLinecut
-    },
-    {
-      type: "Azimuthal" as const,
-      icon: scatteringIcons.azimuthalIntegration,
-      addFn: addAzimuthalIntegration,
-      saxsOnly: true
-    }
-  ], [addHorizontalLinecut, addVerticalLinecut, addInclinedLinecut, addAzimuthalIntegration]);
+    [updateCalibration]
+  );
+
+  const linecutButtonsConfig = useMemo(
+    () => [
+      {
+        type: "Horizontal" as const,
+        icon: scatteringIcons.horizontalLinecut,
+        addFn: addHorizontalLinecut
+      },
+      {
+        type: "Vertical" as const,
+        icon: scatteringIcons.verticalLinecut,
+        addFn: addVerticalLinecut
+      },
+      {
+        type: "Inclined" as const,
+        icon: scatteringIcons.inclinedLinecut,
+        addFn: addInclinedLinecut
+      },
+      {
+        type: "Azimuthal" as const,
+        icon: scatteringIcons.azimuthalIntegration,
+        addFn: addAzimuthalIntegration,
+        saxsOnly: true
+      }
+    ],
+    [
+      addHorizontalLinecut,
+      addVerticalLinecut,
+      addInclinedLinecut,
+      addAzimuthalIntegration
+    ]
+  );
 
   return (
     <div
@@ -651,7 +676,9 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                   variant="subtle"
                   size="md"
                   onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                  tooltip={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                  tooltip={
+                    isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
+                  }
                 >
                   <ListIcon size={24} weight="bold" />
                 </IconButton>
@@ -781,102 +808,100 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                     />
                   </div>
 
-                  {LINECUT_ORDER
-                    .filter((linecut) => selectedLinecuts.includes(linecut))
-                    .map((linecutType) => {
-                      if (
-                        linecutType === "Horizontal" &&
-                        horizontalLinecuts.length > 0
-                      ) {
-                        return (
-                          <LinecutWidget
-                            key={`linecut-section-${linecutType}`}
-                            direction="horizontal"
-                            linecutType={linecutType}
-                            linecuts={horizontalLinecuts}
-                            qMatrix={qYMatrix}
-                            updatePosition={updateHorizontalLinecutPosition}
-                            updateWidth={updateHorizontalLinecutWidth}
-                            updateColor={updateHorizontalLinecutColor}
-                            deleteLinecut={deleteHorizontalLinecut}
-                            toggleVisibility={toggleHorizontalLinecutVisibility}
-                          />
-                        );
-                      }
+                  {LINECUT_ORDER.filter((linecut) =>
+                    selectedLinecuts.includes(linecut)
+                  ).map((linecutType) => {
+                    if (
+                      linecutType === "Horizontal" &&
+                      horizontalLinecuts.length > 0
+                    ) {
+                      return (
+                        <LinecutWidget
+                          key={`linecut-section-${linecutType}`}
+                          direction="horizontal"
+                          linecutType={linecutType}
+                          linecuts={horizontalLinecuts}
+                          qMatrix={qYMatrix}
+                          updatePosition={updateHorizontalLinecutPosition}
+                          updateWidth={updateHorizontalLinecutWidth}
+                          updateColor={updateHorizontalLinecutColor}
+                          deleteLinecut={deleteHorizontalLinecut}
+                          toggleVisibility={toggleHorizontalLinecutVisibility}
+                        />
+                      );
+                    }
 
-                      if (
-                        linecutType === "Vertical" &&
-                        verticalLinecuts.length > 0
-                      ) {
-                        return (
-                          <LinecutWidget
-                            key={`linecut-section-${linecutType}`}
-                            direction="vertical"
-                            linecutType={linecutType}
-                            linecuts={verticalLinecuts}
-                            qMatrix={qXMatrix}
-                            updatePosition={updateVerticalLinecutPosition}
-                            updateWidth={updateVerticalLinecutWidth}
-                            updateColor={updateVerticalLinecutColor}
-                            deleteLinecut={deleteVerticalLinecut}
-                            toggleVisibility={toggleVerticalLinecutVisibility}
-                          />
-                        );
-                      }
+                    if (
+                      linecutType === "Vertical" &&
+                      verticalLinecuts.length > 0
+                    ) {
+                      return (
+                        <LinecutWidget
+                          key={`linecut-section-${linecutType}`}
+                          direction="vertical"
+                          linecutType={linecutType}
+                          linecuts={verticalLinecuts}
+                          qMatrix={qXMatrix}
+                          updatePosition={updateVerticalLinecutPosition}
+                          updateWidth={updateVerticalLinecutWidth}
+                          updateColor={updateVerticalLinecutColor}
+                          deleteLinecut={deleteVerticalLinecut}
+                          toggleVisibility={toggleVerticalLinecutVisibility}
+                        />
+                      );
+                    }
 
-                      if (
-                        linecutType === "Inclined" &&
-                        inclinedLinecuts.length > 0
-                      ) {
-                        return (
-                          <InclinedLinecutWidget
-                            key={`linecut-section-${linecutType}`}
-                            linecutType={linecutType}
-                            linecuts={inclinedLinecuts}
-                            units="nm⁻¹"
-                            maxQWidth={maxQValue}
-                            updateInclinedLinecutAngle={
-                              updateInclinedLinecutAngle
-                            }
-                            updateInclinedLinecutWidth={
-                              updateInclinedLinecutWidth
-                            }
-                            updateInclinedLinecutColor={
-                              updateInclinedLinecutColor
-                            }
-                            deleteInclinedLinecut={deleteInclinedLinecut}
-                            toggleInclinedLinecutVisibility={
-                              toggleInclinedLinecutVisibility
-                            }
-                          />
-                        );
-                      }
+                    if (
+                      linecutType === "Inclined" &&
+                      inclinedLinecuts.length > 0
+                    ) {
+                      return (
+                        <InclinedLinecutWidget
+                          key={`linecut-section-${linecutType}`}
+                          linecutType={linecutType}
+                          linecuts={inclinedLinecuts}
+                          units="nm⁻¹"
+                          maxQWidth={maxQValue}
+                          updateInclinedLinecutAngle={
+                            updateInclinedLinecutAngle
+                          }
+                          updateInclinedLinecutWidth={
+                            updateInclinedLinecutWidth
+                          }
+                          updateInclinedLinecutColor={
+                            updateInclinedLinecutColor
+                          }
+                          deleteInclinedLinecut={deleteInclinedLinecut}
+                          toggleInclinedLinecutVisibility={
+                            toggleInclinedLinecutVisibility
+                          }
+                        />
+                      );
+                    }
 
-                      // Azimuthal integration
-                      if (
-                        linecutType === "Azimuthal" &&
-                        azimuthalIntegrations.length > 0
-                      ) {
-                        return (
-                          <AzimuthalIntegrationWidget
-                            key={`linecut-section-${linecutType}`}
-                            integrations={azimuthalIntegrations}
-                            maxQValue={maxQValue}
-                            updateAzimuthalQRange={updateAzimuthalQRange}
-                            updateAzimuthalRange={updateAzimuthalRange}
-                            updateAzimuthalColor={updateAzimuthalColor}
-                            deleteAzimuthalIntegration={
-                              deleteAzimuthalIntegration
-                            }
-                            toggleAzimuthalVisibility={
-                              toggleAzimuthalVisibility
-                            }
-                          />
-                        );
-                      }
+                    // Azimuthal integration
+                    if (
+                      linecutType === "Azimuthal" &&
+                      azimuthalIntegrations.length > 0
+                    ) {
+                      return (
+                        <AzimuthalIntegrationWidget
+                          key={`linecut-section-${linecutType}`}
+                          integrations={azimuthalIntegrations}
+                          maxQValue={maxQValue}
+                          updateAzimuthalQRange={updateAzimuthalQRange}
+                          updateAzimuthalRange={updateAzimuthalRange}
+                          updateAzimuthalColor={updateAzimuthalColor}
+                          deleteAzimuthalIntegration={
+                            deleteAzimuthalIntegration
+                          }
+                          toggleAzimuthalVisibility={toggleAzimuthalVisibility}
+                        />
+                      );
+                    }
 
-                      return null;
-                    })}
+                    return null;
+                  })}
                 </div>
               </div>
             )}
@@ -953,7 +978,9 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                     variant="subtle"
                     size="sm"
                     onClick={() => setIsSummaryCollapsed(!isSummaryCollapsed)}
-                    tooltip={isSummaryCollapsed ? "Expand summary" : "Collapse summary"}
+                    tooltip={
+                      isSummaryCollapsed ? "Expand summary" : "Collapse summary"
+                    }
                   >
                     <ListIcon size={24} className="text-sky-950" />
                   </IconButton>
@@ -1005,7 +1032,13 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                       headerChildren={renderHeaderButtons(
                         horizontalLinecutRef,
                         "horizontal-linecut",
-                        () => exportLinecutsToCSV(horizontalLinecuts, horizontalLeftData, horizontalRightData, "horizontal")
+                        () =>
+                          exportLinecutsToCSV(
+                            horizontalLinecuts,
+                            horizontalLeftData,
+                            horizontalRightData,
+                            "horizontal"
+                          )
                       )}
                     >
                       <LinecutFig
@@ -1034,7 +1067,13 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                       headerChildren={renderHeaderButtons(
                         verticalLinecutRef,
                         "vertical-linecut",
-                        () => exportLinecutsToCSV(verticalLinecuts, verticalLeftData, verticalRightData, "vertical")
+                        () =>
+                          exportLinecutsToCSV(
+                            verticalLinecuts,
+                            verticalLeftData,
+                            verticalRightData,
+                            "vertical"
+                          )
                       )}
                     >
                       <LinecutFig
@@ -1063,7 +1102,12 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                       headerChildren={renderHeaderButtons(
                         inclinedLinecutRef,
                         "inclined-linecut",
-                        () => exportInclinedLinecutsToCSV(inclinedLinecuts, inclinedLeftLinecutData, inclinedRightLinecutData)
+                        () =>
+                          exportInclinedLinecutsToCSV(
+                            inclinedLinecuts,
+                            inclinedLeftLinecutData,
+                            inclinedRightLinecutData
+                          )
                       )}
                     >
                       <InclinedLinecutFig
@@ -1094,7 +1138,12 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                       headerChildren={renderHeaderButtons(
                         azimuthalIntegrationRef,
                         "azimuthal-integration",
-                        () => exportAzimuthalToCSV(azimuthalIntegrations, azimuthalData1, azimuthalData2)
+                        () =>
+                          exportAzimuthalToCSV(
+                            azimuthalIntegrations,
+                            azimuthalData1,
+                            azimuthalData2
+                          )
                       )}
                     >
                       <AzimuthalIntegrationFig

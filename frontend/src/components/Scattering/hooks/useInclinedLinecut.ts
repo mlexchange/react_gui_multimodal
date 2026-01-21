@@ -57,7 +57,10 @@ export default function useInclinedLinecut({
   }, []);
 
   const transformResult = useCallback(
-    (result: { q_values: number[]; intensities: number[] }): InclinedLinecutData => {
+    (result: {
+      q_values: number[];
+      intensities: number[];
+    }): InclinedLinecutData => {
       return {
         pathDistances: result.q_values,
         intensities: result.intensities

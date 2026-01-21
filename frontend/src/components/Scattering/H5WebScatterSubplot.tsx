@@ -1,4 +1,10 @@
-import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
+import React, {
+  useEffect,
+  useState,
+  useMemo,
+  useCallback,
+  useRef
+} from "react";
 import {
   ScaleType,
   Toolbar,
@@ -531,12 +537,8 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
       // Clamp values to the effective domain before comparison
       const clamp = (val: number) => Math.max(minVal, Math.min(maxVal, val));
 
-      const clampedArray1 = transformedData.array1.map((row) =>
-        row.map(clamp)
-      );
-      const clampedArray2 = transformedData.array2.map((row) =>
-        row.map(clamp)
-      );
+      const clampedArray1 = transformedData.array1.map((row) => row.map(clamp));
+      const clampedArray2 = transformedData.array2.map((row) => row.map(clamp));
 
       return calculateResult(clampedArray1, clampedArray2);
     }, [transformedData, safeSharedDomain, customDomain, calculateResult]);
@@ -1049,139 +1051,147 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
           )}
           <div ref={leftPanelRef} className="grid min-h-0">
             <HeatmapPanel
-            header={
-              <PrevNextSelect
-                value={leftImageIndex ?? ""}
-                onChange={onLeftIndexChange}
-                options={imageNames.map((name, index) => ({
-                  value: String(index),
-                  label: name
-                }))}
-                disabled={isFetchingData || isLoadingImages || numOfFiles === 0}
-                numItems={numOfFiles}
-              />
-            }
-            dataArray={leftNdarray}
-            domain={effectiveDomain}
-            colorMap={colorMap}
-            scaleType={scaleType}
-            invertColorMap={invertColorMap}
-            rows={leftRows}
-            cols={leftCols}
-            flipXAxis={flipXAxis}
-            flipYAxis={flipYAxis}
-            showGrid={showGrid}
-            linecuts={leftImageLinecuts}
-            inclinedLinecuts={leftInclinedLinecuts}
-            inclinedPixelWidthCalculator={calculateInclinedPixelWidth}
-            azimuthalIntegrations={leftAzimuthalIntegrations}
-            showLinecutOverlays={shouldShowLinecutOverlays}
-            qMagnitudeMatrix={qMagnitudeMatrix}
-            beamCenterX={calibrationParams?.beam_center_x}
-            beamCenterY={calibrationParams?.beam_center_y}
-            maxQValue={maxQValue}
-            showQSpaceAxes={showQSpaceAxes}
-            qXMatrix={qXMatrix}
-            qYMatrix={qYMatrix}
-            experimentType={experimentType}
-            maskData={displayMask.data}
-            maskShape={displayMask.shape}
-            showMaskOverlay={showMaskOverlay}
-            showBeamCenterOverlay={showBeamCenterOverlay}
-            gisaxsQipValues={leftGisaxsTransformed?.qipValues}
-            gisaxsQoopValues={leftGisaxsTransformed?.qoopValues}
-            isZoomSource={true}
-            onZoomChange={handleLeftPanelZoom}
+              header={
+                <PrevNextSelect
+                  value={leftImageIndex ?? ""}
+                  onChange={onLeftIndexChange}
+                  options={imageNames.map((name, index) => ({
+                    value: String(index),
+                    label: name
+                  }))}
+                  disabled={
+                    isFetchingData || isLoadingImages || numOfFiles === 0
+                  }
+                  numItems={numOfFiles}
+                />
+              }
+              dataArray={leftNdarray}
+              domain={effectiveDomain}
+              colorMap={colorMap}
+              scaleType={scaleType}
+              invertColorMap={invertColorMap}
+              rows={leftRows}
+              cols={leftCols}
+              flipXAxis={flipXAxis}
+              flipYAxis={flipYAxis}
+              showGrid={showGrid}
+              linecuts={leftImageLinecuts}
+              inclinedLinecuts={leftInclinedLinecuts}
+              inclinedPixelWidthCalculator={calculateInclinedPixelWidth}
+              azimuthalIntegrations={leftAzimuthalIntegrations}
+              showLinecutOverlays={shouldShowLinecutOverlays}
+              qMagnitudeMatrix={qMagnitudeMatrix}
+              beamCenterX={calibrationParams?.beam_center_x}
+              beamCenterY={calibrationParams?.beam_center_y}
+              maxQValue={maxQValue}
+              showQSpaceAxes={showQSpaceAxes}
+              qXMatrix={qXMatrix}
+              qYMatrix={qYMatrix}
+              experimentType={experimentType}
+              maskData={displayMask.data}
+              maskShape={displayMask.shape}
+              showMaskOverlay={showMaskOverlay}
+              showBeamCenterOverlay={showBeamCenterOverlay}
+              gisaxsQipValues={leftGisaxsTransformed?.qipValues}
+              gisaxsQoopValues={leftGisaxsTransformed?.qoopValues}
+              isZoomSource={true}
+              onZoomChange={handleLeftPanelZoom}
             />
           </div>
           <div ref={rightPanelRef} className="grid min-h-0">
             <HeatmapPanel
-            header={
-              <PrevNextSelect
-                value={rightImageIndex ?? ""}
-                onChange={onRightIndexChange}
-                options={imageNames.map((name, index) => ({
-                  value: String(index),
-                  label: name
-                }))}
-                disabled={isFetchingData || isLoadingImages || numOfFiles === 0}
-                numItems={numOfFiles}
-              />
-            }
-            dataArray={rightNdarray}
-            domain={effectiveDomain}
-            colorMap={colorMap}
-            scaleType={scaleType}
-            invertColorMap={invertColorMap}
-            rows={leftRows}
-            cols={leftCols}
-            flipXAxis={flipXAxis}
-            flipYAxis={flipYAxis}
-            showGrid={showGrid}
-            linecuts={rightImageLinecuts}
-            inclinedLinecuts={rightInclinedLinecuts}
-            inclinedPixelWidthCalculator={calculateInclinedPixelWidth}
-            azimuthalIntegrations={rightAzimuthalIntegrations}
-            showLinecutOverlays={shouldShowLinecutOverlays}
-            qMagnitudeMatrix={qMagnitudeMatrix}
-            beamCenterX={calibrationParams?.beam_center_x}
-            beamCenterY={calibrationParams?.beam_center_y}
-            maxQValue={maxQValue}
-            showQSpaceAxes={showQSpaceAxes}
-            qXMatrix={qXMatrix}
-            qYMatrix={qYMatrix}
-            experimentType={experimentType}
-            maskData={displayMask.data}
-            maskShape={displayMask.shape}
-            showMaskOverlay={showMaskOverlay}
-            showBeamCenterOverlay={showBeamCenterOverlay}
-            gisaxsQipValues={rightGisaxsTransformed?.qipValues}
-            gisaxsQoopValues={rightGisaxsTransformed?.qoopValues}
-            showYAxisLabel={false}
-            syncedZoomState={sharedZoomState}
-            disableInteractions={true}
+              header={
+                <PrevNextSelect
+                  value={rightImageIndex ?? ""}
+                  onChange={onRightIndexChange}
+                  options={imageNames.map((name, index) => ({
+                    value: String(index),
+                    label: name
+                  }))}
+                  disabled={
+                    isFetchingData || isLoadingImages || numOfFiles === 0
+                  }
+                  numItems={numOfFiles}
+                />
+              }
+              dataArray={rightNdarray}
+              domain={effectiveDomain}
+              colorMap={colorMap}
+              scaleType={scaleType}
+              invertColorMap={invertColorMap}
+              rows={leftRows}
+              cols={leftCols}
+              flipXAxis={flipXAxis}
+              flipYAxis={flipYAxis}
+              showGrid={showGrid}
+              linecuts={rightImageLinecuts}
+              inclinedLinecuts={rightInclinedLinecuts}
+              inclinedPixelWidthCalculator={calculateInclinedPixelWidth}
+              azimuthalIntegrations={rightAzimuthalIntegrations}
+              showLinecutOverlays={shouldShowLinecutOverlays}
+              qMagnitudeMatrix={qMagnitudeMatrix}
+              beamCenterX={calibrationParams?.beam_center_x}
+              beamCenterY={calibrationParams?.beam_center_y}
+              maxQValue={maxQValue}
+              showQSpaceAxes={showQSpaceAxes}
+              qXMatrix={qXMatrix}
+              qYMatrix={qYMatrix}
+              experimentType={experimentType}
+              maskData={displayMask.data}
+              maskShape={displayMask.shape}
+              showMaskOverlay={showMaskOverlay}
+              showBeamCenterOverlay={showBeamCenterOverlay}
+              gisaxsQipValues={rightGisaxsTransformed?.qipValues}
+              gisaxsQoopValues={rightGisaxsTransformed?.qoopValues}
+              showYAxisLabel={false}
+              syncedZoomState={sharedZoomState}
+              disableInteractions={true}
             />
           </div>
           <div ref={comparisonPanelRef} className="grid min-h-0">
             <HeatmapPanel
-            header={
-              <div className="flex items-center gap-1">
-                <span className="font-medium">{comparisonLabel}</span>
-                <IconButton
-                  variant="subtle"
-                  size="sm"
-                  onClick={handleOperationTypeToggle}
-                  disabled={isComparisonLoading}
-                  tooltip={operationType === "subtract" ? "Switch to ratio" : "Switch to difference"}
-                >
-                  <GitDiffIcon size={16} />
-                </IconButton>
-              </div>
-            }
-            dataArray={diffNdarray}
-            domain={comparisonDomain}
-            colorMap={diffColorMap}
-            scaleType={ScaleType.Linear}
-            invertColorMap={invertDiffColorMap}
-            rows={leftRows}
-            cols={leftCols}
-            flipXAxis={flipXAxis}
-            flipYAxis={flipYAxis}
-            showGrid={showGrid}
-            isLoading={isComparisonLoading}
-            loadingMessage="Calculating..."
-            showQSpaceAxes={showQSpaceAxes}
-            qXMatrix={qXMatrix}
-            qYMatrix={qYMatrix}
-            experimentType={experimentType}
-            beamCenterX={calibrationParams?.beam_center_x}
-            beamCenterY={calibrationParams?.beam_center_y}
-            showBeamCenterOverlay={showBeamCenterOverlay}
-            gisaxsQipValues={leftGisaxsTransformed?.qipValues}
-            gisaxsQoopValues={leftGisaxsTransformed?.qoopValues}
-            showYAxisLabel={false}
-            syncedZoomState={sharedZoomState}
-            disableInteractions={true}
+              header={
+                <div className="flex items-center gap-1">
+                  <span className="font-medium">{comparisonLabel}</span>
+                  <IconButton
+                    variant="subtle"
+                    size="sm"
+                    onClick={handleOperationTypeToggle}
+                    disabled={isComparisonLoading}
+                    tooltip={
+                      operationType === "subtract"
+                        ? "Switch to ratio"
+                        : "Switch to difference"
+                    }
+                  >
+                    <GitDiffIcon size={16} />
+                  </IconButton>
+                </div>
+              }
+              dataArray={diffNdarray}
+              domain={comparisonDomain}
+              colorMap={diffColorMap}
+              scaleType={ScaleType.Linear}
+              invertColorMap={invertDiffColorMap}
+              rows={leftRows}
+              cols={leftCols}
+              flipXAxis={flipXAxis}
+              flipYAxis={flipYAxis}
+              showGrid={showGrid}
+              isLoading={isComparisonLoading}
+              loadingMessage="Calculating..."
+              showQSpaceAxes={showQSpaceAxes}
+              qXMatrix={qXMatrix}
+              qYMatrix={qYMatrix}
+              experimentType={experimentType}
+              beamCenterX={calibrationParams?.beam_center_x}
+              beamCenterY={calibrationParams?.beam_center_y}
+              showBeamCenterOverlay={showBeamCenterOverlay}
+              gisaxsQipValues={leftGisaxsTransformed?.qipValues}
+              gisaxsQoopValues={leftGisaxsTransformed?.qoopValues}
+              showYAxisLabel={false}
+              syncedZoomState={sharedZoomState}
+              disableInteractions={true}
             />
           </div>
         </div>

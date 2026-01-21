@@ -36,7 +36,8 @@ export async function captureSnapshot(
   } = options;
 
   // Store original styles to restore later
-  const originalStyles: Array<{ element: SVGTextElement; transform: string }> = [];
+  const originalStyles: Array<{ element: SVGTextElement; transform: string }> =
+    [];
 
   try {
     // Find y-axis labels and adjust their transform for snapshot capture

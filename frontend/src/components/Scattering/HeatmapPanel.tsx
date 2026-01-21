@@ -382,12 +382,14 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
               imageHeight={rows}
             />
           )}
-          {showBeamCenterOverlay && beamCenterX !== undefined && beamCenterY !== undefined && (
-            <BeamCenterOverlay
-              beamCenterX={beamCenterX}
-              beamCenterY={beamCenterY}
-            />
-          )}
+          {showBeamCenterOverlay &&
+            beamCenterX !== undefined &&
+            beamCenterY !== undefined && (
+              <BeamCenterOverlay
+                beamCenterX={beamCenterX}
+                beamCenterY={beamCenterY}
+              />
+            )}
         </VisCanvas>
       </div>
       <div

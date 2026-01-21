@@ -42,7 +42,11 @@ import {
 } from "./utils/linePlotUtils";
 import { Vector3 } from "three";
 import ndarray from "ndarray";
-import { GridFourIcon, DownloadSimpleIcon, CameraIcon } from "@phosphor-icons/react";
+import {
+  GridFourIcon,
+  DownloadSimpleIcon,
+  CameraIcon
+} from "@phosphor-icons/react";
 
 import { Button, ButtonWithIcon } from "@blueskyproject/finch";
 import { NumberInput } from "@/components/ui";
@@ -295,7 +299,10 @@ export function BatchResultsView({
 
   // Snapshot handler
   const handleSnapshot = useCallback(async () => {
-    const timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, "");
+    const timestamp = new Date()
+      .toISOString()
+      .slice(0, 19)
+      .replace(/[:-]/g, "");
     await captureSnapshot(visualizationRef.current, {
       filename: `batch-${operationType}-${viewMode}-${timestamp}`
     });

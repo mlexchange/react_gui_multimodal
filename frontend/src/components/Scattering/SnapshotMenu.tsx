@@ -48,7 +48,10 @@ export function SnapshotMenu({
       yAxisLabelOffset?: number
     ) => {
       setIsOpen(false);
-      const timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, "");
+      const timestamp = new Date()
+        .toISOString()
+        .slice(0, 19)
+        .replace(/[:-]/g, "");
       await captureSnapshot(ref.current, {
         filename: `${filename}-${timestamp}`,
         yAxisLabelOffset

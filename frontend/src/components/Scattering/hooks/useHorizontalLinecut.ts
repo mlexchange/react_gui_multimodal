@@ -80,12 +80,15 @@ export default function useHorizontalLinecut({
     };
   }, []);
 
-  const transformResult = useCallback((result: { q_values: number[]; intensities: number[] }): LinecutData => {
-    return {
-      qValues: result.q_values,
-      intensities: result.intensities
-    };
-  }, []);
+  const transformResult = useCallback(
+    (result: { q_values: number[]; intensities: number[] }): LinecutData => {
+      return {
+        qValues: result.q_values,
+        intensities: result.intensities
+      };
+    },
+    []
+  );
 
   // =========================================================================
   // Use base hook
@@ -124,9 +127,7 @@ export default function useHorizontalLinecut({
 
       base.setLinecuts((prev) => {
         const updated = prev.map((linecut) =>
-          linecut.id === id
-            ? { ...linecut, position, pixelPosition }
-            : linecut
+          linecut.id === id ? { ...linecut, position, pixelPosition } : linecut
         );
 
         // Trigger API fetch for updated linecut
