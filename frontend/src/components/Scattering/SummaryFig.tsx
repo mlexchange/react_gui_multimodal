@@ -267,7 +267,7 @@ const SummaryFig: React.FC<SummaryFigProps> = ({
     const xPadding = (xMax - xMin) * 0.05 || 0.1;
 
     // Y domain: image indices (reversed so index 1 is at top)
-    const yMax = Math.max(indices.length, 10) + 0.5;
+    const yMax = indices.length + 0.5;
     const yMin = 0.5;
 
     return {
