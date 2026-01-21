@@ -253,11 +253,14 @@ export function BatchProcessingWidget({
           <div className="flex items-center gap-4">
             {/* Select Data Button */}
             <ButtonWithIcon
-              icon={<FolderOpenIcon size={24} />}
+              icon={
+                <span className="flex items-center justify-center h-full">
+                  <FolderOpenIcon size={24} />
+                </span>
+              }
               text="Select Data"
               cb={() => setIsSelectorOpen(true)}
               size="medium"
-              isSecondary
             />
 
             {/* Selected scans indicator */}
@@ -281,7 +284,11 @@ export function BatchProcessingWidget({
               </span>
             )}
             <ButtonWithIcon
-              icon={<PlayIcon size={24} />}
+              icon={
+                <span className="flex items-center justify-center h-full">
+                  <PlayIcon size={24} />
+                </span>
+              }
               text={isProcessing ? "Processing..." : "Run Batch"}
               cb={handleRunBatch}
               size="medium"

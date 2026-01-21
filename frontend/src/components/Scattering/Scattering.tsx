@@ -593,6 +593,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                   variant="subtle"
                   size="md"
                   onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                  tooltip={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
                 >
                   <ListIcon size={24} weight="bold" />
                 </IconButton>
@@ -619,12 +620,12 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                   />
 
                   {/* Tiled Load Data */}
-                  <div className="w-full [&_button]:w-full [&_button]:font-medium [&_button]:bg-sky-500 [&_button]:hover:bg-sky-600 [&_button]:ml-0 [&_button]:text-md [&_button]:rounded-xl [&_button]:py-2 [&_button]:px-3">
+                  <div className="w-full [&_button]:w-full [&_button]:font-medium [&_button]:bg-sky-500 [&_button]:hover:bg-sky-600 [&_button]:ml-0 [&_button]:text-md [&_button]:rounded-lg [&_button]:py-2 [&_button]:px-3">
                     <Tiled
                       tiledBaseUrl={tiledUrl}
                       apiKey={tiledApiKey}
                       isButtonMode={true}
-                      buttonModeText="Select data"
+                      buttonModeText="Select Data"
                       onSelectCallback={handleTiledSelection}
                     />
                   </div>
@@ -635,12 +636,12 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                     (experimentType === "GISAXS" &&
                       !calibrationParams?.incident_angle)) ? (
                     <ButtonWithIcon
-                      icon={<WarningIcon weight="fill" size={24} />}
-                      text={
-                        !isCalibrationSet
-                          ? "Calibration required"
-                          : "Incident angle required"
+                      icon={
+                        <span className="flex items-center justify-center h-full">
+                          <WarningIcon weight="fill" size={20} />
+                        </span>
                       }
+                      text="Calibration required"
                       bgColor="bg-amber-500"
                       hoverBgColor="hover:bg-amber-600"
                       cb={() => setIsCalibrationOpen(true)}
@@ -894,6 +895,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                     variant="subtle"
                     size="sm"
                     onClick={() => setIsSummaryCollapsed(!isSummaryCollapsed)}
+                    tooltip={isSummaryCollapsed ? "Expand summary" : "Collapse summary"}
                   >
                     <ListIcon size={24} className="text-sky-950" />
                   </IconButton>

@@ -355,14 +355,22 @@ export function BatchResultsView({
           {/* Export buttons */}
           <div className="flex items-center gap-2">
             <ButtonWithIcon
-              icon={<CameraIcon size={18} />}
+              icon={
+                <span className="flex items-center justify-center h-full">
+                  <CameraIcon size={18} />
+                </span>
+              }
               text="PNG"
               cb={handleSnapshot}
               size="small"
               isSecondary
             />
             <ButtonWithIcon
-              icon={<DownloadSimpleIcon size={18} />}
+              icon={
+                <span className="flex items-center justify-center h-full">
+                  <DownloadSimpleIcon size={18} />
+                </span>
+              }
               text="CSV"
               cb={handleExportCSV}
               size="small"

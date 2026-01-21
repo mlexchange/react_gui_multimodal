@@ -205,7 +205,11 @@ export function BatchScanSelector({
             {selectedIndices.size} of {scanUris.length} scans selected
           </span>
           <ButtonWithIcon
-            icon={<CheckIcon size={16} />}
+            icon={
+              <span className="flex items-center justify-center h-full">
+                <CheckIcon size={16} />
+              </span>
+            }
             text="Confirm"
             cb={handleConfirm}
             disabled={selectedIndices.size === 0}

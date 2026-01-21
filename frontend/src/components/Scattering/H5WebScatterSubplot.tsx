@@ -1123,6 +1123,7 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
                   size="sm"
                   onClick={handleOperationTypeToggle}
                   disabled={isComparisonLoading}
+                  tooltip={operationType === "subtract" ? "Switch to ratio" : "Switch to difference"}
                 >
                   <GitDiffIcon size={16} />
                 </IconButton>
