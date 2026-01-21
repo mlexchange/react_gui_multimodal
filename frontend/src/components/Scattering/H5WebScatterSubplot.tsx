@@ -214,7 +214,7 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
       ScaleType.Linear
     );
     const [colorMap, setColorMap] = useState<ColorMap>("Viridis");
-    const [diffColorMap, setDiffColorMap] = useState<ColorMap>("RdBu");
+    const [diffColorMap, setDiffColorMap] = useState<ColorMap>("PuOr");
     const [invertColorMap, setInvertColorMap] = useState(false);
     const [invertDiffColorMap, setInvertDiffColorMap] = useState(false);
     const [flipXAxis, setFlipXAxis] = useState(false);
@@ -472,10 +472,6 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
       return transformedData ? arrayToNdarray(transformedData.array2) : null;
     }, [transformedData]);
 
-    const diffNdarray = useMemo(() => {
-      return transformedData ? arrayToNdarray(transformedData.diff) : null;
-    }, [transformedData]);
-
     // Calculate shared domain for left/right images
     const sharedDomain = useMemo((): Domain | undefined => {
       if (!transformedData) return undefined;
@@ -493,6 +489,32 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
       if (!sharedDomain) return undefined;
       return getSafeDomainForScale(sharedDomain, scaleType);
     }, [sharedDomain, scaleType]);
+
+    // Compute comparison (diff/ratio) using domain-clamped values
+    // This ensures the comparison reflects what's visually shown in the main images
+    const clampedDiffData = useMemo(() => {
+      if (!transformedData || !safeSharedDomain) return null;
+
+      // Use custom domain if set, otherwise use safe shared domain
+      const minVal = customDomain[0] ?? safeSharedDomain[0];
+      const maxVal = customDomain[1] ?? safeSharedDomain[1];
+
+      // Clamp values to the effective domain before comparison
+      const clamp = (val: number) => Math.max(minVal, Math.min(maxVal, val));
+
+      const clampedArray1 = transformedData.array1.map((row) =>
+        row.map(clamp)
+      );
+      const clampedArray2 = transformedData.array2.map((row) =>
+        row.map(clamp)
+      );
+
+      return calculateResult(clampedArray1, clampedArray2);
+    }, [transformedData, safeSharedDomain, customDomain, calculateResult]);
+
+    const diffNdarray = useMemo(() => {
+      return clampedDiffData ? arrayToNdarray(clampedDiffData) : null;
+    }, [clampedDiffData]);
 
     // Compute histogram bounds using tighter percentiles to exclude extreme outliers
     // This makes the histogram more useful for data with long tails
@@ -602,13 +624,13 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
 
     // Calculate symmetric domain for comparison (centered at 0)
     const comparisonDomain = useMemo((): [number, number] | undefined => {
-      if (!transformedData) return undefined;
+      if (!clampedDiffData) return undefined;
 
-      const [minDiff, maxDiff] = getArrayMinMax(transformedData.diff);
+      const [minDiff, maxDiff] = getArrayMinMax(clampedDiffData);
       const maxAbs = Math.max(Math.abs(minDiff), Math.abs(maxDiff));
 
       return [-maxAbs, maxAbs];
-    }, [transformedData]);
+    }, [clampedDiffData]);
 
     // Calculate pixel width using local q-to-pixel scale (not affected by edge clamping)
     const calculateLocalPixelWidth = useCallback(
@@ -862,10 +884,10 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
     const comparisonLabel =
       operationType === "subtract" ? "Difference" : "Ratio";
 
-    // Compute effective domain based on customDomain and safeSharedDomain
+    // Compute effective domain for the main display
     const effectiveDomain: Domain = [
-      customDomain[0] ?? safeSharedDomain[0],
-      customDomain[1] ?? safeSharedDomain[1]
+      customDomain[0] ?? safeSharedDomain?.[0] ?? 0,
+      customDomain[1] ?? safeSharedDomain?.[1] ?? 1
     ];
 
     return (
@@ -1102,7 +1124,7 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
                   onClick={handleOperationTypeToggle}
                   disabled={isComparisonLoading}
                 >
-                  <GitDiffIcon size={16} className="text-sky-950" />
+                  <GitDiffIcon size={16} />
                 </IconButton>
               </div>
             }
