@@ -104,10 +104,8 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     restoreState: restoreScatteringState
   } = useScattering();
 
-  // get the first row of qXMatrix as qXVector
-  const qXVector = qXMatrix[0];
-  // get the first column of qYMatrix as qYVector
-  const qYVector = qYMatrix.map((row) => row[0]);
+  const qXVector = useMemo(() => qXMatrix[0] ?? [], [qXMatrix]);
+  const qYVector = useMemo(() => qYMatrix.map((row) => row[0]), [qYMatrix]);
 
   const {
     leftImageIndex,

@@ -266,4 +266,4 @@ const LinecutFig: React.FC<LinecutFigProps> = ({
   );
 };
 
-export default LinecutFig;
+export default React.memo(LinecutFig);

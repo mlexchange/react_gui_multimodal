@@ -1,3 +1,4 @@
+import React from "react";
 import { EyeIcon, EyeSlashIcon } from "@phosphor-icons/react";
 import { InputSliderRange } from "@blueskyproject/finch";
 import { AzimuthalIntegration } from "./types";
@@ -23,7 +24,7 @@ interface AzimuthalIntegrationWidgetProps {
   toggleAzimuthalVisibility: (id: number) => void;
 }
 
-export default function AzimuthalIntegrationWidget({
+function AzimuthalIntegrationWidget({
   integrations,
   maxQValue,
   updateAzimuthalQRange,
@@ -236,3 +237,5 @@ export default function AzimuthalIntegrationWidget({
     </div>
   );
 }
+
+export default React.memo(AzimuthalIntegrationWidget);

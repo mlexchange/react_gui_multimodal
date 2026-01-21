@@ -132,4 +132,4 @@ const InclinedLinecutWidget: React.FC<InclinedLinecutWidgetProps> = ({
   );
 };
 
-export default InclinedLinecutWidget;
+export default React.memo(InclinedLinecutWidget);

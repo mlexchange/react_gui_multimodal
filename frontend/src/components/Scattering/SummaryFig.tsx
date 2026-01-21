@@ -527,4 +527,4 @@ const SummaryFig: React.FC<SummaryFigProps> = ({
   );
 };
 
-export default SummaryFig;
+export default React.memo(SummaryFig);

@@ -170,4 +170,4 @@ const AzimuthalIntegrationFig: React.FC<AzimuthalIntegrationFigProps> = ({
   );
 };
 
-export default AzimuthalIntegrationFig;
+export default React.memo(AzimuthalIntegrationFig);

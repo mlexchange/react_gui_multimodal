@@ -402,5 +402,5 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
   );
 };
 
-export default HeatmapPanel;
+export default React.memo(HeatmapPanel);
 export type { ZoomState } from "./utils/zoomSync";

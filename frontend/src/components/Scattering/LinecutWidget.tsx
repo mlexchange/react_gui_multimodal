@@ -179,4 +179,4 @@ const LinecutWidget: React.FC<LinecutWidgetProps> = ({
   );
 };
 
-export default LinecutWidget;
+export default React.memo(LinecutWidget);

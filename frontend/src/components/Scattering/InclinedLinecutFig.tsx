@@ -320,4 +320,4 @@ const InclinedLinecutFig: React.FC<InclinedLinecutFigProps> = ({
   );
 };
 
-export default InclinedLinecutFig;
+export default React.memo(InclinedLinecutFig);
