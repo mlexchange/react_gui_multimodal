@@ -151,6 +151,7 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
     onZoomChange
   }) => {
     const [isComparisonLoading, setIsComparisonLoading] = useState(false);
+    const [isTogglingQSpace, setIsTogglingQSpace] = useState(false);
     const [sharedZoomState, setSharedZoomState] = useState<ZoomState | null>(
       null
     );
@@ -179,6 +180,15 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
         setIsComparisonLoading(false);
       }, 100);
     }, [operationType, onOperationTypeChange]);
+
+    // Handler to toggle Q-space with loading state
+    const handleQSpaceToggle = useCallback(() => {
+      setIsTogglingQSpace(true);
+      setTimeout(() => {
+        setShowQSpaceAxes(!showQSpaceAxes);
+        setIsTogglingQSpace(false);
+      }, 50);
+    }, [showQSpaceAxes, setShowQSpaceAxes]);
 
     // Compute number of files for selectors
     const numOfFiles = imageNames.length;
@@ -929,8 +939,8 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
               label="Q-Space"
               Icon={ChartLineIcon as ToolbarIcon}
               value={showQSpaceAxes}
-              onToggle={() => setShowQSpaceAxes(!showQSpaceAxes)}
-              disabled={!canToggleQSpace}
+              onToggle={handleQSpaceToggle}
+              disabled={!canToggleQSpace || isTogglingQSpace}
             />
             <Separator />
 
@@ -947,6 +957,15 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
           }}
         >
           {isLoadingImages && <LoadingOverlay message="Loading images..." />}
+          {isTogglingQSpace && (
+            <LoadingOverlay
+              message={
+                showQSpaceAxes
+                  ? "Switching to pixel space..."
+                  : "Switching to Q-space..."
+              }
+            />
+          )}
           <HeatmapPanel
             header={
               <PrevNextSelect

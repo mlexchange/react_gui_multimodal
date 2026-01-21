@@ -71,6 +71,9 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
   // Track if session has been applied
   const hasAppliedSession = useRef(false);
 
+  // Track if Q-space was auto-toggled (to avoid re-toggling after user manually turns it off)
+  const hasAutoToggledQSpace = useRef(false);
+
   const {
     experimentType,
     setExperimentType,
@@ -305,6 +308,9 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
       showQSpaceAxes: restoredSession.showQSpaceAxes
     });
 
+    // 2. Mark Q-space as already toggled to respect user's saved preference
+    hasAutoToggledQSpace.current = true;
+
     // 3. Restore linecut definitions
     restoreHorizontalLinecuts(restoredSession.horizontalLinecuts);
     restoreVerticalLinecuts(restoredSession.verticalLinecuts);
@@ -360,6 +366,21 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     setLeftImageIndex,
     setRightImageIndex
   ]);
+
+  // ========== AUTO-TOGGLE Q-SPACE ==========
+  // Automatically enable Q-space view when Q matrices become available
+  useEffect(() => {
+    // Skip if already auto-toggled, still restoring, or Q data not ready
+    if (hasAutoToggledQSpace.current || isRestoring) return;
+
+    // Check if Q matrices have data
+    const hasQData = qXMatrix.length > 0 && qXMatrix[0]?.length > 0;
+    if (!hasQData) return;
+
+    // Auto-toggle Q-space on
+    setShowQSpaceAxes(true);
+    hasAutoToggledQSpace.current = true;
+  }, [qXMatrix, isRestoring, setShowQSpaceAxes]);
 
   // ========== AUTO-SAVE SESSION ==========
   // Trigger auto-save whenever persistable state changes
