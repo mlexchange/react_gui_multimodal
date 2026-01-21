@@ -47,7 +47,7 @@ import { GridFourIcon, DownloadSimpleIcon, CameraIcon } from "@phosphor-icons/re
 import { Button, ButtonWithIcon } from "@blueskyproject/finch";
 import { NumberInput } from "@/components/ui";
 import { BatchOperationType } from "./hooks/useBatchProcessing";
-import { exportToCSV } from "./utils/batchExport";
+import { exportBatchToCSV } from "./utils/csvExport";
 import { captureSnapshot } from "./utils/snapshot";
 import { SCALE_OPTIONS, type ColorScaleType } from "./utils/constants";
 import type {
@@ -290,7 +290,7 @@ export function BatchResultsView({
 
   // Export handler
   const handleExportCSV = useCallback(() => {
-    exportToCSV(results, operationType);
+    exportBatchToCSV(results, operationType);
   }, [results, operationType]);
 
   // Snapshot handler

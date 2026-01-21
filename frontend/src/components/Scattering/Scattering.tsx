@@ -4,6 +4,7 @@ import { ContentCard, Modal } from "@/components/shared";
 import {
   CameraIcon,
   CircleHalfTiltIcon,
+  DownloadSimpleIcon,
   ListIcon,
   TreeStructureIcon,
   WarningIcon,
@@ -46,6 +47,11 @@ import {
   addLinecut
 } from "./utils/linecutHandlers";
 import { captureSnapshot } from "./utils/snapshot";
+import {
+  exportLinecutsToCSV,
+  exportInclinedLinecutsToCSV,
+  exportAzimuthalToCSV
+} from "./utils/csvExport";
 
 // Import assets
 import alsLogo from "@/assets/als-logo.png";
@@ -130,19 +136,30 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     });
   }, []);
 
-  // Reusable snapshot button for ContentCard headers
-  const renderSnapshotButton = useCallback((
+  // Reusable header buttons for ContentCard (snapshot + download)
+  const renderHeaderButtons = useCallback((
     ref: React.RefObject<HTMLDivElement>,
-    name: string
+    name: string,
+    onDownload: () => void
   ) => (
-    <button
-      onClick={() => handleLinecutSnapshot(ref, name)}
-      className="p-1 hover:bg-gray-100 rounded transition-colors"
-      title="Snapshot"
-      aria-label="Snapshot"
-    >
-      <CameraIcon size={20} className="text-sky-950" />
-    </button>
+    <div className="flex items-center gap-1">
+      <button
+        onClick={onDownload}
+        className="p-1 hover:bg-gray-100 rounded transition-colors"
+        title="Download CSV"
+        aria-label="Download CSV"
+      >
+        <DownloadSimpleIcon size={20} className="text-sky-950" />
+      </button>
+      <button
+        onClick={() => handleLinecutSnapshot(ref, name)}
+        className="p-1 hover:bg-gray-100 rounded transition-colors"
+        title="Snapshot"
+        aria-label="Snapshot"
+      >
+        <CameraIcon size={20} className="text-sky-950" />
+      </button>
+    </div>
   ), [handleLinecutSnapshot]);
 
   const {
@@ -925,7 +942,11 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                       className="flex-1"
                       contentClassName="p-2 relative"
                       isLoading={loadingHorizontalLinecuts.size > 0}
-                      headerChildren={renderSnapshotButton(horizontalLinecutRef, "horizontal-linecut")}
+                      headerChildren={renderHeaderButtons(
+                        horizontalLinecutRef,
+                        "horizontal-linecut",
+                        () => exportLinecutsToCSV(horizontalLinecuts, horizontalLeftData, horizontalRightData, "horizontal")
+                      )}
                     >
                       <LinecutFig
                         ref={horizontalLinecutRef}
@@ -950,7 +971,11 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                       className="flex-1"
                       contentClassName="p-2 relative"
                       isLoading={loadingVerticalLinecuts.size > 0}
-                      headerChildren={renderSnapshotButton(verticalLinecutRef, "vertical-linecut")}
+                      headerChildren={renderHeaderButtons(
+                        verticalLinecutRef,
+                        "vertical-linecut",
+                        () => exportLinecutsToCSV(verticalLinecuts, verticalLeftData, verticalRightData, "vertical")
+                      )}
                     >
                       <LinecutFig
                         ref={verticalLinecutRef}
@@ -975,7 +1000,11 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                       className="flex-1"
                       contentClassName="p-2 relative"
                       isLoading={loadingInclinedLinecuts.size > 0}
-                      headerChildren={renderSnapshotButton(inclinedLinecutRef, "inclined-linecut")}
+                      headerChildren={renderHeaderButtons(
+                        inclinedLinecutRef,
+                        "inclined-linecut",
+                        () => exportInclinedLinecutsToCSV(inclinedLinecuts, inclinedLeftLinecutData, inclinedRightLinecutData)
+                      )}
                     >
                       <InclinedLinecutFig
                         ref={inclinedLinecutRef}
@@ -1002,7 +1031,11 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                       className="flex-1"
                       contentClassName="p-2 relative"
                       isLoading={loadingAzimuthalIntegrations.size > 0}
-                      headerChildren={renderSnapshotButton(azimuthalIntegrationRef, "azimuthal-integration")}
+                      headerChildren={renderHeaderButtons(
+                        azimuthalIntegrationRef,
+                        "azimuthal-integration",
+                        () => exportAzimuthalToCSV(azimuthalIntegrations, azimuthalData1, azimuthalData2)
+                      )}
                     >
                       <AzimuthalIntegrationFig
                         ref={azimuthalIntegrationRef}
