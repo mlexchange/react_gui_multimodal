@@ -20,7 +20,8 @@ import {
   StackIcon,
   ChartLineIcon,
   MaskHappyIcon,
-  GitDiffIcon
+  GitDiffIcon,
+  CrosshairSimpleIcon
 } from "@phosphor-icons/react";
 
 import { HeatmapPanel, type ZoomState } from "./HeatmapPanel";
@@ -213,7 +214,7 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
     const [flipXAxis, setFlipXAxis] = useState(false);
     const [flipYAxis, setFlipYAxis] = useState(false);
     const [showGrid, setShowGrid] = useState(false);
-    const [showOverlays, setShowOverlays] = useState(true);
+    const [showBeamCenterOverlay, setShowBeamCenterOverlay] = useState(false);
     const [customDomain, setCustomDomain] = useState<CustomDomain>([
       null,
       null
@@ -865,6 +866,17 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
         {/* Toolbar - shrink-0 ensures it only takes needed height */}
         <div className="shrink-0">
           <Toolbar>
+            <ToggleBtn
+              label="Beam center"
+              Icon={CrosshairSimpleIcon as ToolbarIcon}
+              value={showBeamCenterOverlay}
+              onToggle={() => setShowBeamCenterOverlay(!showBeamCenterOverlay)}
+              // Disable when no beam center is calibrated
+              disabled={
+                calibrationParams?.beam_center_x === undefined ||
+                calibrationParams?.beam_center_y === undefined
+              }
+            />
             <ColorMapSelector
               value={colorMap}
               onValueChange={setColorMap}
@@ -1005,6 +1017,7 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
             maskData={displayMask.data}
             maskShape={displayMask.shape}
             showMaskOverlay={showMaskOverlay}
+            showBeamCenterOverlay={showBeamCenterOverlay}
             gisaxsQipValues={leftGisaxsTransformed?.qipValues}
             gisaxsQoopValues={leftGisaxsTransformed?.qoopValues}
             isZoomSource={true}
@@ -1049,6 +1062,7 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
             maskData={displayMask.data}
             maskShape={displayMask.shape}
             showMaskOverlay={showMaskOverlay}
+            showBeamCenterOverlay={showBeamCenterOverlay}
             gisaxsQipValues={rightGisaxsTransformed?.qipValues}
             gisaxsQoopValues={rightGisaxsTransformed?.qoopValues}
             showYAxisLabel={false}
@@ -1085,6 +1099,9 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
             qXMatrix={qXMatrix}
             qYMatrix={qYMatrix}
             experimentType={experimentType}
+            beamCenterX={calibrationParams?.beam_center_x}
+            beamCenterY={calibrationParams?.beam_center_y}
+            showBeamCenterOverlay={showBeamCenterOverlay}
             gisaxsQipValues={leftGisaxsTransformed?.qipValues}
             gisaxsQoopValues={leftGisaxsTransformed?.qoopValues}
             showYAxisLabel={false}

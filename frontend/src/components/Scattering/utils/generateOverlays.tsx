@@ -1190,3 +1190,77 @@ export const InclinedLinecutOverlay: React.FC<InclinedLinecutOverlayProps> = ({
     </>
   );
 };
+
+// ============================================================================
+// Beam Center Overlay Component
+// ============================================================================
+
+export interface BeamCenterOverlayProps {
+  beamCenterX: number;
+  beamCenterY: number;
+}
+
+/*
+ * BeamCenterOverlay - Renders a crosshair marker at the beam center position.
+ */
+export const BeamCenterOverlay: React.FC<BeamCenterOverlayProps> = ({
+  beamCenterX,
+  beamCenterY
+}) => {
+  // Beam center position in pixel/data coordinates
+  const beamPosition = useMemo(
+    () => ({ x: beamCenterX, y: beamCenterY }),
+    [beamCenterX, beamCenterY]
+  );
+
+  // Crosshair size (in screen pixels)
+  const crosshairSize = 10;
+  const crosshairThickness = 1;
+
+  return (
+    <DataToHtml points={[new Vector3(beamPosition.x, beamPosition.y)]}>
+      {(centerHtml) => (
+        <SvgElement>
+          {/* Outer circle */}
+          <circle
+            cx={centerHtml.x}
+            cy={centerHtml.y}
+            r={crosshairSize}
+            fill="none"
+            stroke="magenta"
+            strokeWidth={crosshairThickness}
+            strokeOpacity={0.9}
+          />
+          {/* Horizontal line */}
+          <line
+            x1={centerHtml.x - crosshairSize - 5}
+            y1={centerHtml.y}
+            x2={centerHtml.x + crosshairSize + 5}
+            y2={centerHtml.y}
+            stroke="magenta"
+            strokeWidth={crosshairThickness}
+            strokeOpacity={0.9}
+          />
+          {/* Vertical line */}
+          <line
+            x1={centerHtml.x}
+            y1={centerHtml.y - crosshairSize - 5}
+            x2={centerHtml.x}
+            y2={centerHtml.y + crosshairSize + 5}
+            stroke="magenta"
+            strokeWidth={crosshairThickness}
+            strokeOpacity={0.9}
+          />
+          {/* Center dot */}
+          <circle
+            cx={centerHtml.x}
+            cy={centerHtml.y}
+            r={3}
+            fill="magenta"
+            fillOpacity={0.9}
+          />
+        </SvgElement>
+      )}
+    </DataToHtml>
+  );
+};

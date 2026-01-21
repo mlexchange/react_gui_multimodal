@@ -15,6 +15,7 @@ import {
   MaskOverlay,
   LinecutOverlay,
   InclinedLinecutOverlay,
+  BeamCenterOverlay,
   type LinecutOverlayProps,
   type InclinedLinecutOverlayProps
 } from "./utils/generateOverlays";
@@ -71,7 +72,7 @@ export interface HeatmapPanelProps {
   maskData?: Uint8Array | null;
   maskShape?: [number, number] | null;
   showMaskOverlay?: boolean;
-  showOverlays?: boolean; // Controls visibility of linecut/azimuthal overlays
+  showBeamCenterOverlay?: boolean;
   // GISAXS-specific Q value arrays (for transformed Q-space images)
   gisaxsQipValues?: number[]; // 1D array for X axis in Q-space mode
   gisaxsQoopValues?: number[]; // 1D array for Y axis in Q-space mode
@@ -122,7 +123,7 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
   maskData,
   maskShape,
   showMaskOverlay = false,
-  showOverlays = true,
+  showBeamCenterOverlay = false,
   gisaxsQipValues,
   gisaxsQoopValues,
   showYAxisLabel = true,
@@ -377,6 +378,12 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
               maskShape={maskShape}
               imageWidth={cols}
               imageHeight={rows}
+            />
+          )}
+          {showBeamCenterOverlay && beamCenterX !== undefined && beamCenterY !== undefined && (
+            <BeamCenterOverlay
+              beamCenterX={beamCenterX}
+              beamCenterY={beamCenterY}
             />
           )}
         </VisCanvas>
