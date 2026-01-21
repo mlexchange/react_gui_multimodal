@@ -6,24 +6,13 @@ or uploaded files.
 """
 
 import hashlib
-import threading
-from typing import List, Optional
 
 import numpy as np
+from xscattering_backend.cache.base import LRUCache
 from xscattering_backend.config.logging import get_logger
 from xscattering_backend.config.settings import get_config
 
 logger = get_logger(__name__)
-
-
-# Thread-safe mask cache for Tiled masks
-_mask_cache: dict[str, np.ndarray] = {}
-_mask_cache_order: List[str] = []  # LRU tracking
-_mask_cache_lock = threading.Lock()
-
-# Cache for uploaded masks (keyed by content hash)
-_uploaded_mask_cache: dict[str, np.ndarray] = {}
-_uploaded_mask_order: List[str] = []  # LRU tracking
 
 
 def _get_max_cache_size() -> int:
@@ -31,162 +20,106 @@ def _get_max_cache_size() -> int:
     return get_config()["cache_mask_size"]
 
 
-def _evict_lru_if_needed(
-    cache: dict,
-    order: List[str],
-    max_size: int,
-    cache_name: str,
-) -> None:
-    """
-    Evict least recently used items if cache exceeds max size.
-
-    Must be called while holding the cache lock.
-
-    Args:
-        cache: The cache dictionary
-        order: The LRU order list
-        max_size: Maximum cache size
-        cache_name: Name for logging
-    """
-    while len(order) >= max_size:
-        oldest_key = order.pop(0)
-        if oldest_key in cache:
-            del cache[oldest_key]
-            logger.debug(f"{cache_name} cache evict: {oldest_key}")
+# Initialize caches lazily to allow config to be loaded first
+_tiled_mask_cache: LRUCache[str, np.ndarray] | None = None
+_uploaded_mask_cache: LRUCache[str, np.ndarray] | None = None
 
 
-def _update_lru_order(key: str, order: List[str]) -> None:
-    """
-    Update LRU order by moving key to the end (most recently used).
-
-    Must be called while holding the cache lock.
-    """
-    if key in order:
-        order.remove(key)
-    order.append(key)
+def _get_tiled_cache() -> LRUCache[str, np.ndarray]:
+    """Get or create the Tiled mask cache instance."""
+    global _tiled_mask_cache
+    if _tiled_mask_cache is None:
+        _tiled_mask_cache = LRUCache(max_size=_get_max_cache_size(), name="Tiled mask")
+    return _tiled_mask_cache
 
 
-def get_cached_mask(mask_id: str) -> Optional[np.ndarray]:
+def _get_uploaded_cache() -> LRUCache[str, np.ndarray]:
+    """Get or create the uploaded mask cache instance."""
+    global _uploaded_mask_cache
+    if _uploaded_mask_cache is None:
+        _uploaded_mask_cache = LRUCache(max_size=_get_max_cache_size(), name="Uploaded mask")
+    return _uploaded_mask_cache
+
+
+def get_cached_mask(mask_id: str) -> np.ndarray | None:
     """
     Get a mask from cache by its ID.
 
-    Parameters
-    ----------
-    mask_id : str
-        Either a Tiled URI cache key or an uploaded mask ID.
+    Checks both Tiled and uploaded mask caches.
 
-    Returns
-    -------
-    np.ndarray or None
+    Args:
+        mask_id: Either a Tiled URI cache key or an uploaded mask ID.
+
+    Returns:
         The cached mask, or None if not found.
     """
-    with _mask_cache_lock:
-        if mask_id in _mask_cache:
-            _update_lru_order(mask_id, _mask_cache_order)
-            return _mask_cache[mask_id]
-        if mask_id in _uploaded_mask_cache:
-            _update_lru_order(mask_id, _uploaded_mask_order)
-            return _uploaded_mask_cache[mask_id]
-    return None
+    # Check Tiled cache first
+    mask = _get_tiled_cache().get(mask_id)
+    if mask is not None:
+        return mask
+
+    # Check uploaded cache
+    return _get_uploaded_cache().get(mask_id)
 
 
 def cache_tiled_mask(cache_key: str, mask_array: np.ndarray) -> None:
     """
     Cache a mask loaded from Tiled.
 
-    Parameters
-    ----------
-    cache_key : str
-        Cache key (typically f"{tiled_base_uri}:{mask_uri}")
-    mask_array : np.ndarray
-        The mask array to cache
+    Args:
+        cache_key: Cache key (typically f"{tiled_base_uri}:{mask_uri}")
+        mask_array: The mask array to cache
     """
-    max_size = _get_max_cache_size()
-
-    with _mask_cache_lock:
-        if cache_key not in _mask_cache:
-            _evict_lru_if_needed(_mask_cache, _mask_cache_order, max_size, "Tiled mask")
-            _mask_cache[cache_key] = mask_array
-            _mask_cache_order.append(cache_key)
-        else:
-            _update_lru_order(cache_key, _mask_cache_order)
+    _get_tiled_cache().put(cache_key, mask_array)
 
 
-def get_tiled_mask_from_cache(cache_key: str) -> Optional[np.ndarray]:
+def get_tiled_mask_from_cache(cache_key: str) -> np.ndarray | None:
     """
     Get a Tiled mask from cache.
 
-    Parameters
-    ----------
-    cache_key : str
-        Cache key (typically f"{tiled_base_uri}:{mask_uri}")
+    Args:
+        cache_key: Cache key (typically f"{tiled_base_uri}:{mask_uri}")
 
-    Returns
-    -------
-    np.ndarray or None
+    Returns:
         The cached mask, or None if not found
     """
-    with _mask_cache_lock:
-        if cache_key in _mask_cache:
-            _update_lru_order(cache_key, _mask_cache_order)
-            logger.debug(f"Tiled mask cache hit: {cache_key}")
-            return _mask_cache[cache_key]
-    return None
+    return _get_tiled_cache().get(cache_key)
 
 
 def cache_uploaded_mask(mask_array: np.ndarray, file_content: bytes) -> str:
     """
     Cache an uploaded mask and return its ID.
 
-    Parameters
-    ----------
-    mask_array : np.ndarray
-        The mask array to cache
-    file_content : bytes
-        Raw file content (used for hash-based ID)
+    Args:
+        mask_array: The mask array to cache
+        file_content: Raw file content (used for hash-based ID)
 
-    Returns
-    -------
-    str
+    Returns:
         The mask_id for this cached mask
     """
     content_hash = hashlib.sha256(file_content).hexdigest()[:16]
     mask_id = f"uploaded_{content_hash}"
-    max_size = _get_max_cache_size()
 
-    with _mask_cache_lock:
-        if mask_id not in _uploaded_mask_cache:
-            _evict_lru_if_needed(_uploaded_mask_cache, _uploaded_mask_order, max_size, "Uploaded mask")
-            _uploaded_mask_cache[mask_id] = mask_array
-            _uploaded_mask_order.append(mask_id)
-        else:
-            _update_lru_order(mask_id, _uploaded_mask_order)
-
+    _get_uploaded_cache().put(mask_id, mask_array)
     return mask_id
 
 
 def get_uploaded_mask_from_cache(
     file_content: bytes,
-) -> Optional[tuple[np.ndarray, str]]:
+) -> tuple[np.ndarray, str] | None:
     """
     Check if an uploaded mask is already cached.
 
-    Parameters
-    ----------
-    file_content : bytes
-        Raw file content
+    Args:
+        file_content: Raw file content
 
-    Returns
-    -------
-    tuple[np.ndarray, str] or None
+    Returns:
         (mask_array, mask_id) if cached, None otherwise
     """
     content_hash = hashlib.sha256(file_content).hexdigest()[:16]
     mask_id = f"uploaded_{content_hash}"
 
-    with _mask_cache_lock:
-        if mask_id in _uploaded_mask_cache:
-            _update_lru_order(mask_id, _uploaded_mask_order)
-            logger.debug(f"Uploaded mask cache hit: {mask_id}")
-            return _uploaded_mask_cache[mask_id], mask_id
+    mask = _get_uploaded_cache().get(mask_id)
+    if mask is not None:
+        return mask, mask_id
     return None

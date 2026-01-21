@@ -10,22 +10,14 @@ and cached in gisaxs_cache.py.
 
 import hashlib
 import json
-import threading
-from typing import Dict, List, Tuple
 
 import numpy as np
+from xscattering_backend.cache.base import LRUCache
 from xscattering_backend.config.logging import get_logger
 from xscattering_backend.config.settings import get_config
 from xscattering_backend.utils.q_space import compute_saxs_q_matrices
 
 logger = get_logger(__name__)
-
-# Cache for SAXS Q-matrices
-# Key: hash of (image_shape, calibration)
-# Value: (q_x_matrix, q_y_matrix)
-_saxs_q_cache: Dict[str, Tuple[np.ndarray, np.ndarray]] = {}
-_saxs_q_order: List[str] = []  # LRU tracking - most recent at end
-_saxs_q_lock = threading.Lock()
 
 
 def _get_max_cache_size() -> int:
@@ -33,7 +25,19 @@ def _get_max_cache_size() -> int:
     return get_config()["cache_qspace_size"]
 
 
-def _compute_cache_key(image_shape: Tuple[int, int], calibration: dict) -> str:
+# Initialize cache lazily to allow config to be loaded first
+_saxs_q_cache: LRUCache[str, tuple[np.ndarray, np.ndarray]] | None = None
+
+
+def _get_cache() -> LRUCache[str, tuple[np.ndarray, np.ndarray]]:
+    """Get or create the SAXS Q-matrix cache instance."""
+    global _saxs_q_cache
+    if _saxs_q_cache is None:
+        _saxs_q_cache = LRUCache(max_size=_get_max_cache_size(), name="SAXS Q-matrix")
+    return _saxs_q_cache
+
+
+def _compute_cache_key(image_shape: tuple[int, int], calibration: dict) -> str:
     """
     Compute a cache key from image shape and calibration parameters.
 
@@ -44,7 +48,6 @@ def _compute_cache_key(image_shape: Tuple[int, int], calibration: dict) -> str:
     Returns:
         Hash string suitable for use as a cache key
     """
-    # Create a deterministic string representation
     key_data = {
         "shape": list(image_shape),
         "calibration": {k: v for k, v in sorted(calibration.items()) if v is not None},
@@ -54,9 +57,9 @@ def _compute_cache_key(image_shape: Tuple[int, int], calibration: dict) -> str:
 
 
 def get_or_compute_saxs_q_matrices(
-    image_shape: Tuple[int, int],
+    image_shape: tuple[int, int],
     calibration: dict,
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Get SAXS Q-matrices from cache or compute and cache them.
 
@@ -79,38 +82,8 @@ def get_or_compute_saxs_q_matrices(
         (q_x_matrix, q_y_matrix) as 2D numpy arrays
     """
     cache_key = _compute_cache_key(image_shape, calibration)
-    max_cache_size = _get_max_cache_size()
 
-    with _saxs_q_lock:
-        if cache_key in _saxs_q_cache:
-            # Move to end for LRU tracking
-            if cache_key in _saxs_q_order:
-                _saxs_q_order.remove(cache_key)
-            _saxs_q_order.append(cache_key)
-            logger.debug(f"SAXS Q-matrix cache hit: {cache_key}")
-            return _saxs_q_cache[cache_key]
+    def compute() -> tuple[np.ndarray, np.ndarray]:
+        return compute_saxs_q_matrices(image_shape, calibration)
 
-    logger.debug(f"SAXS Q-matrix cache miss: {cache_key}")
-
-    # Compute Q-matrices (outside lock to allow parallel computation)
-    q_x, q_y = compute_saxs_q_matrices(image_shape, calibration)
-
-    with _saxs_q_lock:
-        # Check if another thread added it while we were computing
-        if cache_key not in _saxs_q_cache:
-            # Enforce cache size limit with proper LRU eviction
-            while len(_saxs_q_order) >= max_cache_size:
-                oldest_key = _saxs_q_order.pop(0)
-                if oldest_key in _saxs_q_cache:
-                    del _saxs_q_cache[oldest_key]
-                    logger.debug(f"SAXS Q-matrix cache evict: {oldest_key}")
-
-            _saxs_q_cache[cache_key] = (q_x, q_y)
-            _saxs_q_order.append(cache_key)
-        else:
-            # Another thread added it - update LRU order
-            if cache_key in _saxs_q_order:
-                _saxs_q_order.remove(cache_key)
-            _saxs_q_order.append(cache_key)
-
-    return q_x, q_y
+    return _get_cache().get_or_compute(cache_key, compute)

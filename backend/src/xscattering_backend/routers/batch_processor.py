@@ -8,14 +8,17 @@ ThreadPoolExecutor, with real-time progress updates via WebSocket.
 import asyncio
 import concurrent.futures
 import uuid
-from typing import Optional
 
 import msgpack
 from fastapi import APIRouter
 from fastapi.responses import Response
 from xscattering_backend.cache.image_cache import get_cached_processed_image
 from xscattering_backend.config.logging import get_logger
-from xscattering_backend.config.models import BatchAllRequest
+from xscattering_backend.config.models import (
+    BatchAllRequest,
+    create_error_linecut_result,
+    create_linecut_result,
+)
 from xscattering_backend.config.settings import get_config
 from xscattering_backend.routers.websocket import send_progress_update
 from xscattering_backend.utils.azimuthal_integration import (
@@ -58,7 +61,7 @@ def process_scan_all_linecuts(
     inclined_linecuts: list[dict],
     azimuthal_integrations: list[dict],
     bypass_cache: bool = False,
-    mask_uri: Optional[str] = None,
+    mask_uri: str | None = None,
 ) -> dict:
     """
     Process a single scan for ALL linecut types and integrations.
@@ -108,12 +111,9 @@ def process_scan_all_linecuts(
             )
             # Skip azimuthal integration for GISAXS
             for integration in azimuthal_integrations:
-                results["azimuthal"][integration["id"]] = {
-                    "q_values": [],
-                    "intensities": [],
-                    "success": False,
-                    "error_message": "Azimuthal integration not supported for GISAXS",
-                }
+                results["azimuthal"][integration["id"]] = create_error_linecut_result(
+                    "Azimuthal integration not supported for GISAXS"
+                )
         else:
             # Use standard SAXS processing
             _process_saxs_linecuts(
@@ -148,7 +148,7 @@ def _process_saxs_linecuts(
     inclined_linecuts: list[dict],
     azimuthal_integrations: list[dict],
     bypass_cache: bool,
-    mask_uri: Optional[str],
+    mask_uri: str | None,
 ) -> None:
     """Process linecuts for SAXS experiment from pixel-space image."""
     # Fetch image (bypass cache for batch processing to avoid thrashing)
@@ -173,19 +173,9 @@ def _process_saxs_linecuts(
                 linecut["position"],
                 linecut.get("width", 0.0),
             )
-            results["horizontal"][linecut_id] = {
-                "q_values": q_values.tolist(),
-                "intensities": intensities.tolist(),
-                "success": True,
-                "error_message": None,
-            }
+            results["horizontal"][linecut_id] = create_linecut_result(q_values, intensities)
         except Exception as e:
-            results["horizontal"][linecut_id] = {
-                "q_values": [],
-                "intensities": [],
-                "success": False,
-                "error_message": str(e),
-            }
+            results["horizontal"][linecut_id] = create_error_linecut_result(str(e))
 
     # Process vertical linecuts
     for linecut in vertical_linecuts:
@@ -198,19 +188,9 @@ def _process_saxs_linecuts(
                 linecut["position"],
                 linecut.get("width", 0.0),
             )
-            results["vertical"][linecut_id] = {
-                "q_values": q_values.tolist(),
-                "intensities": intensities.tolist(),
-                "success": True,
-                "error_message": None,
-            }
+            results["vertical"][linecut_id] = create_linecut_result(q_values, intensities)
         except Exception as e:
-            results["vertical"][linecut_id] = {
-                "q_values": [],
-                "intensities": [],
-                "success": False,
-                "error_message": str(e),
-            }
+            results["vertical"][linecut_id] = create_error_linecut_result(str(e))
 
     # Process inclined linecuts
     for linecut in inclined_linecuts:
@@ -225,19 +205,9 @@ def _process_saxs_linecuts(
                 linecut["angle"],
                 linecut.get("q_width", 0.0),
             )
-            results["inclined"][linecut_id] = {
-                "q_values": q_values.tolist(),
-                "intensities": intensities.tolist(),
-                "success": True,
-                "error_message": None,
-            }
+            results["inclined"][linecut_id] = create_linecut_result(q_values, intensities)
         except Exception as e:
-            results["inclined"][linecut_id] = {
-                "q_values": [],
-                "intensities": [],
-                "success": False,
-                "error_message": str(e),
-            }
+            results["inclined"][linecut_id] = create_error_linecut_result(str(e))
 
     # Process azimuthal integrations
     ai = None
@@ -261,19 +231,9 @@ def _process_saxs_linecuts(
             q_range = integration.get("q_range")
 
             q_values, intensities = integrate_1d(ai, image_array, azimuth_range=azimuth_range, q_range=q_range)
-            results["azimuthal"][integration_id] = {
-                "q_values": q_values.tolist(),
-                "intensities": intensities.tolist(),
-                "success": True,
-                "error_message": None,
-            }
+            results["azimuthal"][integration_id] = create_linecut_result(q_values, intensities)
         except Exception as e:
-            results["azimuthal"][integration_id] = {
-                "q_values": [],
-                "intensities": [],
-                "success": False,
-                "error_message": str(e),
-            }
+            results["azimuthal"][integration_id] = create_error_linecut_result(str(e))
 
 
 def _process_gisaxs_linecuts(
@@ -283,7 +243,7 @@ def _process_gisaxs_linecuts(
     horizontal_linecuts: list[dict],
     vertical_linecuts: list[dict],
     inclined_linecuts: list[dict],
-    mask_uri: Optional[str],
+    mask_uri: str | None,
 ) -> None:
     """
     Process linecuts for GISAXS experiment from transformed Q-space image.
@@ -315,19 +275,9 @@ def _process_gisaxs_linecuts(
                 linecut["position"],  # qoop position
                 linecut.get("width", 0.0),  # qoop width
             )
-            results["horizontal"][linecut_id] = {
-                "q_values": q_values.tolist(),
-                "intensities": intensities.tolist(),
-                "success": True,
-                "error_message": None,
-            }
+            results["horizontal"][linecut_id] = create_linecut_result(q_values, intensities)
         except Exception as e:
-            results["horizontal"][linecut_id] = {
-                "q_values": [],
-                "intensities": [],
-                "success": False,
-                "error_message": str(e),
-            }
+            results["horizontal"][linecut_id] = create_error_linecut_result(str(e))
 
     # Process vertical linecuts (constant qip, returns qoop vs intensity)
     for linecut in vertical_linecuts:
@@ -340,19 +290,9 @@ def _process_gisaxs_linecuts(
                 linecut["position"],  # qip position
                 linecut.get("width", 0.0),  # qip width
             )
-            results["vertical"][linecut_id] = {
-                "q_values": q_values.tolist(),
-                "intensities": intensities.tolist(),
-                "success": True,
-                "error_message": None,
-            }
+            results["vertical"][linecut_id] = create_linecut_result(q_values, intensities)
         except Exception as e:
-            results["vertical"][linecut_id] = {
-                "q_values": [],
-                "intensities": [],
-                "success": False,
-                "error_message": str(e),
-            }
+            results["vertical"][linecut_id] = create_error_linecut_result(str(e))
 
     # Process inclined linecuts (enabled for GISAXS on transformed Q-grid)
     for linecut in inclined_linecuts:
@@ -367,19 +307,9 @@ def _process_gisaxs_linecuts(
                 linecut["angle"],
                 linecut.get("q_width", 0.0),
             )
-            results["inclined"][linecut_id] = {
-                "q_values": q_values.tolist(),
-                "intensities": intensities.tolist(),
-                "success": True,
-                "error_message": None,
-            }
+            results["inclined"][linecut_id] = create_linecut_result(q_values, intensities)
         except Exception as e:
-            results["inclined"][linecut_id] = {
-                "q_values": [],
-                "intensities": [],
-                "success": False,
-                "error_message": str(e),
-            }
+            results["inclined"][linecut_id] = create_error_linecut_result(str(e))
 
 
 def process_scan_for_batch(
@@ -390,7 +320,7 @@ def process_scan_for_batch(
     inclined_linecuts: list[dict],
     azimuthal_integrations: list[dict],
     batch_id: str,
-    mask_uri: Optional[str] = None,
+    mask_uri: str | None = None,
 ) -> dict:
     """
     Process a single scan for batch processing with cancellation support.

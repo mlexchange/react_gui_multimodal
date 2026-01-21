@@ -5,8 +5,9 @@ This module centralizes model definitions that are used in multiple places
 to ensure consistency and avoid duplication.
 """
 
-from typing import Literal, Optional
+from typing import Literal, TypedDict
 
+import numpy as np
 from pydantic import BaseModel
 
 # =============================================================================
@@ -65,17 +66,17 @@ class SingleLinecutRequest(BaseModel):
     linecut_type: Literal["horizontal", "vertical", "inclined"]
 
     # For horizontal linecuts
-    position: Optional[float] = None  # q_y position
-    width: Optional[float] = None  # Width in q-space
+    position: float | None = None  # q_y position
+    width: float | None = None  # Width in q-space
 
     # For inclined linecuts
-    q_x_position: Optional[float] = None
-    q_y_position: Optional[float] = None
-    angle: Optional[float] = None  # Degrees
-    q_width: Optional[float] = None
+    q_x_position: float | None = None
+    q_y_position: float | None = None
+    angle: float | None = None  # Degrees
+    q_width: float | None = None
 
     # Optional mask
-    mask_uri: Optional[str] = None
+    mask_uri: str | None = None
 
 
 # =============================================================================
@@ -87,7 +88,7 @@ class AzimuthalParams(BaseModel):
     """Parameters for azimuthal integration."""
 
     azimuth_range: tuple[float, float] = (-180, 180)
-    q_range: Optional[tuple[float, float]] = None
+    q_range: tuple[float, float] | None = None
 
 
 # =============================================================================
@@ -104,7 +105,7 @@ class BatchAllRequest(BaseModel):
     vertical_linecuts: list[VerticalLinecutParams] = []
     inclined_linecuts: list[InclinedLinecutParams] = []
     azimuthal_integrations: list[AzimuthalParams] = []
-    mask_uri: Optional[str] = None  # Optional detector mask URI or mask_id
+    mask_uri: str | None = None  # Optional detector mask URI or mask_id
 
 
 # =============================================================================
@@ -116,6 +117,82 @@ class MaskResponse(BaseModel):
     """Response model for mask lookup endpoint."""
 
     found: bool
-    mask_uri: Optional[str] = None
-    mask_name: Optional[str] = None
+    mask_uri: str | None = None
+    mask_name: str | None = None
     message: str
+
+
+# =============================================================================
+# TypedDicts for Response Structures
+# =============================================================================
+
+
+class LinecutResult(TypedDict):
+    """Result structure for a single linecut extraction."""
+
+    q_values: list[float]
+    intensities: list[float]
+    success: bool
+    error_message: str | None
+
+
+class ScanResult(TypedDict):
+    """Result structure for a single scan in batch processing."""
+
+    scan_uri: str
+    scan_name: str
+    horizontal: dict[int, LinecutResult]
+    vertical: dict[int, LinecutResult]
+    inclined: dict[int, LinecutResult]
+    azimuthal: dict[int, LinecutResult]
+    success: bool
+    error_message: str | None
+
+
+# =============================================================================
+# Helper Functions
+# =============================================================================
+
+
+def create_linecut_result(
+    q_values: np.ndarray | list[float],
+    intensities: np.ndarray | list[float],
+    success: bool = True,
+    error_message: str | None = None,
+) -> LinecutResult:
+    """
+    Create a standardized linecut result dictionary.
+
+    Args:
+        q_values: Q-values array or list
+        intensities: Intensity values array or list
+        success: Whether the extraction was successful
+        error_message: Error message if extraction failed
+
+    Returns:
+        LinecutResult dictionary
+    """
+    return {
+        "q_values": q_values.tolist() if hasattr(q_values, "tolist") else q_values,
+        "intensities": intensities.tolist() if hasattr(intensities, "tolist") else intensities,
+        "success": success,
+        "error_message": error_message,
+    }
+
+
+def create_error_linecut_result(error_message: str) -> LinecutResult:
+    """
+    Create a linecut result for a failed extraction.
+
+    Args:
+        error_message: Error message describing the failure
+
+    Returns:
+        LinecutResult dictionary with empty data and error
+    """
+    return {
+        "q_values": [],
+        "intensities": [],
+        "success": False,
+        "error_message": error_message,
+    }

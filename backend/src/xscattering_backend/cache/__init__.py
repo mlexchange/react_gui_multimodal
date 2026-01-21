@@ -1,5 +1,6 @@
 """Cache module for xscattering_backend."""
 
+from xscattering_backend.cache.base import LRUCache
 from xscattering_backend.cache.image_cache import (
     ProcessedImageData,
     get_cached_processed_image,
@@ -19,6 +20,8 @@ from xscattering_backend.cache.tiled_cache import (
 )
 
 __all__ = [
+    # Base cache
+    "LRUCache",
     # Image cache
     "get_cached_processed_image",
     "ProcessedImageData",

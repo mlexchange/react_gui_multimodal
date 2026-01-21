@@ -1,3 +1,10 @@
+"""
+Summary router for scan metadata retrieval.
+
+Provides an endpoint to fetch metadata (URIs, names, intensity statistics)
+for all scans in a folder, supporting the Summary view in the frontend.
+"""
+
 import asyncio
 import concurrent.futures
 import re
@@ -20,15 +27,36 @@ logger = get_logger(__name__)
 router = APIRouter()
 
 
-def natural_sort_key(uri: str):
-    """Sort key for natural/human sorting"""
+def natural_sort_key(uri: str) -> list[int | str]:
+    """
+    Generate a sort key for natural/human sorting of scan URIs.
+
+    Natural sorting handles numeric parts correctly so that "scan_2" comes
+    before "scan_10" instead of after it (as would happen with string sorting).
+
+    Args:
+        uri: Scan URI path
+
+    Returns:
+        List of string and integer parts for comparison
+    """
     name = uri.split("/")[-1].lower()
     # Split into text and number parts, convert numbers to int for proper sorting
     return [int(part) if part.isdigit() else part for part in re.split(r"(\d+)", name)]
 
 
-def process_single_image(args):
-    """Process a single scan to get its max/avg intensity."""
+def process_single_image(
+    args: tuple[int, str, str],
+) -> tuple[int, float, float, str, str, bool]:
+    """
+    Process a single scan to get its max/avg intensity.
+
+    Args:
+        args: Tuple of (index, scan_uri, tiled_base_uri)
+
+    Returns:
+        Tuple of (index, max_intensity, avg_intensity, scan_name, scan_uri, success)
+    """
     index, scan_uri, tiled_base_uri = args
     try:
         full_uri = f"{tiled_base_uri}{scan_uri}" if not scan_uri.startswith("http") else scan_uri
@@ -84,7 +112,7 @@ async def create_summary(container_path: str):
         future_to_index = {executor.submit(process_single_image, args): args[0] for args in args_list}
 
         for future in concurrent.futures.as_completed(future_to_index):
-            index, max_intensity, avg_intensity, scan_name, scan_uri, success = future.result()
+            index, max_intensity, avg_intensity, scan_name, _scan_uri, success = future.result()
 
             if success:
                 max_intensities[index] = max_intensity

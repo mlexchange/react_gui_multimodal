@@ -8,12 +8,11 @@ This module provides a centralized cache that:
 4. Supports optional mask application (mask_uri parameter)
 """
 
-import threading
 import urllib.parse as urlparse
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
 
 import numpy as np
+from xscattering_backend.cache.base import LRUCache
 from xscattering_backend.cache.tiled_cache import (
     get_tiled_base_uri,
     get_tiled_client_for_uri,
@@ -30,10 +29,10 @@ class ProcessedImageData:
     """Processed image data."""
 
     array: np.ndarray  # 2D float32 array
-    shape: Tuple[int, int]  # (height, width)
+    shape: tuple[int, int]  # (height, width)
 
 
-def _load_mask_array(mask_uri: str) -> Optional[np.ndarray]:
+def _load_mask_array(mask_uri: str) -> np.ndarray | None:
     """
     Load a mask array from cache or Tiled.
 
@@ -63,7 +62,7 @@ def _load_mask_array(mask_uri: str) -> Optional[np.ndarray]:
 
 def _fetch_and_process_image(
     scan_uri: str,
-    mask_uri: Optional[str] = None,
+    mask_uri: str | None = None,
 ) -> ProcessedImageData:
     """
     Fetch an image from Tiled and process it.
@@ -98,8 +97,9 @@ def _fetch_and_process_image(
     # Apply processing (converts to float32, masks negatives/NaN, applies detector mask)
     processed_image = get_processed_image(image_array, mask_detector=mask_array)
 
-    # Ensure float32
-    processed_image = np.array(processed_image, dtype=np.float32)
+    # Ensure float32 (avoid redundant conversion if already float32)
+    if processed_image.dtype != np.float32:
+        processed_image = processed_image.astype(np.float32)
 
     return ProcessedImageData(
         array=processed_image,
@@ -107,25 +107,31 @@ def _fetch_and_process_image(
     )
 
 
-# Cache for processed images - keyed by scan_uri
-# Using a wrapper because lru_cache doesn't work well with dataclasses as return values
-_image_cache: dict[str, ProcessedImageData] = {}
-_cache_order: List[str] = []  # For LRU tracking
-_cache_lock = threading.Lock()  # Thread safety for concurrent access
-
-
 def _get_max_cache_size() -> int:
     """Get the maximum image cache size from configuration."""
     return get_config()["cache_image_size"]
 
 
+# Initialize cache lazily to allow config to be loaded first
+_image_cache: LRUCache[str, ProcessedImageData] | None = None
+
+
+def _get_cache() -> LRUCache[str, ProcessedImageData]:
+    """Get or create the image cache instance."""
+    global _image_cache
+    if _image_cache is None:
+        _image_cache = LRUCache(max_size=_get_max_cache_size(), name="Image")
+    return _image_cache
+
+
 def get_cached_processed_image(
     scan_uri: str,
-    mask_uri: Optional[str] = None,
+    mask_uri: str | None = None,
     bypass_cache: bool = False,
 ) -> ProcessedImageData:
     """
     Get processed image from cache or compute and cache it.
+
     This is the main entry point for all image access.
     Thread-safe for concurrent access from batch processing.
 
@@ -138,8 +144,6 @@ def get_cached_processed_image(
     Returns:
         ProcessedImageData with the processed image array
     """
-    global _image_cache, _cache_order
-
     # Normalize the scan_uri
     scan_uri = scan_uri.lstrip("/")
 
@@ -150,35 +154,7 @@ def get_cached_processed_image(
     if bypass_cache:
         return _fetch_and_process_image(scan_uri, mask_uri)
 
-    max_cache_size = _get_max_cache_size()
+    def compute() -> ProcessedImageData:
+        return _fetch_and_process_image(scan_uri, mask_uri)
 
-    # Check cache with lock
-    with _cache_lock:
-        if cache_key in _image_cache:
-            # Move to end of order list (most recently used)
-            if cache_key in _cache_order:
-                _cache_order.remove(cache_key)
-            _cache_order.append(cache_key)
-            logger.debug(f"Image cache hit: {cache_key}")
-            return _image_cache[cache_key]
-
-    logger.debug(f"Image cache miss: {cache_key}")
-
-    # Cache miss - fetch and process (outside lock to allow concurrent fetches)
-    processed = _fetch_and_process_image(scan_uri, mask_uri)
-
-    # Add to cache with lock
-    with _cache_lock:
-        # Check again in case another thread added it while we were fetching
-        if cache_key not in _image_cache:
-            _image_cache[cache_key] = processed
-            _cache_order.append(cache_key)
-
-            # Enforce cache size limit (LRU eviction)
-            while len(_cache_order) > max_cache_size:
-                oldest_key = _cache_order.pop(0)
-                if oldest_key in _image_cache:
-                    del _image_cache[oldest_key]
-                logger.debug(f"Image cache evict: {oldest_key}")
-
-    return processed
+    return _get_cache().get_or_compute(cache_key, compute)
