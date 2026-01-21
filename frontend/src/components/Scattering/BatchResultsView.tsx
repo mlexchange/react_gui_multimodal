@@ -169,7 +169,7 @@ export function BatchResultsView({
   const [invertColorMap, setInvertColorMap] = useState(false);
   const [scaleType, setScaleType] = useState<ColorScaleType>(ScaleType.Linear);
   const [customDomain, setCustomDomain] = useState<CustomDomain>([null, null]);
-  const [showGrid, setShowGrid] = useState(false);
+  const [showGrid, setShowGrid] = useState(true);
 
   // Handler for waterfall offset changes
   const handleOffsetChange = useCallback((value: string | number) => {
