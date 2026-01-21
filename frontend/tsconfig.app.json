@@ -24,16 +24,12 @@
     /* JSON imports for vite.config.ts */
     "resolveJsonModule": true,
 
-    /* Linting - MODIFIED SECTION */
-    "strict": false /* Changed from true to false */,
-    "noUnusedLocals": false /* Changed from true to false */,
-    "noUnusedParameters": false /* Changed from true to false */,
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true,
-
-    /* Additional options to address errors */
-    "noImplicitAny": false,
-    "strictNullChecks": false
+    "noUncheckedSideEffectImports": true
   },
   "include": ["src"]
 }
