@@ -163,6 +163,10 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
     const comparisonPanelRef = useRef<HTMLDivElement>(null);
     const allPanelsRef = useRef<HTMLDivElement>(null);
 
+    // Track if Q-space toggle is internal (from button) vs external (auto-toggle)
+    const isInternalQSpaceToggle = useRef(false);
+    const prevShowQSpaceAxes = useRef(showQSpaceAxes);
+
     const handleLeftPanelZoom = useCallback(
       (state: ZoomState | null) => {
         setSharedZoomState(state);
@@ -188,14 +192,39 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
       }, 100);
     }, [operationType, onOperationTypeChange]);
 
-    // Handler to toggle Q-space with loading state
+    // Handler to toggle Q-space with loading state (for user-initiated toggles)
     const handleQSpaceToggle = useCallback(() => {
+      isInternalQSpaceToggle.current = true;
       setIsTogglingQSpace(true);
       setTimeout(() => {
         setShowQSpaceAxes(!showQSpaceAxes);
         setIsTogglingQSpace(false);
       }, 50);
     }, [showQSpaceAxes, setShowQSpaceAxes]);
+
+    // Show loading overlay when Q-space is toggled externally (e.g., auto-toggle)
+    useEffect(() => {
+      // Skip if value hasn't changed
+      if (prevShowQSpaceAxes.current === showQSpaceAxes) {
+        return;
+      }
+
+      // If this was an internal toggle, just update the ref and skip
+      if (isInternalQSpaceToggle.current) {
+        isInternalQSpaceToggle.current = false;
+        prevShowQSpaceAxes.current = showQSpaceAxes;
+        return;
+      }
+
+      // External toggle - show loading overlay briefly
+      setIsTogglingQSpace(true);
+      const timer = setTimeout(() => {
+        setIsTogglingQSpace(false);
+      }, 100);
+
+      prevShowQSpaceAxes.current = showQSpaceAxes;
+      return () => clearTimeout(timer);
+    }, [showQSpaceAxes]);
 
     // Compute number of files for selectors
     const numOfFiles = imageNames.length;

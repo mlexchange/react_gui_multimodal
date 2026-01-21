@@ -82,6 +82,12 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
   // Track if Q-space was auto-toggled (to avoid re-toggling after user manually turns it off)
   const hasAutoToggledQSpace = useRef(false);
 
+  // Track previous experiment type to detect changes
+  const prevExperimentTypeRef = useRef<string | null>(null);
+
+  // Track if experiment type change should be ignored (e.g., during session restoration)
+  const skipNextExperimentTypeChange = useRef(false);
+
   // Refs for linecut figure snapshots
   const horizontalLinecutRef = useRef<HTMLDivElement>(null);
   const verticalLinecutRef = useRef<HTMLDivElement>(null);
@@ -336,6 +342,50 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     azimuthalIntegrations
   });
 
+  // ========== EXPERIMENT TYPE CHANGE HANDLER ==========
+  // Reset linecuts and Q-space toggle when experiment type changes (user-initiated only)
+  useEffect(() => {
+    // Skip if flagged to ignore (e.g., during session restoration)
+    if (skipNextExperimentTypeChange.current) {
+      skipNextExperimentTypeChange.current = false;
+      prevExperimentTypeRef.current = experimentType;
+      return;
+    }
+
+    // Initialize ref on first render
+    if (prevExperimentTypeRef.current === null) {
+      prevExperimentTypeRef.current = experimentType;
+      return;
+    }
+
+    // Skip if experiment type hasn't changed
+    if (prevExperimentTypeRef.current === experimentType) {
+      return;
+    }
+
+    console.log(
+      `Experiment type changed from ${prevExperimentTypeRef.current} to ${experimentType}, clearing linecuts`
+    );
+
+    // Clear all linecuts
+    restoreHorizontalLinecuts([]);
+    restoreVerticalLinecuts([]);
+    restoreInclinedLinecuts([]);
+    restoreAzimuthalIntegrations([]);
+
+    // Reset Q-space auto-toggle flag so it can trigger again with new calibration
+    hasAutoToggledQSpace.current = false;
+
+    // Update ref
+    prevExperimentTypeRef.current = experimentType;
+  }, [
+    experimentType,
+    restoreHorizontalLinecuts,
+    restoreVerticalLinecuts,
+    restoreInclinedLinecuts,
+    restoreAzimuthalIntegrations
+  ]);
+
   // ========== SESSION RESTORATION ==========
   // Restore session state when the component mounts and session data is available
   useEffect(() => {
@@ -350,6 +400,9 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
 
     // Apply restored session state
     console.log("Restoring session state...");
+
+    // Mark that the next experiment type change should be ignored (it's from session restoration)
+    skipNextExperimentTypeChange.current = true;
 
     // 1. Restore scattering state (experiment type, calibration, selectedLinecuts, maskUri, showQSpaceAxes)
     restoreScatteringState({
@@ -620,7 +673,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                   />
 
                   {/* Tiled Load Data */}
-                  <div className="w-full [&_button]:w-full [&_button]:font-medium [&_button]:bg-sky-500 [&_button]:hover:bg-sky-600 [&_button]:ml-0 [&_button]:text-md [&_button]:rounded-lg [&_button]:py-2 [&_button]:px-3">
+                  <div className="w-full [&_button]:w-full [&_button]:font-medium [&_button]:bg-sky-500 [&_button]:hover:bg-sky-600 [&_button]:ml-0 [&_button]:text-md [&_button]:rounded-xl [&_button]:py-2 [&_button]:px-3">
                     <Tiled
                       tiledBaseUrl={tiledUrl}
                       apiKey={tiledApiKey}

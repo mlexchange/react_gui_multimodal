@@ -79,42 +79,8 @@ export default function useScattering() {
   const [qXMatrix, setQXMatrix] = useState<number[][]>([]);
   const [qYMatrix, setQYMatrix] = useState<number[][]>([]);
 
-  // Track previous experiment type to detect changes
-  const prevExperimentType = useRef(experimentType);
-
-  // Clear calibration-related state when experiment type changes
-  useEffect(() => {
-    // Skip on initial render (when previous matches current)
-    if (prevExperimentType.current === experimentType) {
-      return;
-    }
-
-    console.log(
-      `Experiment type changed from ${prevExperimentType.current} to ${experimentType}, clearing calibration state`
-    );
-
-    // Clear Q matrices
-    setQXMatrix([]);
-    setQYMatrix([]);
-
-    // Clear calibration parameters
-    setCalibrationParams(null);
-
-    // Clear mask
-    setMaskUri(null);
-    setMaskData(null);
-    setMaskShape(null);
-    setShowMaskOverlay(false);
-
-    // Reset Q-space axes toggle
-    setShowQSpaceAxes(false);
-
-    // Clear selected linecuts
-    setSelectedLinecuts([]);
-
-    // Update ref to current value
-    prevExperimentType.current = experimentType;
-  }, [experimentType]);
+  // Note: Experiment type change handling is done in Scattering.tsx
+  // This hook only manages the state, not the change detection logic
 
   /**
    * Fetch q-matrices from the server (SAXS only)
@@ -131,7 +97,10 @@ export default function useScattering() {
 
     // For GISAXS, Q matrices come from the image fetch (setGisaxsQMatrices)
     // This ensures consistency with the pyFAI FiberIntegrator calculations
+    // Clear any existing Q matrices (e.g., from SAXS) and wait for image fetch
     if (experimentType === "GISAXS") {
+      setQXMatrix([]);
+      setQYMatrix([]);
       return;
     }
 
@@ -308,6 +277,21 @@ export default function useScattering() {
     restoreMask();
   }, [maskUri, maskData]);
 
+  /**
+   * Clear calibration-related state (for experiment type changes)
+   */
+  const clearCalibrationState = useCallback(() => {
+    setQXMatrix([]);
+    setQYMatrix([]);
+    setCalibrationParams(null);
+    setMaskUri(null);
+    setMaskData(null);
+    setMaskShape(null);
+    setShowMaskOverlay(false);
+    setShowQSpaceAxes(false);
+    setSelectedLinecuts([]);
+  }, []);
+
   return {
     // Existing state
     experimentType,
@@ -351,6 +335,9 @@ export default function useScattering() {
     setShowQSpaceAxes,
 
     // Session restoration
-    restoreState
+    restoreState,
+
+    // Experiment type change handling
+    clearCalibrationState
   };
 }
