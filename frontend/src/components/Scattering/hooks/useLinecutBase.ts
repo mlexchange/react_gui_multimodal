@@ -52,7 +52,7 @@ export type FetchLinecutFn = (
 
 /** Cancel request function signature */
 export type CancelRequestFn = (
-  linecutType: string,
+  linecutType: "horizontal" | "vertical" | "inclined",
   linecutId: number,
   side: "left" | "right"
 ) => void;

@@ -4,6 +4,13 @@ export type DisplayOption = "both" | "max" | "avg";
 
 export type OperationType = "subtract" | "divide";
 
+/** Direction for horizontal/vertical linecuts (inclined has separate components) */
+export type LinecutDirection = "horizontal" | "vertical";
+
+/** Type for h5web ToggleBtn Icon prop (cast needed due to phosphor-icons type mismatch) */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type ToolbarIcon = any;
+
 // ============================================================================
 // Linecut Data Types (centralized to avoid duplication across hooks)
 // ============================================================================

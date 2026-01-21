@@ -5,8 +5,6 @@
  * Positioned at the bottom of the plot container.
  */
 
-import React from "react";
-
 export interface LegendEntry {
   /** Unique identifier for the entry */
   id: string | number;

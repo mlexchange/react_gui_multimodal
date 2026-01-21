@@ -166,17 +166,17 @@ async function fetchAzimuthalInternal(
   url.searchParams.set("left_scan_uri", params.leftScanUri);
   url.searchParams.set("right_scan_uri", params.rightScanUri);
 
-  // Add calibration parameters
+  // Add calibration parameters (guaranteed to be defined when API is called)
   const cal = params.calibration;
   url.searchParams.set(
     "sample_detector_distance",
-    cal.sample_detector_distance.toString()
+    cal.sample_detector_distance!.toString()
   );
-  url.searchParams.set("beam_center_x", cal.beam_center_x.toString());
-  url.searchParams.set("beam_center_y", cal.beam_center_y.toString());
-  url.searchParams.set("pixel_size_x", cal.pixel_size_x.toString());
-  url.searchParams.set("pixel_size_y", cal.pixel_size_y.toString());
-  url.searchParams.set("wavelength", cal.wavelength.toString());
+  url.searchParams.set("beam_center_x", cal.beam_center_x!.toString());
+  url.searchParams.set("beam_center_y", cal.beam_center_y!.toString());
+  url.searchParams.set("pixel_size_x", cal.pixel_size_x!.toString());
+  url.searchParams.set("pixel_size_y", cal.pixel_size_y!.toString());
+  url.searchParams.set("wavelength", cal.wavelength!.toString());
   url.searchParams.set("tilt", (cal.tilt ?? 0).toString());
   url.searchParams.set(
     "tilt_plan_rotation",
@@ -565,13 +565,13 @@ export async function fetchQVectors(
   const cal = params.calibration;
   url.searchParams.set(
     "sample_detector_distance",
-    cal.sample_detector_distance.toString()
+    cal.sample_detector_distance!.toString()
   );
-  url.searchParams.set("beam_center_x", cal.beam_center_x.toString());
-  url.searchParams.set("beam_center_y", cal.beam_center_y.toString());
-  url.searchParams.set("pixel_size_x", cal.pixel_size_x.toString());
-  url.searchParams.set("pixel_size_y", cal.pixel_size_y.toString());
-  url.searchParams.set("wavelength", cal.wavelength.toString());
+  url.searchParams.set("beam_center_x", cal.beam_center_x!.toString());
+  url.searchParams.set("beam_center_y", cal.beam_center_y!.toString());
+  url.searchParams.set("pixel_size_x", cal.pixel_size_x!.toString());
+  url.searchParams.set("pixel_size_y", cal.pixel_size_y!.toString());
+  url.searchParams.set("wavelength", cal.wavelength!.toString());
   url.searchParams.set("tilt", (cal.tilt ?? 0).toString());
   url.searchParams.set(
     "tilt_plan_rotation",

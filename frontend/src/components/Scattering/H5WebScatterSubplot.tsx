@@ -12,7 +12,7 @@ import {
   type CustomDomain,
   type HistogramParams
 } from "@h5web/lib";
-import { getSafeDomainForScale } from "./utils/linePlotUtils";
+import { getSafeDomainForScale, type Domain } from "./utils/linePlotUtils";
 import {
   ArrowsHorizontalIcon,
   ArrowsVerticalIcon,
@@ -32,9 +32,6 @@ import { calculateInclinedQSpaceToPixelWidth } from "./utils/calculateQSpaceToPi
 import { SCALE_OPTIONS, type ColorScaleType } from "./utils/constants";
 import { arrayToNdarray } from "./utils/h5webUtils";
 
-// Domain type for heatmap visualization
-type Domain = [number, number];
-
 import { notifications } from "@/components/ui";
 import {
   CalibrationParams,
@@ -42,6 +39,7 @@ import {
   InclinedLinecut,
   AzimuthalIntegration,
   OperationType,
+  ToolbarIcon,
   isGisaxsCalibrationComplete
 } from "./types";
 import { getArrayMinMax } from "./utils/getArrayMinAndMax";
@@ -280,16 +278,17 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
       if (experimentType !== "GISAXS") return null;
       // Don't return calibration unless GISAXS-specific requirements are met
       if (!isGisaxsCalibrationComplete(calibrationParams)) return null;
+      // All required fields are guaranteed to be defined after isGisaxsCalibrationComplete check
       return {
-        sample_detector_distance: calibrationParams!.sample_detector_distance,
-        beam_center_x: calibrationParams!.beam_center_x,
-        beam_center_y: calibrationParams!.beam_center_y,
-        pixel_size_x: calibrationParams!.pixel_size_x,
-        pixel_size_y: calibrationParams!.pixel_size_y,
-        wavelength: calibrationParams!.wavelength,
-        incident_angle: calibrationParams!.incident_angle,
-        tilt: calibrationParams!.tilt,
-        tilt_plan_rotation: calibrationParams!.tilt_plan_rotation
+        sample_detector_distance: calibrationParams!.sample_detector_distance!,
+        beam_center_x: calibrationParams!.beam_center_x!,
+        beam_center_y: calibrationParams!.beam_center_y!,
+        pixel_size_x: calibrationParams!.pixel_size_x!,
+        pixel_size_y: calibrationParams!.pixel_size_y!,
+        wavelength: calibrationParams!.wavelength!,
+        incident_angle: calibrationParams!.incident_angle!,
+        tilt: calibrationParams!.tilt ?? 0,
+        tilt_plan_rotation: calibrationParams!.tilt_plan_rotation ?? 0
       };
     }, [experimentType, calibrationParams]);
 
@@ -891,34 +890,34 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
 
             <ToggleBtn
               label="Flip X"
-              Icon={ArrowsHorizontalIcon}
+              Icon={ArrowsHorizontalIcon as ToolbarIcon}
               value={flipXAxis}
               onToggle={() => setFlipXAxis(!flipXAxis)}
             />
             <ToggleBtn
               label="Flip Y"
-              Icon={ArrowsVerticalIcon}
+              Icon={ArrowsVerticalIcon as ToolbarIcon}
               value={flipYAxis}
               onToggle={() => setFlipYAxis(!flipYAxis)}
             />
 
             <ToggleBtn
               label="Grid"
-              Icon={GridFourIcon}
+              Icon={GridFourIcon as ToolbarIcon}
               value={showGrid}
               onToggle={() => setShowGrid(!showGrid)}
             />
 
             <ToggleBtn
               label="Overlays"
-              Icon={StackIcon}
+              Icon={StackIcon as ToolbarIcon}
               value={showOverlays}
               onToggle={() => setShowOverlays(!showOverlays)}
               disabled={experimentType === "GISAXS" && !showQSpaceAxes}
             />
             <ToggleBtn
               label="Mask"
-              Icon={MaskHappyIcon}
+              Icon={MaskHappyIcon as ToolbarIcon}
               value={showMaskOverlay}
               onToggle={() => setShowMaskOverlay(!showMaskOverlay)}
               // Disable mask in Q-space (already applied as NaN) or when no mask loaded
@@ -928,7 +927,7 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
 
             <ToggleBtn
               label="Q-Space"
-              Icon={ChartLineIcon}
+              Icon={ChartLineIcon as ToolbarIcon}
               value={showQSpaceAxes}
               onToggle={() => setShowQSpaceAxes(!showQSpaceAxes)}
               disabled={!canToggleQSpace}

@@ -1,6 +1,6 @@
 import React from "react";
 import { EyeIcon, EyeSlashIcon } from "@phosphor-icons/react";
-import { Linecut } from "./types";
+import { Linecut, LinecutDirection } from "./types";
 import { InputSlider } from "@blueskyproject/finch";
 import { IconButton } from "@/components/ui";
 import { ColorPickerPopup, ColorBox, DeleteButton } from "@/components/shared";
@@ -9,8 +9,6 @@ import {
   LinecutItemContainer
 } from "./LinecutItemContainer";
 import { useColorPicker } from "../../hooks/useColorPicker";
-
-type LinecutDirection = "horizontal" | "vertical";
 
 interface LinecutWidgetProps {
   direction: LinecutDirection;

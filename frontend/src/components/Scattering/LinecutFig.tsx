@@ -9,7 +9,7 @@ import {
   Pan,
   SelectToZoom
 } from "@h5web/lib";
-import { Linecut, LinecutData } from "./types";
+import { Linecut, LinecutData, LinecutDirection } from "./types";
 import { H5WebLegend, LegendEntry } from "./H5WebLegend";
 import {
   CurveData,
@@ -18,8 +18,6 @@ import {
   createTooltipRenderer,
   clampDomainToData
 } from "./utils/linePlotUtils";
-
-type LinecutDirection = "horizontal" | "vertical";
 
 interface LinecutFigProps {
   direction: LinecutDirection;

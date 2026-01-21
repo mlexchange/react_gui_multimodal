@@ -16,6 +16,7 @@ import { DisplayOption } from "./types";
 import ProgressBar from "./SummaryProgressBar";
 import { ToggleGroup } from "@/components/ui";
 import { H5WebLegend, LegendEntry } from "./H5WebLegend";
+import { type Domain } from "./utils/linePlotUtils";
 
 /**
  * Click handler component that goes inside VisCanvas.
@@ -72,9 +73,6 @@ interface SummaryFigProps {
   progress?: number;
   progressMessage?: string;
 }
-
-// Domain type
-type Domain = [number, number];
 
 interface ContextMenuPosition {
   isVisible: boolean;
@@ -446,7 +444,7 @@ const SummaryFig: React.FC<SummaryFigProps> = ({
 
                 <TooltipMesh
                   guides="both"
-                  renderTooltip={(x, y) => {
+                  renderTooltip={(_x, y) => {
                     // Find closest point
                     const imageIdx = Math.round(y) - 1; // Convert to 0-based
                     if (imageIdx < 0 || imageIdx >= maxIntensities.length)

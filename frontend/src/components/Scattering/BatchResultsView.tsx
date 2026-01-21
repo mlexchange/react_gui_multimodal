@@ -37,21 +37,25 @@ import {
   getClosestPoint,
   getSafeDomainForScale,
   StandardTooltip,
-  type CurveData
+  type CurveData,
+  type Domain
 } from "./utils/linePlotUtils";
 import { Vector3 } from "three";
 import ndarray from "ndarray";
 import { GridFourIcon, DownloadSimpleIcon } from "@phosphor-icons/react";
+
 import { Button, ButtonWithIcon } from "@blueskyproject/finch";
 import { NumberInput } from "@/components/ui";
 import { BatchOperationType } from "./hooks/useBatchProcessing";
-import { BatchLinecutResult } from "./types";
 import { exportToCSV } from "./utils/batchExport";
 import { SCALE_OPTIONS, type ColorScaleType } from "./utils/constants";
-import type { Linecut, InclinedLinecut, AzimuthalIntegration } from "./types";
-
-// Domain type
-type Domain = [number, number];
+import type {
+  BatchLinecutResult,
+  Linecut,
+  InclinedLinecut,
+  AzimuthalIntegration,
+  ToolbarIcon
+} from "./types";
 
 // View mode type
 type ViewMode = "waterfall" | "heatmap";
@@ -433,7 +437,7 @@ export function BatchResultsView({
                 <Separator />
                 <ToggleBtn
                   label="Grid"
-                  Icon={GridFourIcon}
+                  Icon={GridFourIcon as ToolbarIcon}
                   value={showGrid}
                   onToggle={() => setShowGrid(!showGrid)}
                 />

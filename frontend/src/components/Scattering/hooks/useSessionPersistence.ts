@@ -36,7 +36,7 @@ export interface PersistableState {
   leftImageIndex: number | "";
   rightImageIndex: number | "";
   experimentType: "SAXS" | "GISAXS";
-  calibrationParams: CalibrationParams;
+  calibrationParams: CalibrationParams | null;
   showQSpaceAxes: boolean;
   horizontalLinecuts: Linecut[];
   verticalLinecuts: Linecut[];

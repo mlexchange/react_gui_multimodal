@@ -30,8 +30,7 @@ import {
   ZoomReceiver,
   type ZoomState
 } from "./utils/zoomSync";
-
-type Domain = [number, number];
+import { type Domain } from "./utils/linePlotUtils";
 
 export interface HeatmapPanelProps {
   header?: React.ReactNode;

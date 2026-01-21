@@ -300,7 +300,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     restoreScatteringState({
       experimentType: restoredSession.experimentType,
       selectedLinecuts: restoredSession.selectedLinecuts,
-      calibrationParams: restoredSession.calibrationParams,
+      calibrationParams: restoredSession.calibrationParams ?? undefined,
       maskUri: restoredSession.maskUri,
       showQSpaceAxes: restoredSession.showQSpaceAxes
     });
@@ -560,7 +560,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                   {numOfFiles &&
                   (!isCalibrationSet ||
                     (experimentType === "GISAXS" &&
-                      !calibrationParams.incident_angle)) ? (
+                      !calibrationParams?.incident_angle)) ? (
                     <ButtonWithIcon
                       icon={<WarningIcon weight="fill" size={24} />}
                       text={
@@ -920,8 +920,8 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                         linecuts={inclinedLinecuts}
                         leftLinecutData={inclinedLeftLinecutData}
                         rightLinecutData={inclinedRightLinecutData}
-                        beamCenterX={calibrationParams?.beam_center_x}
-                        beamCenterY={calibrationParams?.beam_center_y}
+                        beamCenterX={calibrationParams?.beam_center_x ?? 0}
+                        beamCenterY={calibrationParams?.beam_center_y ?? 0}
                         zoomedXPixelRange={zoomedXPixelRange}
                         zoomedYPixelRange={zoomedYPixelRange}
                         qXVector={qXVector}
