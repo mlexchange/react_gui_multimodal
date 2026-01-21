@@ -4,12 +4,12 @@
  */
 import { useCallback } from "react";
 import { InclinedLinecut, InclinedLinecutData } from "../types";
-import { throttle } from "lodash";
 import {
   fetchInclinedLinecut,
   cancelLinecutRequest
 } from "../services/linecutApi";
 import { useLinecutBase, UseLinecutBaseProps } from "./useLinecutBase";
+import { useThrottledCallback } from "./useThrottledCallback";
 
 // ============================================================================
 // Types
@@ -86,9 +86,8 @@ export default function useInclinedLinecut({
   // Inclined-specific: angle and width updates
   // =========================================================================
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const updateInclinedLinecutAngle = useCallback(
-    throttle((id: number, angle: number) => {
+  const updateInclinedLinecutAngle = useThrottledCallback(
+    (id: number, angle: number) => {
       const normalizedAngle = (((angle % 360) + 540) % 360) - 180;
 
       base.setLinecuts((prev) => {
@@ -103,13 +102,12 @@ export default function useInclinedLinecut({
 
         return updated;
       });
-    }, 200),
-    [base.useApi, base.fetchLinecutData]
+    },
+    200
   );
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const updateInclinedLinecutWidth = useCallback(
-    throttle((id: number, qWidth: number) => {
+  const updateInclinedLinecutWidth = useThrottledCallback(
+    (id: number, qWidth: number) => {
       base.setLinecuts((prev) => {
         const updated = prev.map((linecut) =>
           linecut.id === id ? { ...linecut, qWidth } : linecut
@@ -122,8 +120,8 @@ export default function useInclinedLinecut({
 
         return updated;
       });
-    }, 200),
-    [base.useApi, base.fetchLinecutData]
+    },
+    200
   );
 
   // =========================================================================

@@ -60,12 +60,13 @@ import { scatteringIcons } from "./icons";
 const tiledUrl = import.meta.env.SCATTERING_TILED_URL;
 const tiledApiKey = import.meta.env.SCATTERING_TILED_API_KEY;
 
+const LINECUT_ORDER = ["Horizontal", "Vertical", "Inclined", "Azimuthal"] as const;
+
 interface ScatteringProps {
   standalone?: boolean;
 }
 
 export default function Scattering({ standalone = false }: ScatteringProps) {
-  const linecutOrder = ["Horizontal", "Vertical", "Inclined", "Azimuthal"];
   const [isCalibrationOpen, setIsCalibrationOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isSummaryCollapsed, setIsSummaryCollapsed] = useState(false);
@@ -198,14 +199,18 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
 
   // Get scan URIs for selected images
   // These will be used for azimuthal integration API calls
-  const leftScanUri =
+  const leftScanUri = useMemo(() =>
     leftImageIndex !== "" && scanUris.length > 0
       ? scanUris[leftImageIndex]
-      : null;
-  const rightScanUri =
+      : null,
+    [leftImageIndex, scanUris]
+  );
+  const rightScanUri = useMemo(() =>
     rightImageIndex !== "" && scanUris.length > 0
       ? scanUris[rightImageIndex]
-      : null;
+      : null,
+    [rightImageIndex, scanUris]
+  );
 
   // Linecut hooks - fetch data from backend API with debouncing
   const {
@@ -290,8 +295,8 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
   );
 
   // Get image dimensions from imageData1 (assumes both images have same dimensions)
-  const imageHeight = imageData1.length;
-  const imageWidth = imageData1[0]?.length || 0;
+  const imageHeight = useMemo(() => imageData1.length, [imageData1]);
+  const imageWidth = useMemo(() => imageData1[0]?.length || 0, [imageData1]);
 
   // Compute Q-magnitude matrix from qXMatrix and qYMatrix (already fetched by useScattering)
   const qMagnitudeMatrix = useMemo(() => {
@@ -539,7 +544,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     triggerAutoSave
   ]);
 
-  const handleCalibrationUpdate = async (params: CalibrationParams) => {
+  const handleCalibrationUpdate = useCallback(async (params: CalibrationParams) => {
     try {
       notifications.show({
         id: "calibration-update",
@@ -583,9 +588,9 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
         autoClose: 4000
       });
     }
-  };
+  }, [updateCalibration]);
 
-  const linecutButtonsConfig = [
+  const linecutButtonsConfig = useMemo(() => [
     {
       type: "Horizontal" as const,
       icon: scatteringIcons.horizontalLinecut,
@@ -607,7 +612,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
       addFn: addAzimuthalIntegration,
       saxsOnly: true
     }
-  ];
+  ], [addHorizontalLinecut, addVerticalLinecut, addInclinedLinecut, addAzimuthalIntegration]);
 
   return (
     <div
@@ -776,7 +781,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                     />
                   </div>
 
-                  {linecutOrder
+                  {LINECUT_ORDER
                     .filter((linecut) => selectedLinecuts.includes(linecut))
                     .map((linecutType) => {
                       if (

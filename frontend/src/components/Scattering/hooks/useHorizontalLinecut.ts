@@ -4,13 +4,13 @@
  */
 import { useCallback, useEffect } from "react";
 import { Linecut, LinecutData } from "../types";
-import { throttle } from "lodash";
 import { findPixelPositionForQValue } from "../utils/findPixelPositionForQValue";
 import {
   fetchHorizontalLinecut,
   cancelLinecutRequest
 } from "../services/linecutApi";
 import { useLinecutBase, UseLinecutBaseProps } from "./useLinecutBase";
+import { useThrottledCallback } from "./useThrottledCallback";
 
 // ============================================================================
 // Types
@@ -118,9 +118,8 @@ export default function useHorizontalLinecut({
   // Horizontal-specific: position and width updates
   // =========================================================================
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const updateHorizontalLinecutPosition = useCallback(
-    throttle((id: number, position: number) => {
+  const updateHorizontalLinecutPosition = useThrottledCallback(
+    (id: number, position: number) => {
       const pixelPosition = findClosestPixelForQValue(position);
 
       base.setLinecuts((prev) => {
@@ -138,13 +137,12 @@ export default function useHorizontalLinecut({
 
         return updated;
       });
-    }, 200),
-    [findClosestPixelForQValue, base.fetchLinecutData]
+    },
+    200
   );
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const updateHorizontalLinecutWidth = useCallback(
-    throttle((id: number, width: number) => {
+  const updateHorizontalLinecutWidth = useThrottledCallback(
+    (id: number, width: number) => {
       base.setLinecuts((prev) => {
         const updated = prev.map((linecut) =>
           linecut.id === id ? { ...linecut, width } : linecut
@@ -157,18 +155,19 @@ export default function useHorizontalLinecut({
 
         return updated;
       });
-    }, 200),
-    [base.fetchLinecutData]
+    },
+    200
   );
 
   // =========================================================================
   // Horizontal-specific: sync pixel positions when qYMatrix changes
   // =========================================================================
 
+  const { setLinecuts } = base;
   useEffect(() => {
     if (!qYMatrix || !qYMatrix.length) return;
 
-    base.setLinecuts((prev) => {
+    setLinecuts((prev) => {
       if (!prev.length) return prev;
 
       return prev.map((linecut) => {
@@ -176,7 +175,7 @@ export default function useHorizontalLinecut({
         return { ...linecut, pixelPosition };
       });
     });
-  }, [qYMatrix, findClosestPixelForQValue, base.setLinecuts]);
+  }, [qYMatrix, findClosestPixelForQValue, setLinecuts]);
 
   // =========================================================================
   // Return with horizontal-specific naming

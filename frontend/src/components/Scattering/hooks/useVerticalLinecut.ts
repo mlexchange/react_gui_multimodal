@@ -4,13 +4,13 @@
  */
 import { useCallback, useEffect } from "react";
 import { Linecut, LinecutData } from "../types";
-import { throttle } from "lodash";
 import { findPixelPositionForQValue } from "../utils/findPixelPositionForQValue";
 import {
   fetchVerticalLinecut,
   cancelLinecutRequest
 } from "../services/linecutApi";
 import { useLinecutBase, UseLinecutBaseProps } from "./useLinecutBase";
+import { useThrottledCallback } from "./useThrottledCallback";
 
 // ============================================================================
 // Types
@@ -118,9 +118,8 @@ export default function useVerticalLinecut({
   // Vertical-specific: position and width updates
   // =========================================================================
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const updateVerticalLinecutPosition = useCallback(
-    throttle((id: number, position: number) => {
+  const updateVerticalLinecutPosition = useThrottledCallback(
+    (id: number, position: number) => {
       const pixelPosition = findClosestPixelForQValue(position);
 
       base.setLinecuts((prev) => {
@@ -138,13 +137,12 @@ export default function useVerticalLinecut({
 
         return updated;
       });
-    }, 200),
-    [findClosestPixelForQValue, base.fetchLinecutData]
+    },
+    200
   );
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const updateVerticalLinecutWidth = useCallback(
-    throttle((id: number, width: number) => {
+  const updateVerticalLinecutWidth = useThrottledCallback(
+    (id: number, width: number) => {
       base.setLinecuts((prev) => {
         const updated = prev.map((linecut) =>
           linecut.id === id ? { ...linecut, width } : linecut
@@ -157,18 +155,19 @@ export default function useVerticalLinecut({
 
         return updated;
       });
-    }, 200),
-    [base.fetchLinecutData]
+    },
+    200
   );
 
   // =========================================================================
   // Vertical-specific: sync pixel positions when qXMatrix changes
   // =========================================================================
 
+  const { setLinecuts } = base;
   useEffect(() => {
     if (!qXMatrix || !qXMatrix.length) return;
 
-    base.setLinecuts((prev) => {
+    setLinecuts((prev) => {
       if (!prev.length) return prev;
 
       return prev.map((linecut) => {
@@ -176,7 +175,7 @@ export default function useVerticalLinecut({
         return { ...linecut, pixelPosition };
       });
     });
-  }, [qXMatrix, findClosestPixelForQValue, base.setLinecuts]);
+  }, [qXMatrix, findClosestPixelForQValue, setLinecuts]);
 
   // =========================================================================
   // Return with vertical-specific naming
