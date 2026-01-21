@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, forwardRef } from "react";
 import {
   VisCanvas,
   DataCurve,
@@ -87,7 +87,7 @@ const directionConfig: Record<LinecutDirection, DirectionConfig> = {
   }
 };
 
-const LinecutFig: React.FC<LinecutFigProps> = ({
+const LinecutFig = forwardRef<HTMLDivElement, LinecutFigProps>(({
   direction,
   linecuts,
   zoomedXPixelRange,
@@ -97,7 +97,7 @@ const LinecutFig: React.FC<LinecutFigProps> = ({
   units = "nm⁻¹",
   leftLinecutData,
   rightLinecutData
-}) => {
+}, ref) => {
   const config = directionConfig[direction];
 
   const zoomVector = useMemo(
@@ -215,7 +215,7 @@ const LinecutFig: React.FC<LinecutFigProps> = ({
   }
 
   return (
-    <div className="w-full h-full flex flex-col" data-linecut-fig="true">
+    <div ref={ref} className="w-full h-full flex flex-col" data-linecut-fig="true">
       {/* Plot area */}
       <div className="w-full flex-1 h-0 flex flex-col">
         <VisCanvas
@@ -262,6 +262,8 @@ const LinecutFig: React.FC<LinecutFigProps> = ({
       />
     </div>
   );
-};
+});
+
+LinecutFig.displayName = "LinecutFig";
 
 export default React.memo(LinecutFig);

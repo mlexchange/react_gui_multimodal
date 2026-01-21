@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, forwardRef } from "react";
 import {
   VisCanvas,
   DataCurve,
@@ -29,14 +29,14 @@ interface AzimuthalIntegrationFigProps {
   qMagnitudeMatrix: number[][] | null;
 }
 
-const AzimuthalIntegrationFig: React.FC<AzimuthalIntegrationFigProps> = ({
+const AzimuthalIntegrationFig = forwardRef<HTMLDivElement, AzimuthalIntegrationFigProps>(({
   integrations,
   azimuthalData1,
   azimuthalData2,
   zoomedXPixelRange,
   zoomedYPixelRange,
   qMagnitudeMatrix
-}) => {
+}, ref) => {
   // Prepare curve data for H5Web
   const { curves, legendEntries, xDomain, yDomain } = useMemo(() => {
     const curveData: CurveData[] = [];
@@ -121,7 +121,7 @@ const AzimuthalIntegrationFig: React.FC<AzimuthalIntegrationFigProps> = ({
   }
 
   return (
-    <div className="w-full h-full flex flex-col" data-linecut-fig="true">
+    <div ref={ref} className="w-full h-full flex flex-col" data-linecut-fig="true">
       {/* Plot area */}
       <div className="w-full flex-1 h-0 flex flex-col">
         <VisCanvas
@@ -168,6 +168,8 @@ const AzimuthalIntegrationFig: React.FC<AzimuthalIntegrationFigProps> = ({
       />
     </div>
   );
-};
+});
+
+AzimuthalIntegrationFig.displayName = "AzimuthalIntegrationFig";
 
 export default React.memo(AzimuthalIntegrationFig);

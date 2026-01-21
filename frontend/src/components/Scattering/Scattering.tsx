@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { Select, IconButton, notifications } from "@/components/ui";
 import { ContentCard, Modal } from "@/components/shared";
 import {
+  CameraIcon,
   CircleHalfTiltIcon,
   ListIcon,
   TreeStructureIcon,
@@ -44,6 +45,7 @@ import {
   handleExperimentTypeChange,
   addLinecut
 } from "./utils/linecutHandlers";
+import { captureSnapshot } from "./utils/snapshot";
 
 // Import assets
 import alsLogo from "@/assets/als-logo.png";
@@ -73,6 +75,12 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
 
   // Track if Q-space was auto-toggled (to avoid re-toggling after user manually turns it off)
   const hasAutoToggledQSpace = useRef(false);
+
+  // Refs for linecut figure snapshots
+  const horizontalLinecutRef = useRef<HTMLDivElement>(null);
+  const verticalLinecutRef = useRef<HTMLDivElement>(null);
+  const inclinedLinecutRef = useRef<HTMLDivElement>(null);
+  const azimuthalIntegrationRef = useRef<HTMLDivElement>(null);
 
   const {
     experimentType,
@@ -109,6 +117,33 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
 
   const qXVector = useMemo(() => qXMatrix[0] ?? [], [qXMatrix]);
   const qYVector = useMemo(() => qYMatrix.map((row) => row[0]), [qYMatrix]);
+
+  // Snapshot handler for linecut figures
+  const handleLinecutSnapshot = useCallback(async (
+    ref: React.RefObject<HTMLDivElement>,
+    name: string
+  ) => {
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, "");
+    await captureSnapshot(ref.current, {
+      filename: `${name}-${timestamp}`,
+      yAxisLabelOffset: 27
+    });
+  }, []);
+
+  // Reusable snapshot button for ContentCard headers
+  const renderSnapshotButton = useCallback((
+    ref: React.RefObject<HTMLDivElement>,
+    name: string
+  ) => (
+    <button
+      onClick={() => handleLinecutSnapshot(ref, name)}
+      className="p-1 hover:bg-gray-100 rounded transition-colors"
+      title="Snapshot"
+      aria-label="Snapshot"
+    >
+      <CameraIcon size={20} className="text-sky-950" />
+    </button>
+  ), [handleLinecutSnapshot]);
 
   const {
     leftImageIndex,
@@ -890,8 +925,10 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                       className="flex-1"
                       contentClassName="p-2 relative"
                       isLoading={loadingHorizontalLinecuts.size > 0}
+                      headerChildren={renderSnapshotButton(horizontalLinecutRef, "horizontal-linecut")}
                     >
                       <LinecutFig
+                        ref={horizontalLinecutRef}
                         direction="horizontal"
                         linecuts={horizontalLinecuts}
                         zoomedXPixelRange={zoomedXPixelRange}
@@ -913,8 +950,10 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                       className="flex-1"
                       contentClassName="p-2 relative"
                       isLoading={loadingVerticalLinecuts.size > 0}
+                      headerChildren={renderSnapshotButton(verticalLinecutRef, "vertical-linecut")}
                     >
                       <LinecutFig
+                        ref={verticalLinecutRef}
                         direction="vertical"
                         linecuts={verticalLinecuts}
                         zoomedXPixelRange={zoomedXPixelRange}
@@ -936,8 +975,10 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                       className="flex-1"
                       contentClassName="p-2 relative"
                       isLoading={loadingInclinedLinecuts.size > 0}
+                      headerChildren={renderSnapshotButton(inclinedLinecutRef, "inclined-linecut")}
                     >
                       <InclinedLinecutFig
+                        ref={inclinedLinecutRef}
                         linecuts={inclinedLinecuts}
                         leftLinecutData={inclinedLeftLinecutData}
                         rightLinecutData={inclinedRightLinecutData}
@@ -961,8 +1002,10 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                       className="flex-1"
                       contentClassName="p-2 relative"
                       isLoading={loadingAzimuthalIntegrations.size > 0}
+                      headerChildren={renderSnapshotButton(azimuthalIntegrationRef, "azimuthal-integration")}
                     >
                       <AzimuthalIntegrationFig
+                        ref={azimuthalIntegrationRef}
                         integrations={azimuthalIntegrations}
                         azimuthalData1={azimuthalData1}
                         azimuthalData2={azimuthalData2}

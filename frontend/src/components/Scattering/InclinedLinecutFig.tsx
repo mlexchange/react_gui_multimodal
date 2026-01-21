@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from "react";
+import React, { useMemo, useCallback, forwardRef } from "react";
 import {
   VisCanvas,
   DataCurve,
@@ -34,7 +34,7 @@ interface InclinedLinecutFigProps {
   units: string;
 }
 
-const InclinedLinecutFig: React.FC<InclinedLinecutFigProps> = ({
+const InclinedLinecutFig = forwardRef<HTMLDivElement, InclinedLinecutFigProps>(({
   linecuts,
   leftLinecutData,
   rightLinecutData,
@@ -45,7 +45,7 @@ const InclinedLinecutFig: React.FC<InclinedLinecutFigProps> = ({
   qXVector,
   qYVector,
   units
-}) => {
+}, ref) => {
   /**
    * Compute q radial values along the linecut path with consistent vertical handling
    */
@@ -271,7 +271,7 @@ const InclinedLinecutFig: React.FC<InclinedLinecutFigProps> = ({
   }
 
   return (
-    <div className="w-full h-full flex flex-col" data-linecut-fig="true">
+    <div ref={ref} className="w-full h-full flex flex-col" data-linecut-fig="true">
       {/* Plot area */}
       <div className="w-full flex-1 h-0 flex flex-col">
         <VisCanvas
@@ -318,6 +318,8 @@ const InclinedLinecutFig: React.FC<InclinedLinecutFigProps> = ({
       />
     </div>
   );
-};
+});
+
+InclinedLinecutFig.displayName = "InclinedLinecutFig";
 
 export default React.memo(InclinedLinecutFig);

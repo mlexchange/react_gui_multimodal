@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import {
   ScaleType,
   Toolbar,
@@ -7,7 +7,6 @@ import {
   ColorMapSelector,
   ScaleSelector,
   ToggleBtn,
-  SnapshotBtn,
   type ColorMap,
   type CustomDomain,
   type HistogramParams
@@ -27,6 +26,7 @@ import {
 import { HeatmapPanel, type ZoomState } from "./HeatmapPanel";
 import { PrevNextSelect, LoadingOverlay } from "@/components/shared";
 import { IconButton } from "@/components/ui";
+import { SnapshotMenu } from "./SnapshotMenu";
 import { type LinecutOverlayProps } from "./utils/generateOverlays";
 import { calculateQSpaceToPixelWidth } from "./utils/calculateQSpaceToPixelWidth";
 import { calculateInclinedQSpaceToPixelWidth } from "./utils/calculateQSpaceToPixelWidthInclinedLinecut";
@@ -156,6 +156,12 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
     const [sharedZoomState, setSharedZoomState] = useState<ZoomState | null>(
       null
     );
+
+    // Refs for snapshot functionality
+    const leftPanelRef = useRef<HTMLDivElement>(null);
+    const rightPanelRef = useRef<HTMLDivElement>(null);
+    const comparisonPanelRef = useRef<HTMLDivElement>(null);
+    const allPanelsRef = useRef<HTMLDivElement>(null);
 
     const handleLeftPanelZoom = useCallback(
       (state: ZoomState | null) => {
@@ -962,12 +968,18 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
 
             <Separator />
 
-            <SnapshotBtn />
+            <SnapshotMenu
+              leftPanelRef={leftPanelRef}
+              rightPanelRef={rightPanelRef}
+              comparisonPanelRef={comparisonPanelRef}
+              allPanelsRef={allPanelsRef}
+            />
           </Toolbar>
         </div>
 
         {/* Heatmap grid - unequal columns so image areas are same size */}
         <div
+          ref={allPanelsRef}
           className="grid gap-0 w-full flex-1 min-h-0 overflow-visible py-2 px-2 relative"
           style={{
             gridTemplateColumns:
@@ -984,7 +996,8 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
               }
             />
           )}
-          <HeatmapPanel
+          <div ref={leftPanelRef} className="grid min-h-0">
+            <HeatmapPanel
             header={
               <PrevNextSelect
                 value={leftImageIndex ?? ""}
@@ -1028,8 +1041,10 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
             gisaxsQoopValues={leftGisaxsTransformed?.qoopValues}
             isZoomSource={true}
             onZoomChange={handleLeftPanelZoom}
-          />
-          <HeatmapPanel
+            />
+          </div>
+          <div ref={rightPanelRef} className="grid min-h-0">
+            <HeatmapPanel
             header={
               <PrevNextSelect
                 value={rightImageIndex ?? ""}
@@ -1074,8 +1089,10 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
             showYAxisLabel={false}
             syncedZoomState={sharedZoomState}
             disableInteractions={true}
-          />
-          <HeatmapPanel
+            />
+          </div>
+          <div ref={comparisonPanelRef} className="grid min-h-0">
+            <HeatmapPanel
             header={
               <div className="flex items-center gap-1">
                 <span className="font-medium">{comparisonLabel}</span>
@@ -1113,7 +1130,8 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
             showYAxisLabel={false}
             syncedZoomState={sharedZoomState}
             disableInteractions={true}
-          />
+            />
+          </div>
         </div>
       </div>
     );

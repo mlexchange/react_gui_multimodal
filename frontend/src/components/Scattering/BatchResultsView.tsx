@@ -11,7 +11,7 @@
  * - Export to CSV
  */
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import {
   VisCanvas,
   DataCurve,
@@ -42,12 +42,13 @@ import {
 } from "./utils/linePlotUtils";
 import { Vector3 } from "three";
 import ndarray from "ndarray";
-import { GridFourIcon, DownloadSimpleIcon } from "@phosphor-icons/react";
+import { GridFourIcon, DownloadSimpleIcon, CameraIcon } from "@phosphor-icons/react";
 
 import { Button, ButtonWithIcon } from "@blueskyproject/finch";
 import { NumberInput } from "@/components/ui";
 import { BatchOperationType } from "./hooks/useBatchProcessing";
 import { exportToCSV } from "./utils/batchExport";
+import { captureSnapshot } from "./utils/snapshot";
 import { SCALE_OPTIONS, type ColorScaleType } from "./utils/constants";
 import type {
   BatchLinecutResult,
@@ -153,6 +154,9 @@ export function BatchResultsView({
   linecutInfo,
   linecutIndex = 0
 }: BatchResultsViewProps) {
+  // Ref for snapshot functionality
+  const visualizationRef = useRef<HTMLDivElement>(null);
+
   // Generate title for the visualization
   const title = getLinecutTitle(
     operationType,
@@ -289,6 +293,14 @@ export function BatchResultsView({
     exportToCSV(results, operationType);
   }, [results, operationType]);
 
+  // Snapshot handler
+  const handleSnapshot = useCallback(async () => {
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, "");
+    await captureSnapshot(visualizationRef.current, {
+      filename: `batch-${operationType}-${viewMode}-${timestamp}`
+    });
+  }, [operationType, viewMode]);
+
   return (
     <div className="flex-1 min-h-0 flex flex-col">
       {/* Controls Header (optional) */}
@@ -340,14 +352,23 @@ export function BatchResultsView({
             )}
           </div>
 
-          {/* Export button */}
-          <ButtonWithIcon
-            icon={<DownloadSimpleIcon size={18} />}
-            text="CSV"
-            cb={handleExportCSV}
-            size="small"
-            isSecondary
-          />
+          {/* Export buttons */}
+          <div className="flex items-center gap-2">
+            <ButtonWithIcon
+              icon={<CameraIcon size={18} />}
+              text="PNG"
+              cb={handleSnapshot}
+              size="small"
+              isSecondary
+            />
+            <ButtonWithIcon
+              icon={<DownloadSimpleIcon size={18} />}
+              text="CSV"
+              cb={handleExportCSV}
+              size="small"
+              isSecondary
+            />
+          </div>
         </div>
       )}
 
@@ -359,7 +380,7 @@ export function BatchResultsView({
       )}
 
       {/* Visualization Area */}
-      <div className="flex-1 min-h-0 p-4 flex flex-col">
+      <div ref={visualizationRef} className="flex-1 min-h-0 p-4 flex flex-col">
         {successfulResults.length === 0 ? (
           <div className="flex items-center justify-center h-full text-gray-500">
             No successful results to display
