@@ -193,8 +193,8 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
 
   const {
     inclinedLinecuts,
-    inclinedLinecutData1,
-    inclinedLinecutData2,
+    leftLinecutData: inclinedLeftLinecutData,
+    rightLinecutData: inclinedRightLinecutData,
     loadingInclinedLinecuts,
     addInclinedLinecut,
     updateInclinedLinecutAngle,
@@ -920,8 +920,8 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                     >
                       <InclinedLinecutFig
                         linecuts={inclinedLinecuts}
-                        inclinedLinecutData1={inclinedLinecutData1 || []}
-                        inclinedLinecutData2={inclinedLinecutData2 || []}
+                        leftLinecutData={inclinedLeftLinecutData}
+                        rightLinecutData={inclinedRightLinecutData}
                         beamCenterX={calibrationParams?.beam_center_x}
                         beamCenterY={calibrationParams?.beam_center_y}
                         zoomedXPixelRange={zoomedXPixelRange}

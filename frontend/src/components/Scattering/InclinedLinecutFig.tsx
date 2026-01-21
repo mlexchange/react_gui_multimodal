@@ -9,7 +9,7 @@ import {
   Pan,
   SelectToZoom
 } from "@h5web/lib";
-import { InclinedLinecut } from "./types";
+import { InclinedLinecut, InclinedLinecutData } from "./types";
 import { calculateInclinedLineEndpoints } from "./utils/calculateInclinedLinecutEndpoints";
 import { calculateZoomedInclinedQRange } from "./utils/calculateZoomedQRange";
 import { H5WebLegend, LegendEntry } from "./H5WebLegend";
@@ -23,8 +23,8 @@ import {
 
 interface InclinedLinecutFigProps {
   linecuts: InclinedLinecut[];
-  inclinedLinecutData1: { id: number; data: number[] }[];
-  inclinedLinecutData2: { id: number; data: number[] }[];
+  leftLinecutData: Map<number, InclinedLinecutData>;
+  rightLinecutData: Map<number, InclinedLinecutData>;
   beamCenterX: number;
   beamCenterY: number;
   zoomedXPixelRange: [number, number] | null;
@@ -36,8 +36,8 @@ interface InclinedLinecutFigProps {
 
 const InclinedLinecutFig: React.FC<InclinedLinecutFigProps> = ({
   linecuts,
-  inclinedLinecutData1,
-  inclinedLinecutData2,
+  leftLinecutData,
+  rightLinecutData,
   beamCenterX,
   beamCenterY,
   zoomedXPixelRange,
@@ -148,23 +148,19 @@ const InclinedLinecutFig: React.FC<InclinedLinecutFigProps> = ({
     linecuts
       .filter((linecut) => !linecut.hidden)
       .forEach((linecut) => {
-        const data1Item = inclinedLinecutData1?.find(
-          (d) => d.id === linecut.id
-        );
-        const data2Item = inclinedLinecutData2?.find(
-          (d) => d.id === linecut.id
-        );
+        const leftData = leftLinecutData.get(linecut.id);
+        const rightData = rightLinecutData.get(linecut.id);
 
-        if (!data1Item || !data2Item) return;
+        if (!leftData || !rightData) return;
 
-        const data1 = data1Item.data;
-        const data2 = data2Item.data;
-        const qRadialValues = computeQRadialDistance(linecut, data1.length);
+        const leftIntensities = leftData.intensities;
+        const rightIntensities = rightData.intensities;
+        const qRadialValues = computeQRadialDistance(linecut, leftIntensities.length);
 
         if (
           qRadialValues.length === 0 ||
-          data1.length === 0 ||
-          data2.length === 0
+          leftIntensities.length === 0 ||
+          rightIntensities.length === 0
         ) {
           return;
         }
@@ -173,7 +169,7 @@ const InclinedLinecutFig: React.FC<InclinedLinecutFigProps> = ({
         curveData.push({
           id: `left-${linecut.id}`,
           abscissas: qRadialValues,
-          ordinates: data1,
+          ordinates: leftIntensities,
           color: linecut.leftColor,
           label: leftLabel
         });
@@ -187,7 +183,7 @@ const InclinedLinecutFig: React.FC<InclinedLinecutFigProps> = ({
         curveData.push({
           id: `right-${linecut.id}`,
           abscissas: qRadialValues,
-          ordinates: data2,
+          ordinates: rightIntensities,
           color: linecut.rightColor,
           label: rightLabel
         });
@@ -244,8 +240,8 @@ const InclinedLinecutFig: React.FC<InclinedLinecutFigProps> = ({
     };
   }, [
     linecuts,
-    inclinedLinecutData1,
-    inclinedLinecutData2,
+    leftLinecutData,
+    rightLinecutData,
     zoomedXPixelRange,
     zoomedYPixelRange,
     qXVector,

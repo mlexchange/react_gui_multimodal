@@ -63,7 +63,7 @@ export interface SessionState {
   /** Mask URI for uploaded or resolved mask */
   maskUri: string | null;
 
-  /** Batch processing results (optional for backward compatibility) */
+  /** Batch processing results (optional) */
   batchResults?: BatchResultsStore;
   batchParameterHashes?: BatchParameterHashes;
   batchSelectedScanUris?: string[];
@@ -188,7 +188,7 @@ function isValidSessionState(state: unknown): state is SessionState {
     return false;
   if (s.calibrationParams !== null && typeof s.calibrationParams !== "object")
     return false;
-  // showQSpaceAxes is optional for backward compatibility (default to false)
+  // showQSpaceAxes is optional (defaults to false)
   if (s.showQSpaceAxes !== undefined && typeof s.showQSpaceAxes !== "boolean")
     return false;
   if (!Array.isArray(s.horizontalLinecuts)) return false;

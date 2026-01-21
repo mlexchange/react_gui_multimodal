@@ -82,7 +82,7 @@ export interface BatchAzimuthalParams {
   q_range: [number, number] | null;
 }
 
-// Legacy type for backward compatibility
+// Combined batch parameters (used for UI configuration)
 export type BatchProcessingParams = {
   horizontal?: Omit<BatchHorizontalLinecutParams, "id">;
   vertical?: Omit<BatchVerticalLinecutParams, "id">;

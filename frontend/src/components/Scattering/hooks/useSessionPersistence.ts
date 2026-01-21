@@ -47,7 +47,7 @@ export interface PersistableState {
   isSummaryCollapsed: boolean;
   operationType: "subtract" | "divide";
   maskUri: string | null;
-  // Batch processing state (optional for backward compatibility)
+  // Batch processing state (optional - may not exist in saved sessions)
   batchResults?: BatchResultsStore;
   batchParameterHashes?: BatchParameterHashes;
   batchSelectedScanUris?: string[];
