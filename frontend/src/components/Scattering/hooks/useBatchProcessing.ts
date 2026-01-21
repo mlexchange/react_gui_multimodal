@@ -56,19 +56,19 @@ export interface BatchParameterHashes {
   azimuthal: Record<number, string>;
 }
 
-export interface HorizontalLinecutParams {
+export interface BatchHorizontalLinecutParams {
   id: number;
   position: number;
   width: number;
 }
 
-export interface VerticalLinecutParams {
+export interface BatchVerticalLinecutParams {
   id: number;
   position: number;
   width: number;
 }
 
-export interface InclinedLinecutParams {
+export interface BatchInclinedLinecutParams {
   id: number;
   q_x_position: number;
   q_y_position: number;
@@ -76,7 +76,7 @@ export interface InclinedLinecutParams {
   q_width: number;
 }
 
-export interface AzimuthalParams {
+export interface BatchAzimuthalParams {
   id: number;
   azimuth_range: [number, number];
   q_range: [number, number] | null;
@@ -84,10 +84,10 @@ export interface AzimuthalParams {
 
 // Legacy type for backward compatibility
 export type BatchProcessingParams = {
-  horizontal?: Omit<HorizontalLinecutParams, "id">;
-  vertical?: Omit<VerticalLinecutParams, "id">;
-  inclined?: Omit<InclinedLinecutParams, "id">;
-  azimuthal?: Omit<AzimuthalParams, "id">;
+  horizontal?: Omit<BatchHorizontalLinecutParams, "id">;
+  vertical?: Omit<BatchVerticalLinecutParams, "id">;
+  inclined?: Omit<BatchInclinedLinecutParams, "id">;
+  azimuthal?: Omit<BatchAzimuthalParams, "id">;
 };
 
 interface BatchProgressUpdate {
@@ -102,10 +102,10 @@ interface BatchProgressUpdate {
 interface BatchAllRequest {
   scan_uris: string[];
   calibration: object;
-  horizontal_linecuts: HorizontalLinecutParams[];
-  vertical_linecuts: VerticalLinecutParams[];
-  inclined_linecuts: InclinedLinecutParams[];
-  azimuthal_integrations: AzimuthalParams[];
+  horizontal_linecuts: BatchHorizontalLinecutParams[];
+  vertical_linecuts: BatchVerticalLinecutParams[];
+  inclined_linecuts: BatchInclinedLinecutParams[];
+  azimuthal_integrations: BatchAzimuthalParams[];
 }
 
 /** Response from /api/batch-all endpoint */

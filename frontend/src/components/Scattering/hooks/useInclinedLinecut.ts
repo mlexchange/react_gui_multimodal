@@ -6,6 +6,7 @@ import {
 import { throttle } from "lodash";
 import {
   InclinedLinecut,
+  InclinedLinecutData,
   CalibrationParams,
   isCalibrationComplete,
   LinecutResult
@@ -14,15 +15,6 @@ import {
   fetchInclinedLinecut,
   cancelLinecutRequest
 } from "../services/linecutApi";
-
-/**
- * Linecut data for plotting inclined linecuts.
- * Uses path_distances (pixel distance along the linecut) as x-axis.
- */
-export interface InclinedLinecutData {
-  pathDistances: number[]; // Distance along the linecut path
-  intensities: number[];
-}
 
 /**
  * Props for the useInclinedLinecut hook.

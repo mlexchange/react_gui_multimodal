@@ -9,8 +9,7 @@ import {
   Pan,
   SelectToZoom
 } from "@h5web/lib";
-import { Linecut } from "./types";
-import { LinecutData } from "./hooks/useHorizontalLinecut";
+import { Linecut, LinecutData } from "./types";
 import { H5WebLegend, LegendEntry } from "./H5WebLegend";
 import {
   CurveData,

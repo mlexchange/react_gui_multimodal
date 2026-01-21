@@ -4,6 +4,27 @@ export type DisplayOption = "both" | "max" | "avg";
 
 export type OperationType = "subtract" | "divide";
 
+// ============================================================================
+// Linecut Data Types (centralized to avoid duplication across hooks)
+// ============================================================================
+
+/**
+ * Linecut data for plotting horizontal and vertical linecuts.
+ */
+export interface LinecutData {
+  qValues: number[];
+  intensities: number[];
+}
+
+/**
+ * Linecut data for plotting inclined linecuts.
+ * Uses pathDistances (distance along the linecut path) as x-axis.
+ */
+export interface InclinedLinecutData {
+  pathDistances: number[];
+  intensities: number[];
+}
+
 export interface Linecut {
   id: number;
   position: number; // Q-value position (in q-space)

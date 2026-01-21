@@ -1,6 +1,7 @@
 import { useCallback, useState, useEffect, useRef } from "react";
 import {
   Linecut,
+  LinecutData,
   CalibrationParams,
   isCalibrationComplete,
   LinecutResult
@@ -15,14 +16,6 @@ import {
   fetchHorizontalLinecut,
   cancelLinecutRequest
 } from "../services/linecutApi";
-
-/**
- * Linecut data for plotting.
- */
-export interface LinecutData {
-  qValues: number[];
-  intensities: number[];
-}
 
 /**
  * Props for the useHorizontalLinecut hook.
