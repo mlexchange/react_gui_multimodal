@@ -916,7 +916,7 @@ export const LinecutOverlay: React.FC<LinecutOverlayProps> = ({
             >
               {(p0, p1, p2, p3, lineStart, lineEnd) => (
                 <SvgElement>
-                  {/* Width band with transparency - opacity 0.3 matching Plotly */}
+                  {/* Width band with transparency */}
                   {width > 0 && (
                     <polygon
                       points={`${p0.x},${p0.y} ${p1.x},${p1.y} ${p2.x},${p2.y} ${p3.x},${p3.y}`}
@@ -925,7 +925,7 @@ export const LinecutOverlay: React.FC<LinecutOverlayProps> = ({
                       stroke="none"
                     />
                   )}
-                  {/* Center line - opacity 0.75, width 1 matching Plotly */}
+                  {/* Center line */}
                   <line
                     x1={lineStart.x}
                     y1={lineStart.y}
@@ -958,7 +958,7 @@ export const LinecutOverlay: React.FC<LinecutOverlayProps> = ({
             >
               {(p0, p1, p2, p3, lineStart, lineEnd) => (
                 <SvgElement>
-                  {/* Width band with transparency - opacity 0.3 matching Plotly */}
+                  {/* Width band with transparency */}
                   {width > 0 && (
                     <polygon
                       points={`${p0.x},${p0.y} ${p1.x},${p1.y} ${p2.x},${p2.y} ${p3.x},${p3.y}`}
@@ -967,7 +967,7 @@ export const LinecutOverlay: React.FC<LinecutOverlayProps> = ({
                       stroke="none"
                     />
                   )}
-                  {/* Center line - opacity 0.75, width 1 matching Plotly */}
+                  {/* Center line */}
                   <line
                     x1={lineStart.x}
                     y1={lineStart.y}
@@ -1085,7 +1085,7 @@ export const InclinedLinecutOverlay: React.FC<InclinedLinecutOverlayProps> = ({
       {visibleLinecuts.map((linecut, index) => {
         const { angle, qWidth, qXPosition, qYPosition, color } = linecut;
 
-        // Calculate endpoints using the same function as Plotly implementation
+        // Calculate endpoints
         const endpoints = calculateInclinedLineEndpoints({
           linecut: { angle } as InclinedLinecut,
           imageWidth: cols,
@@ -1154,7 +1154,7 @@ export const InclinedLinecutOverlay: React.FC<InclinedLinecutOverlayProps> = ({
               const [lineStart, lineEnd, center, ...envPoints] = htmlPoints;
               return (
                 <SvgElement>
-                  {/* Clipped width envelope - opacity 0.3 matching Plotly */}
+                  {/* Clipped width envelope */}
                   {qWidth > 0 && envPoints.length >= 3 && (
                     <polygon
                       points={envPoints.map((p) => `${p.x},${p.y}`).join(" ")}
@@ -1163,7 +1163,7 @@ export const InclinedLinecutOverlay: React.FC<InclinedLinecutOverlayProps> = ({
                       stroke="none"
                     />
                   )}
-                  {/* Central line - opacity 0.75, width 2 matching Plotly */}
+                  {/* Central line */}
                   <line
                     x1={lineStart.x}
                     y1={lineStart.y}
@@ -1173,7 +1173,7 @@ export const InclinedLinecutOverlay: React.FC<InclinedLinecutOverlayProps> = ({
                     strokeWidth={2}
                     strokeOpacity={0.75}
                   />
-                  {/* Beam center marker - size ~10px, opacity 0.75 matching Plotly */}
+                  {/* Beam center marker */}
                   <circle
                     cx={center.x}
                     cy={center.y}

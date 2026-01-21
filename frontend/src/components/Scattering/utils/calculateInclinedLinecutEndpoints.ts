@@ -37,7 +37,7 @@ export function calculateInclinedLineEndpoints({
 }: calculateInclinedLineEndpointsParams) {
   // Convert angle to radians and calculate direction vector components
   // dx = cos(θ) gives x-component of unit vector
-  // dy = -sin(θ) gives y-component (negated because y-axis points down in Plotly's coordinates)
+  // dy = -sin(θ) gives y-component (negated because y-axis points down)
   const radians = (linecut.angle * Math.PI) / 180;
   const dx = Math.cos(radians);
   const dy = -Math.sin(radians);
