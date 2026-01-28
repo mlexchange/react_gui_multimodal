@@ -669,6 +669,20 @@ export default function useBatchProcessing({
         `Complete: ${result.successful_scans} successful, ${result.failed_scans} failed`
       );
 
+      // Auto-select the first tab with results to display them by default
+      if (horizontalLinecuts.length > 0) {
+        setActiveTab("horizontal");
+      } else if (verticalLinecuts.length > 0) {
+        setActiveTab("vertical");
+      } else if (inclinedLinecuts.length > 0) {
+        setActiveTab("inclined");
+      } else if (
+        experimentType === "SAXS" &&
+        azimuthalIntegrations.length > 0
+      ) {
+        setActiveTab("azimuthal");
+      }
+
       // Show success notification
       notifications.update({
         id: "batch-processing",
