@@ -276,6 +276,7 @@ export default function CalibrationWidget({
         // Set the mask URI and data
         onMaskUpdate(data.mask_uri);
         onMaskDataUpdate(new Uint8Array(data.data), data.shape);
+        setIsModified(true);
       } else {
         console.error("Failed to load mask");
         setMaskStatus({
@@ -345,6 +346,7 @@ export default function CalibrationWidget({
           // Set the mask ID and data
           onMaskUpdate(data.mask_id);
           onMaskDataUpdate(new Uint8Array(data.data), data.shape);
+          setIsModified(true);
         } else {
           const error = await response.json();
           console.error("Failed to upload mask:", error.detail);
