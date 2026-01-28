@@ -41,7 +41,7 @@ const directionConfig = {
         }
       }
       if (minVal === Infinity || maxVal === -Infinity) return [0, 1];
-      return [parseFloat(minVal.toFixed(1)), parseFloat(maxVal.toFixed(1))];
+      return [parseFloat(minVal.toFixed(4)), parseFloat(maxVal.toFixed(4))];
     }
   },
   vertical: {
@@ -62,7 +62,7 @@ const directionConfig = {
         }
       }
       if (minVal === Infinity || maxVal === -Infinity) return [0, 1];
-      return [parseFloat(minVal.toFixed(1)), parseFloat(maxVal.toFixed(1))];
+      return [parseFloat(minVal.toFixed(4)), parseFloat(maxVal.toFixed(4))];
     }
   }
 };
@@ -155,7 +155,7 @@ const LinecutWidget: React.FC<LinecutWidgetProps> = ({
               <InputSlider
                 min={minQValue}
                 max={maxQValue}
-                value={parseFloat(linecut.position.toFixed(1))}
+                value={linecut.position}
                 step={qStep}
                 onChange={(value) => updatePosition(linecut.id, value)}
                 marks={[minQValue, maxQValue]}

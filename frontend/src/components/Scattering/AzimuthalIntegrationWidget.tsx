@@ -109,7 +109,7 @@ function AzimuthalIntegrationWidget({
                       ])
                     }
                     min={0}
-                    max={Number(maxQValue.toFixed(1))}
+                    max={parseFloat(maxQValue.toFixed(4))}
                     step={qStep}
                     showSideInput={false}
                   />
@@ -153,7 +153,7 @@ function AzimuthalIntegrationWidget({
                         className="w-28 p-2 border border-gray-300 rounded text-center text-sm"
                         step={qStep}
                         min={currentQRange[0]}
-                        max={maxQValue}
+                        max={parseFloat(maxQValue.toFixed(4))}
                       />
                     </div>
                   </div>

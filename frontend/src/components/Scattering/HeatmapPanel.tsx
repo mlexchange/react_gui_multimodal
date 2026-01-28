@@ -164,11 +164,7 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
   // Format q-value for display
   const formatQValue = (qValue: number): string => {
     if (!isFinite(qValue)) return "";
-    const rounded = Math.round(qValue * 10) / 10;
-    if (Math.abs(rounded - Math.round(rounded)) < 0.01) {
-      return Math.round(rounded).toString();
-    }
-    return rounded.toFixed(1);
+    return qValue.toFixed(2);
   };
 
   // formatTick functions that look up q-values from the matrices or GISAXS arrays
@@ -315,8 +311,8 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
                   return (
                     <div className="text-sm">
                       <div>
-                        qip={qip?.toPrecision(4) ?? "N/A"}, qoop=
-                        {qoop?.toPrecision(4) ?? "N/A"}
+                        qip={qip?.toFixed(4) ?? "N/A"}, qoop=
+                        {qoop?.toFixed(4) ?? "N/A"}
                       </div>
                       <div className="font-semibold">
                         {value?.toPrecision(5)}
@@ -330,8 +326,8 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
                 return (
                   <div className="text-sm">
                     <div>
-                      qx={qx?.toPrecision(4) ?? "N/A"}, qy=
-                      {qy?.toPrecision(4) ?? "N/A"}
+                      qx={qx?.toFixed(4) ?? "N/A"}, qy=
+                      {qy?.toFixed(4) ?? "N/A"}
                     </div>
                     <div className="font-semibold">{value?.toPrecision(5)}</div>
                   </div>
