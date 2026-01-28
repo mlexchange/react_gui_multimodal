@@ -896,11 +896,15 @@ export const LinecutOverlay: React.FC<LinecutOverlayProps> = ({
       {visibleLinecuts.map((linecut, index) => {
         const { position, width, color, type } = linecut;
         const halfWidth = width / 2;
+        // Center of pixel N is at N + 0.5 in data coordinates
+        const centerPosition = position + 0.5;
 
         if (type === "horizontal") {
-          // Horizontal linecut: band spans full width, at y=position
-          const yTop = Math.max(0, position - halfWidth);
-          const yBottom = Math.min(rows, position + halfWidth);
+          // Horizontal linecut: band spans full width, centered at pixel position
+          // Band edges align with pixel edges:
+          // (position - halfWidth to position + halfWidth + 1)
+          const yTop = Math.max(0, centerPosition - halfWidth);
+          const yBottom = Math.min(rows, centerPosition + halfWidth);
 
           return (
             <DataToHtml
@@ -910,8 +914,8 @@ export const LinecutOverlay: React.FC<LinecutOverlayProps> = ({
                 new Vector3(cols, yTop),
                 new Vector3(cols, yBottom),
                 new Vector3(0, yBottom),
-                new Vector3(0, position),
-                new Vector3(cols, position)
+                new Vector3(0, centerPosition),
+                new Vector3(cols, centerPosition)
               ]}
             >
               {(p0, p1, p2, p3, lineStart, lineEnd) => (
@@ -940,9 +944,10 @@ export const LinecutOverlay: React.FC<LinecutOverlayProps> = ({
             </DataToHtml>
           );
         } else {
-          // Vertical linecut: band spans full height, at x=position
-          const xLeft = Math.max(0, position - halfWidth);
-          const xRight = Math.min(cols, position + halfWidth);
+          // Vertical linecut: band spans full height, centered at pixel position
+          // Band edges align with pixel edges
+          const xLeft = Math.max(0, centerPosition - halfWidth);
+          const xRight = Math.min(cols, centerPosition + halfWidth);
 
           return (
             <DataToHtml
@@ -952,8 +957,8 @@ export const LinecutOverlay: React.FC<LinecutOverlayProps> = ({
                 new Vector3(xRight, 0),
                 new Vector3(xRight, rows),
                 new Vector3(xLeft, rows),
-                new Vector3(position, 0),
-                new Vector3(position, rows)
+                new Vector3(centerPosition, 0),
+                new Vector3(centerPosition, rows)
               ]}
             >
               {(p0, p1, p2, p3, lineStart, lineEnd) => (
