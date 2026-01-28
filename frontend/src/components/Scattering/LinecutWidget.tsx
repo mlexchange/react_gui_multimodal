@@ -15,6 +15,7 @@ interface LinecutWidgetProps {
   linecutType: string | null;
   linecuts: Linecut[];
   qMatrix: number[][];
+  qStep?: number;
   updatePosition: (id: number, position: number) => void;
   updateWidth: (id: number, width: number) => void;
   updateColor: (id: number, side: "left" | "right", color: string) => void;
@@ -71,6 +72,7 @@ const LinecutWidget: React.FC<LinecutWidgetProps> = ({
   linecutType,
   linecuts,
   qMatrix,
+  qStep = 0.1,
   updatePosition,
   updateWidth,
   updateColor,
@@ -141,7 +143,7 @@ const LinecutWidget: React.FC<LinecutWidgetProps> = ({
                 min={0}
                 max={maxWidth}
                 value={linecut.width || 0}
-                step={0.1}
+                step={qStep}
                 onChange={(value) => updateWidth(linecut.id, value)}
                 marks={[0, maxWidth]}
                 styles="w-full"
@@ -154,7 +156,7 @@ const LinecutWidget: React.FC<LinecutWidgetProps> = ({
                 min={minQValue}
                 max={maxQValue}
                 value={parseFloat(linecut.position.toFixed(1))}
-                step={0.1}
+                step={qStep}
                 onChange={(value) => updatePosition(linecut.id, value)}
                 marks={[minQValue, maxQValue]}
                 styles="w-full"

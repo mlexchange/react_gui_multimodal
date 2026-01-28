@@ -15,6 +15,7 @@ interface InclinedLinecutWidgetProps {
   linecuts: InclinedLinecut[];
   units: string;
   maxQWidth?: number;
+  qStep?: number;
   updateInclinedLinecutAngle: (id: number, angle: number) => void;
   updateInclinedLinecutWidth: (id: number, qWidth: number) => void;
   updateInclinedLinecutColor: (
@@ -31,6 +32,7 @@ const InclinedLinecutWidget: React.FC<InclinedLinecutWidgetProps> = ({
   linecuts,
   units,
   maxQWidth: rawMaxQWidth = 10,
+  qStep = 0.1,
   updateInclinedLinecutAngle,
   updateInclinedLinecutWidth,
   updateInclinedLinecutColor,
@@ -94,7 +96,7 @@ const InclinedLinecutWidget: React.FC<InclinedLinecutWidgetProps> = ({
                   max={maxQWidth}
                   marks={[0, maxQWidth]}
                   value={linecut.qWidth ?? 0}
-                  step={0.01}
+                  step={qStep}
                   onChange={(value) =>
                     updateInclinedLinecutWidth(linecut.id, value)
                   }

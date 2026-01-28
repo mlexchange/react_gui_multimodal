@@ -136,6 +136,15 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
   const qXVector = useMemo(() => qXMatrix[0] ?? [], [qXMatrix]);
   const qYVector = useMemo(() => qYMatrix.map((row) => row[0]), [qYMatrix]);
 
+  // Calculate Q step size from actual spacing (use minimum of X and Y for inclined linecuts)
+  const qStep = useMemo(() => {
+    const qXStep =
+      qXVector.length >= 2 ? Math.abs(qXVector[1] - qXVector[0]) : 0.1;
+    const qYStep =
+      qYVector.length >= 2 ? Math.abs(qYVector[1] - qYVector[0]) : 0.1;
+    return Math.min(qXStep, qYStep) || 0.1;
+  }, [qXVector, qYVector]);
+
   // Snapshot handler for linecut figures
   const handleLinecutSnapshot = useCallback(
     async (ref: React.RefObject<HTMLDivElement>, name: string) => {
@@ -822,6 +831,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                           linecutType={linecutType}
                           linecuts={horizontalLinecuts}
                           qMatrix={qYMatrix}
+                          qStep={qStep}
                           updatePosition={updateHorizontalLinecutPosition}
                           updateWidth={updateHorizontalLinecutWidth}
                           updateColor={updateHorizontalLinecutColor}
@@ -842,6 +852,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                           linecutType={linecutType}
                           linecuts={verticalLinecuts}
                           qMatrix={qXMatrix}
+                          qStep={qStep}
                           updatePosition={updateVerticalLinecutPosition}
                           updateWidth={updateVerticalLinecutWidth}
                           updateColor={updateVerticalLinecutColor}
@@ -862,6 +873,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                           linecuts={inclinedLinecuts}
                           units="nm⁻¹"
                           maxQWidth={maxQValue}
+                          qStep={qStep}
                           updateInclinedLinecutAngle={
                             updateInclinedLinecutAngle
                           }
@@ -889,6 +901,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                           key={`linecut-section-${linecutType}`}
                           integrations={azimuthalIntegrations}
                           maxQValue={maxQValue}
+                          qStep={qStep}
                           updateAzimuthalQRange={updateAzimuthalQRange}
                           updateAzimuthalRange={updateAzimuthalRange}
                           updateAzimuthalColor={updateAzimuthalColor}

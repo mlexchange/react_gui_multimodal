@@ -13,6 +13,7 @@ import { useColorPicker } from "../../hooks/useColorPicker";
 interface AzimuthalIntegrationWidgetProps {
   integrations: AzimuthalIntegration[];
   maxQValue: number;
+  qStep?: number;
   updateAzimuthalQRange: (id: number, range: [number, number]) => void;
   updateAzimuthalRange: (id: number, range: [number, number]) => void;
   updateAzimuthalColor: (
@@ -27,6 +28,7 @@ interface AzimuthalIntegrationWidgetProps {
 function AzimuthalIntegrationWidget({
   integrations,
   maxQValue,
+  qStep = 0.1,
   updateAzimuthalQRange,
   updateAzimuthalRange,
   updateAzimuthalColor,
@@ -108,7 +110,7 @@ function AzimuthalIntegrationWidget({
                     }
                     min={0}
                     max={Number(maxQValue.toFixed(1))}
-                    step={0.1}
+                    step={qStep}
                     showSideInput={false}
                   />
                   <div className="flex flex-col space-y-2">
@@ -128,7 +130,7 @@ function AzimuthalIntegrationWidget({
                         }}
                         disabled={integration.hidden}
                         className="w-28 p-2 border border-gray-300 rounded text-center text-sm"
-                        step={0.1}
+                        step={qStep}
                         min={0}
                         max={currentQRange[1]}
                       />
@@ -149,7 +151,7 @@ function AzimuthalIntegrationWidget({
                         }}
                         disabled={integration.hidden}
                         className="w-28 p-2 border border-gray-300 rounded text-center text-sm"
-                        step={0.1}
+                        step={qStep}
                         min={currentQRange[0]}
                         max={maxQValue}
                       />
