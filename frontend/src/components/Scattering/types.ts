@@ -178,3 +178,34 @@ export interface BatchLinecutResult extends LinecutResult {
   scan_uri: string;
   scan_name: string;
 }
+
+// ============================================================================
+// Save to Tiled Types
+// ============================================================================
+
+/** Linecut parameters included in save metadata. */
+export interface LinecutSaveParams {
+  type: "horizontal" | "vertical" | "inclined" | "azimuthal";
+  position?: number;
+  width?: number;
+  q_x_position?: number;
+  q_y_position?: number;
+  angle?: number;
+  q_width?: number;
+  q_range?: [number, number] | null;
+  azimuth_range?: [number, number];
+}
+
+/** Data for a single linecut entry when saving to Tiled. */
+export interface LinecutDataEntry {
+  index: number;
+  linecut_params: LinecutSaveParams;
+  left_intensities?: number[];
+  right_intensities?: number[];
+}
+
+/** Response from save-to-Tiled API endpoints. */
+export interface SaveResult {
+  success: boolean;
+  message: string;
+}

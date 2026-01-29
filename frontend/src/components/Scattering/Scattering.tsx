@@ -5,13 +5,24 @@ import {
   CameraIcon,
   CircleHalfTiltIcon,
   DownloadSimpleIcon,
+  FloppyDiskIcon,
   InfoIcon,
   ListIcon,
   TreeStructureIcon,
   WarningIcon,
   WrenchIcon
 } from "@phosphor-icons/react";
-import { CalibrationParams, OperationType } from "./types";
+import type {
+  CalibrationParams,
+  OperationType,
+  Linecut,
+  InclinedLinecut,
+  AzimuthalIntegration,
+  LinecutData,
+  InclinedLinecutData,
+  AzimuthalData,
+  LinecutDataEntry
+} from "./types";
 
 import { Button, ButtonWithIcon } from "@blueskyproject/finch";
 import { Tiled } from "@blueskyproject/tiled";
@@ -49,6 +60,13 @@ import {
 } from "./utils/linecutHandlers";
 import { captureSnapshot } from "./utils/snapshot";
 import {
+  useSaveResultsEnabled,
+  saveLinecutsToTiled,
+  buildLinecutParams,
+  buildInclinedLinecutParams,
+  buildAzimuthalParams
+} from "./services/saveResultsApi";
+import {
   exportLinecutsToCSV,
   exportInclinedLinecutsToCSV,
   exportAzimuthalToCSV
@@ -78,6 +96,9 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
   const [isSummaryCollapsed, setIsSummaryCollapsed] = useState(false);
   const [operationType, setOperationType] = useState<OperationType>("subtract");
   const [isBatchOverlayOpen, setIsBatchOverlayOpen] = useState(false);
+
+  // Check if saving results to Tiled is available
+  const saveResultsEnabled = useSaveResultsEnabled();
 
   // Session persistence hook
   const { isRestoring, hasRestoredSession, restoredSession, triggerAutoSave } =
@@ -161,14 +182,25 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     []
   );
 
-  // Reusable header buttons for ContentCard (snapshot + download)
+  // Reusable header buttons for ContentCard (snapshot + download + optional save)
   const renderHeaderButtons = useCallback(
     (
       ref: React.RefObject<HTMLDivElement>,
       name: string,
-      onDownload: () => void
+      onDownload: () => void,
+      onSave?: () => void
     ) => (
       <div className="flex items-center gap-1">
+        {saveResultsEnabled && onSave && (
+          <button
+            onClick={onSave}
+            className="p-1 hover:bg-gray-100 rounded transition-colors"
+            title="Save to Tiled"
+            aria-label="Save to Tiled"
+          >
+            <FloppyDiskIcon size={20} className="text-sky-950" />
+          </button>
+        )}
         <button
           onClick={onDownload}
           className="p-1 hover:bg-gray-100 rounded transition-colors"
@@ -187,7 +219,7 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
         </button>
       </div>
     ),
-    [handleLinecutSnapshot]
+    [handleLinecutSnapshot, saveResultsEnabled]
   );
 
   const {
@@ -315,6 +347,237 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
     leftScanUri,
     rightScanUri,
     maskUri
+  );
+
+  // Scan names for left/right images (used for saving to Tiled)
+  const leftScanName = useMemo(
+    () =>
+      leftImageIndex !== "" && imageNames.length > 0
+        ? imageNames[leftImageIndex]
+        : null,
+    [leftImageIndex, imageNames]
+  );
+  const rightScanName = useMemo(
+    () =>
+      rightImageIndex !== "" && imageNames.length > 0
+        ? imageNames[rightImageIndex]
+        : null,
+    [rightImageIndex, imageNames]
+  );
+
+  // Save horizontal/vertical linecuts to Tiled handler
+  const handleSaveLinecuts = useCallback(
+    async (
+      linecuts: Linecut[],
+      direction: "horizontal" | "vertical",
+      leftData: Map<number, LinecutData>,
+      rightData: Map<number, LinecutData>
+    ) => {
+      if (!calibrationParams) return;
+      const visible = linecuts.filter((l) => !l.hidden);
+      if (visible.length === 0) return;
+
+      const firstData =
+        leftData.get(visible[0].id) ?? rightData.get(visible[0].id);
+      if (!firstData) return;
+
+      const notificationId = `save-tiled-${direction}`;
+      notifications.show({
+        id: notificationId,
+        loading: true,
+        title: "Saving to Tiled",
+        message: `Saving ${direction.charAt(0).toUpperCase() + direction.slice(1)} linecuts...`,
+        autoClose: false
+      });
+
+      try {
+        const entries: LinecutDataEntry[] = visible.map((lc, idx) => ({
+          index: idx + 1,
+          linecut_params: buildLinecutParams(lc, direction),
+          left_intensities: leftData.get(lc.id)?.intensities,
+          right_intensities: rightData.get(lc.id)?.intensities
+        }));
+
+        await saveLinecutsToTiled({
+          scanUris: [leftScanUri, rightScanUri].filter((u): u is string => !!u),
+          scanNames: [leftScanName, rightScanName].filter(
+            (n): n is string => !!n
+          ),
+          calibration: calibrationParams,
+          experimentType,
+          qValues: firstData.qValues,
+          linecuts: entries
+        });
+
+        notifications.update({
+          id: notificationId,
+          color: "green",
+          title: "Saved to Tiled",
+          message: `${direction.charAt(0).toUpperCase() + direction.slice(1)} linecuts saved successfully`,
+          autoClose: 3000
+        });
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : "Unknown error";
+        notifications.update({
+          id: notificationId,
+          color: "red",
+          title: "Save Failed",
+          message: msg,
+          autoClose: 5000
+        });
+      }
+    },
+    [
+      calibrationParams,
+      experimentType,
+      leftScanUri,
+      rightScanUri,
+      leftScanName,
+      rightScanName
+    ]
+  );
+
+  // Save inclined linecuts to Tiled handler
+  const handleSaveInclinedLinecuts = useCallback(
+    async (
+      linecuts: InclinedLinecut[],
+      leftData: Map<number, InclinedLinecutData>,
+      rightData: Map<number, InclinedLinecutData>
+    ) => {
+      if (!calibrationParams) return;
+      const visible = linecuts.filter((l) => !l.hidden);
+      if (visible.length === 0) return;
+
+      const firstData =
+        leftData.get(visible[0].id) ?? rightData.get(visible[0].id);
+      if (!firstData) return;
+
+      const notificationId = "save-tiled-inclined";
+      notifications.show({
+        id: notificationId,
+        loading: true,
+        title: "Saving to Tiled",
+        message: "Saving inclined linecuts...",
+        autoClose: false
+      });
+
+      try {
+        const entries: LinecutDataEntry[] = visible.map((lc, idx) => ({
+          index: idx + 1,
+          linecut_params: buildInclinedLinecutParams(lc),
+          left_intensities: leftData.get(lc.id)?.intensities,
+          right_intensities: rightData.get(lc.id)?.intensities
+        }));
+
+        await saveLinecutsToTiled({
+          scanUris: [leftScanUri, rightScanUri].filter((u): u is string => !!u),
+          scanNames: [leftScanName, rightScanName].filter(
+            (n): n is string => !!n
+          ),
+          calibration: calibrationParams,
+          experimentType,
+          qValues: firstData.pathDistances,
+          linecuts: entries
+        });
+
+        notifications.update({
+          id: notificationId,
+          color: "green",
+          title: "Saved to Tiled",
+          message: "Inclined linecuts saved successfully",
+          autoClose: 3000
+        });
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : "Unknown error";
+        notifications.update({
+          id: notificationId,
+          color: "red",
+          title: "Save Failed",
+          message: msg,
+          autoClose: 5000
+        });
+      }
+    },
+    [
+      calibrationParams,
+      experimentType,
+      leftScanUri,
+      rightScanUri,
+      leftScanName,
+      rightScanName
+    ]
+  );
+
+  // Save azimuthal integrations to Tiled handler
+  const handleSaveAzimuthalIntegrations = useCallback(
+    async (
+      integrations: AzimuthalIntegration[],
+      data1: AzimuthalData[],
+      data2: AzimuthalData[]
+    ) => {
+      if (!calibrationParams) return;
+      const visible = integrations.filter((i) => !i.hidden);
+      if (visible.length === 0) return;
+
+      const firstData =
+        data1.find((d) => d.id === visible[0].id) ??
+        data2.find((d) => d.id === visible[0].id);
+      if (!firstData) return;
+
+      const notificationId = "save-tiled-azimuthal";
+      notifications.show({
+        id: notificationId,
+        loading: true,
+        title: "Saving to Tiled",
+        message: "Saving azimuthal integrations...",
+        autoClose: false
+      });
+
+      try {
+        const entries: LinecutDataEntry[] = visible.map((integ, idx) => ({
+          index: idx + 1,
+          linecut_params: buildAzimuthalParams(integ),
+          left_intensities: data1.find((d) => d.id === integ.id)?.intensity,
+          right_intensities: data2.find((d) => d.id === integ.id)?.intensity
+        }));
+
+        await saveLinecutsToTiled({
+          scanUris: [leftScanUri, rightScanUri].filter((u): u is string => !!u),
+          scanNames: [leftScanName, rightScanName].filter(
+            (n): n is string => !!n
+          ),
+          calibration: calibrationParams,
+          experimentType,
+          qValues: firstData.q,
+          linecuts: entries
+        });
+
+        notifications.update({
+          id: notificationId,
+          color: "green",
+          title: "Saved to Tiled",
+          message: "Azimuthal integrations saved successfully",
+          autoClose: 3000
+        });
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : "Unknown error";
+        notifications.update({
+          id: notificationId,
+          color: "red",
+          title: "Save Failed",
+          message: msg,
+          autoClose: 5000
+        });
+      }
+    },
+    [
+      calibrationParams,
+      experimentType,
+      leftScanUri,
+      rightScanUri,
+      leftScanName,
+      rightScanName
+    ]
   );
 
   // Get image dimensions from imageData1 (assumes both images have same dimensions)
@@ -1073,6 +1336,13 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                             horizontalLeftData,
                             horizontalRightData,
                             "horizontal"
+                          ),
+                        () =>
+                          handleSaveLinecuts(
+                            horizontalLinecuts,
+                            "horizontal",
+                            horizontalLeftData,
+                            horizontalRightData
                           )
                       )}
                     >
@@ -1108,6 +1378,13 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                             verticalLeftData,
                             verticalRightData,
                             "vertical"
+                          ),
+                        () =>
+                          handleSaveLinecuts(
+                            verticalLinecuts,
+                            "vertical",
+                            verticalLeftData,
+                            verticalRightData
                           )
                       )}
                     >
@@ -1139,6 +1416,12 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                         "inclined-linecut",
                         () =>
                           exportInclinedLinecutsToCSV(
+                            inclinedLinecuts,
+                            inclinedLeftLinecutData,
+                            inclinedRightLinecutData
+                          ),
+                        () =>
+                          handleSaveInclinedLinecuts(
                             inclinedLinecuts,
                             inclinedLeftLinecutData,
                             inclinedRightLinecutData
@@ -1175,6 +1458,12 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                         "azimuthal-integration",
                         () =>
                           exportAzimuthalToCSV(
+                            azimuthalIntegrations,
+                            azimuthalData1,
+                            azimuthalData2
+                          ),
+                        () =>
+                          handleSaveAzimuthalIntegrations(
                             azimuthalIntegrations,
                             azimuthalData1,
                             azimuthalData2
@@ -1246,6 +1535,8 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
         runBatchAll={batchProcessing.runBatchAll}
         onCancel={batchProcessing.cancelBatch}
         experimentType={experimentType}
+        saveResultsEnabled={saveResultsEnabled}
+        calibrationParams={calibrationParams}
       />
     </div>
   );

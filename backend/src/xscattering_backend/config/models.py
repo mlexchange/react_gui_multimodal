@@ -196,3 +196,62 @@ def create_error_linecut_result(error_message: str) -> LinecutResult:
         "success": False,
         "error_message": error_message,
     }
+
+
+# =============================================================================
+# Save to Tiled Models
+# =============================================================================
+
+
+class SaveLinecutParams(BaseModel):
+    """Linecut parameters included in save metadata."""
+
+    type: Literal["horizontal", "vertical", "inclined", "azimuthal"]
+    # Horizontal/vertical
+    position: float | None = None
+    width: float | None = None
+    # Inclined
+    q_x_position: float | None = None
+    q_y_position: float | None = None
+    angle: float | None = None
+    q_width: float | None = None
+    # Azimuthal
+    q_range: tuple[float, float] | None = None
+    azimuth_range: tuple[float, float] | None = None
+
+
+class LinecutDataEntry(BaseModel):
+    """Data for a single linecut (both image sides)."""
+
+    index: int
+    linecut_params: SaveLinecutParams
+    left_intensities: list[float] | None = None
+    right_intensities: list[float] | None = None
+
+
+class SaveLinecutsRequest(BaseModel):
+    """Request to save all linecuts from a graph card to Tiled."""
+
+    scan_uris: list[str] = []
+    scan_names: list[str] = []
+    calibration: CalibrationParams
+    q_values: list[float]
+    linecuts: list[LinecutDataEntry]
+
+
+class BatchResultItem(BaseModel):
+    """A single scan result within a batch save request."""
+
+    scan_uri: str
+    scan_name: str
+    q_values: list[float]
+    intensities: list[float]
+    success: bool
+
+
+class SaveBatchResultsRequest(BaseModel):
+    """Request to save batch processing results to Tiled."""
+
+    calibration: CalibrationParams
+    linecut_parameters: SaveLinecutParams
+    results: list[BatchResultItem]

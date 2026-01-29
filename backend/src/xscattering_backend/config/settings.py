@@ -32,6 +32,11 @@ def get_config() -> dict:
             API key for Tiled authentication.
 
     Optional (with defaults):
+        SCATTERING_TILED_RESULTS_URL : str
+            Base URL for a writable Tiled container to save results to.
+            If not set, the "Save to Tiled" feature is disabled.
+        SCATTERING_TILED_RESULTS_API_KEY : str
+            API key for the results Tiled server.
         SCATTERING_BACKEND_DEVELOPMENT : bool
             Enable development mode with hot reload. Default: false.
         SCATTERING_BACKEND_HOST : str
@@ -84,6 +89,9 @@ def get_config() -> dict:
         # Required
         "tiled_url": tiled_url,
         "tiled_api_key": tiled_api_key,
+        # Optional: Tiled results target (enables "Save to Tiled" feature)
+        "tiled_results_url": os.getenv("SCATTERING_TILED_RESULTS_URL"),
+        "tiled_results_api_key": os.getenv("SCATTERING_TILED_RESULTS_API_KEY"),
         # Server settings
         "development": os.getenv("SCATTERING_BACKEND_DEVELOPMENT", "false").lower() in ("true", "1", "yes"),
         "backend_host": os.getenv("SCATTERING_BACKEND_HOST", "0.0.0.0"),

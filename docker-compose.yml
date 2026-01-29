@@ -61,6 +61,9 @@ services:
       # host.docker.internal is a special Docker DNS name that resolves to the host machine
       - SCATTERING_TILED_URL=${SCATTERING_TILED_URL}
       - SCATTERING_TILED_API_KEY=${SCATTERING_TILED_API_KEY}
+      # Optional: Enable Save to Tiled feature
+      - SCATTERING_TILED_RESULTS_URL=${SCATTERING_TILED_RESULTS_URL:-}
+      - SCATTERING_TILED_RESULTS_API_KEY=${SCATTERING_TILED_RESULTS_API_KEY:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
 

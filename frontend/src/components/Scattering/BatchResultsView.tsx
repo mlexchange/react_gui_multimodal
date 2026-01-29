@@ -45,7 +45,8 @@ import ndarray from "ndarray";
 import {
   GridFourIcon,
   DownloadSimpleIcon,
-  CameraIcon
+  CameraIcon,
+  FloppyDiskIcon
 } from "@phosphor-icons/react";
 
 import { Button, ButtonWithIcon } from "@blueskyproject/finch";
@@ -146,6 +147,10 @@ interface BatchResultsViewProps {
   linecutInfo?: LinecutInfo;
   /** Optional: Index of the linecut */
   linecutIndex?: number;
+  /** Optional: Whether saving to Tiled is available */
+  saveResultsEnabled?: boolean;
+  /** Optional: Handler to save results to Tiled */
+  onSaveToTiled?: () => void;
 }
 
 export function BatchResultsView({
@@ -156,7 +161,9 @@ export function BatchResultsView({
   failed,
   hideControls = false,
   linecutInfo,
-  linecutIndex = 0
+  linecutIndex = 0,
+  saveResultsEnabled = false,
+  onSaveToTiled
 }: BatchResultsViewProps) {
   // Ref for snapshot functionality
   const visualizationRef = useRef<HTMLDivElement>(null);
@@ -361,6 +368,19 @@ export function BatchResultsView({
 
           {/* Export buttons */}
           <div className="flex items-center gap-2">
+            {saveResultsEnabled && onSaveToTiled && (
+              <ButtonWithIcon
+                icon={
+                  <span className="flex items-center justify-center h-full">
+                    <FloppyDiskIcon size={18} />
+                  </span>
+                }
+                text="Tiled"
+                cb={onSaveToTiled}
+                size="small"
+                isSecondary
+              />
+            )}
             <ButtonWithIcon
               icon={
                 <span className="flex items-center justify-center h-full">

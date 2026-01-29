@@ -17,7 +17,7 @@ import {
   WarningIcon
 } from "@phosphor-icons/react";
 import { Button, ButtonWithIcon } from "@blueskyproject/finch";
-import { IconButton } from "@/components/ui";
+import { IconButton, notifications } from "@/components/ui";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 import { BatchResultsView } from "./BatchResultsView";
 import { BatchScanSelector } from "./BatchScanSelector";
@@ -26,7 +26,18 @@ import type {
   BatchOperationType,
   BatchJobResult
 } from "./hooks/useBatchProcessing";
-import type { Linecut, InclinedLinecut, AzimuthalIntegration } from "./types";
+import type {
+  Linecut,
+  InclinedLinecut,
+  AzimuthalIntegration,
+  CalibrationParams
+} from "./types";
+import {
+  saveBatchToTiled,
+  buildLinecutParams,
+  buildInclinedLinecutParams,
+  buildAzimuthalParams
+} from "./services/saveResultsApi";
 
 const OPERATION_LABELS: Record<BatchOperationType, string> = {
   horizontal: "Horizontal",
@@ -88,6 +99,10 @@ interface BatchProcessingWidgetProps {
 
   // Experiment type (for filtering azimuthal)
   experimentType: string;
+
+  // Save to Tiled (optional feature)
+  saveResultsEnabled?: boolean;
+  calibrationParams: CalibrationParams | null;
 }
 
 export function BatchProcessingWidget({
@@ -117,7 +132,9 @@ export function BatchProcessingWidget({
   setIsSelectorOpen,
   runBatchAll,
   onCancel,
-  experimentType
+  experimentType,
+  saveResultsEnabled = false,
+  calibrationParams
 }: BatchProcessingWidgetProps) {
   // Get linecuts for the active tab
   const activeLinecuts = useMemo(() => {
@@ -225,6 +242,73 @@ export function BatchProcessingWidget({
       currentLinecutIndex: Math.max(0, index)
     };
   }, [activeLinecutId, activeLinecuts]);
+
+  // Save batch results to Tiled handler
+  const handleSaveBatchToTiled = useCallback(async () => {
+    if (!currentResult || !calibrationParams || !currentLinecut) return;
+
+    const notificationId = "save-batch-tiled";
+    notifications.show({
+      id: notificationId,
+      loading: true,
+      title: "Saving to Tiled",
+      message: "Saving batch results...",
+      autoClose: false
+    });
+
+    try {
+      let linecutParams;
+      switch (activeTab) {
+        case "horizontal":
+        case "vertical":
+          linecutParams = buildLinecutParams(
+            currentLinecut as Linecut,
+            activeTab
+          );
+          break;
+        case "inclined":
+          linecutParams = buildInclinedLinecutParams(
+            currentLinecut as InclinedLinecut
+          );
+          break;
+        case "azimuthal":
+          linecutParams = buildAzimuthalParams(
+            currentLinecut as AzimuthalIntegration
+          );
+          break;
+      }
+
+      const result = await saveBatchToTiled({
+        calibration: calibrationParams,
+        experimentType,
+        linecutParameters: linecutParams,
+        results: currentResult.results
+      });
+
+      notifications.update({
+        id: notificationId,
+        color: "green",
+        title: "Saved to Tiled",
+        message: result.message,
+        autoClose: 3000
+      });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Unknown error";
+      notifications.update({
+        id: notificationId,
+        color: "red",
+        title: "Save Failed",
+        message: msg,
+        autoClose: 5000
+      });
+    }
+  }, [
+    currentResult,
+    calibrationParams,
+    experimentType,
+    currentLinecut,
+    activeTab
+  ]);
 
   if (!isOpen) return null;
 
@@ -391,6 +475,8 @@ export function BatchProcessingWidget({
               failed={currentResult.failed}
               linecutInfo={currentLinecut}
               linecutIndex={currentLinecutIndex}
+              saveResultsEnabled={saveResultsEnabled}
+              onSaveToTiled={handleSaveBatchToTiled}
             />
           ) : (
             <div className="flex-1 flex items-center justify-center text-gray-400">

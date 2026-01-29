@@ -33,6 +33,8 @@ docker-compose up --build
 |----------|----------|-------------|
 | `SCATTERING_TILED_URL` | Yes | Tiled server URL (e.g., `http://localhost:8000/api/v1`) |
 | `SCATTERING_TILED_API_KEY` | Yes | Tiled API authentication token |
+| `SCATTERING_TILED_RESULTS_URL` | No | Writable Tiled URL for saving results (enables "Save to Tiled" buttons) |
+| `SCATTERING_TILED_RESULTS_API_KEY` | No | API key for the results Tiled server |
 | `SCATTERING_BACKEND_DEVELOPMENT` | No | Enable hot reload (default: `false`) |
 | `SCATTERING_BACKEND_HOST` | No | Server bind address (default: `0.0.0.0`) |
 | `SCATTERING_BACKEND_PORT` | No | Server port (default: `8000`) |

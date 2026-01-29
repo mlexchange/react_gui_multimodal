@@ -7,6 +7,7 @@ from xscattering_backend.routers import (
     linecut,
     mask,
     q_space,
+    save_results,
     summary,
     websocket,
 )
@@ -18,6 +19,7 @@ __all__ = [
     "linecut",
     "mask",
     "q_space",
+    "save_results",
     "summary",
     "websocket",
 ]

@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from xscattering_backend.cache.tiled_cache import is_tiled_results_enabled
 from xscattering_backend.config.logging import get_log_config
 from xscattering_backend.config.settings import get_config, validate_config_on_startup
 from xscattering_backend.routers import (
@@ -9,6 +10,7 @@ from xscattering_backend.routers import (
     linecut,
     mask,
     q_space,
+    save_results,
     summary,
     websocket,
 )
@@ -33,6 +35,7 @@ app.include_router(q_space.router, prefix="/api", tags=["Q Space"])
 app.include_router(batch_processor.router, prefix="/api", tags=["Batch Processor"])
 app.include_router(linecut.router, prefix="/api", tags=["Linecut"])
 app.include_router(mask.router, prefix="/api", tags=["Mask"])
+app.include_router(save_results.router, prefix="/api", tags=["Save Results"])
 
 # WebSocket router (/ws)
 app.include_router(websocket.router, prefix="/ws", tags=["WebSocket"])
@@ -48,6 +51,7 @@ def main():
     import uvicorn
 
     validate_config_on_startup()
+    is_tiled_results_enabled()
 
     config = get_config()
     uvicorn.run(
