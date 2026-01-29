@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from xscattering_backend.config.logging import setup_logging
+from xscattering_backend.config.logging import get_log_config
 from xscattering_backend.config.settings import get_config, validate_config_on_startup
 from xscattering_backend.routers import (
     azimuthal_integrator,
@@ -47,8 +47,6 @@ def main():
     """CLI entry point to run the server."""
     import uvicorn
 
-    # Setup logging and validate configuration before starting
-    setup_logging()
     validate_config_on_startup()
 
     config = get_config()
@@ -57,6 +55,7 @@ def main():
         host=config["backend_host"],
         port=config["backend_port"],
         reload=config["development"],
+        log_config=get_log_config(),
     )
 
 

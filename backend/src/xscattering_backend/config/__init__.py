@@ -1,6 +1,6 @@
 """Configuration module for xscattering_backend."""
 
-from xscattering_backend.config.logging import get_logger, setup_logging
+from xscattering_backend.config.logging import get_log_config, get_logger
 from xscattering_backend.config.models import (
     AzimuthalParams,
     BatchAllRequest,
@@ -23,7 +23,7 @@ __all__ = [
     "validate_config_on_startup",
     "ConfigurationError",
     # Logging
-    "setup_logging",
+    "get_log_config",
     "get_logger",
     # Models
     "CalibrationParams",
