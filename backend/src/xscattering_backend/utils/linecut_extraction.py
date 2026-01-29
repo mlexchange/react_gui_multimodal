@@ -136,8 +136,8 @@ def extract_horizontal_linecut(
         end_row = min(image_array.shape[0], pixel_row + half_width + 1)
 
         slice_data = image_array[start_row:end_row, :]
-        slice_data = np.nan_to_num(slice_data, nan=0.0)
-        intensities = np.mean(slice_data, axis=0)
+        intensities = np.nanmean(slice_data, axis=0)
+        intensities = np.nan_to_num(intensities, nan=0.0)
 
     return q_values, intensities
 
@@ -180,8 +180,8 @@ def extract_vertical_linecut(
         end_col = min(image_array.shape[1], pixel_col + half_width + 1)
 
         slice_data = image_array[:, start_col:end_col]
-        slice_data = np.nan_to_num(slice_data, nan=0.0)
-        intensities = np.mean(slice_data, axis=1)
+        intensities = np.nanmean(slice_data, axis=1)
+        intensities = np.nan_to_num(intensities, nan=0.0)
 
     return q_values, intensities
 
