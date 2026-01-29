@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { Select, IconButton, notifications } from "@/components/ui";
+import { Select, IconButton, Tooltip, notifications } from "@/components/ui";
 import { ContentCard, Modal } from "@/components/shared";
 import {
   CameraIcon,
   CircleHalfTiltIcon,
   DownloadSimpleIcon,
+  InfoIcon,
   ListIcon,
   TreeStructureIcon,
   WarningIcon,
@@ -762,6 +763,27 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
                 <div className="flex items-center gap-3 pb-2 text-sky-950">
                   <CircleHalfTiltIcon size={24} weight="bold" />
                   <span className="text-lg font-semibold">Linecuts</span>
+                  <Tooltip
+                    content={
+                      <div className="max-w-xs space-y-2 text-sm">
+                        <p>
+                          <strong>Linecut widths:</strong> The selected width{" "}
+                          <i>w</i> covers <i>&minus;w/2</i> to <i>+w/2</i>{" "}
+                          relative to the central <i>q</i> point.
+                        </p>
+                        <p>
+                          <strong>Inclined linecut:</strong> This is an
+                          experimental feature.
+                        </p>
+                      </div>
+                    }
+                    side="right"
+                  >
+                    <InfoIcon
+                      size={24}
+                      className="ml-auto cursor-help transition-colors"
+                    />
+                  </Tooltip>
                 </div>
 
                 {/* Linecut Type Icons */}
