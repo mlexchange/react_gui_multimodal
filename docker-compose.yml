@@ -33,6 +33,8 @@ services:
       args:
         - SCATTERING_TILED_URL=${SCATTERING_TILED_URL}
         - SCATTERING_TILED_API_KEY=${SCATTERING_TILED_API_KEY}
+        - SCATTERING_TILED_CALIBRATION_URL=${SCATTERING_TILED_CALIBRATION_URL:-}
+        - SCATTERING_TILED_CALIBRATION_API_KEY=${SCATTERING_TILED_CALIBRATION_API_KEY:-}
     # Port mapping from host to container
     ports:
       - "127.0.0.1:4000:80" # Maps port 4000 on your host machine to port 80 in the container
@@ -64,6 +66,9 @@ services:
       # Optional: Enable Save to Tiled feature
       - SCATTERING_TILED_RESULTS_URL=${SCATTERING_TILED_RESULTS_URL:-}
       - SCATTERING_TILED_RESULTS_API_KEY=${SCATTERING_TILED_RESULTS_API_KEY:-}
+      # Optional: Calibration Tiled server
+      - SCATTERING_TILED_CALIBRATION_URL=${SCATTERING_TILED_CALIBRATION_URL:-}
+      - SCATTERING_TILED_CALIBRATION_API_KEY=${SCATTERING_TILED_CALIBRATION_API_KEY:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
 

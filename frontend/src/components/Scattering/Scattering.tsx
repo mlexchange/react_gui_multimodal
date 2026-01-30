@@ -59,8 +59,8 @@ import {
   addLinecut
 } from "./utils/linecutHandlers";
 import { captureSnapshot } from "./utils/snapshot";
+import { useInfrastructure } from "./services/infrastructureApi";
 import {
-  useSaveResultsEnabled,
   saveLinecutsToTiled,
   buildLinecutParams,
   buildInclinedLinecutParams,
@@ -97,8 +97,8 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
   const [operationType, setOperationType] = useState<OperationType>("subtract");
   const [isBatchOverlayOpen, setIsBatchOverlayOpen] = useState(false);
 
-  // Check if saving results to Tiled is available
-  const saveResultsEnabled = useSaveResultsEnabled();
+  // Check which infrastructure features are available
+  const { tiledResultsEnabled: saveResultsEnabled } = useInfrastructure();
 
   // Session persistence hook
   const { isRestoring, hasRestoredSession, restoredSession, triggerAutoSave } =

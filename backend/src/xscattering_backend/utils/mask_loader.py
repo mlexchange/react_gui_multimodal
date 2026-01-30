@@ -16,7 +16,10 @@ from xscattering_backend.cache.mask_cache import (
     get_tiled_mask_from_cache,
     get_uploaded_mask_from_cache,
 )
-from xscattering_backend.cache.tiled_cache import get_tiled_client_for_uri
+from xscattering_backend.cache.tiled_cache import (
+    get_tiled_calibration_base_uri,
+    get_tiled_calibration_client_for_uri,
+)
 from xscattering_backend.config.logging import get_logger
 
 logger = get_logger(__name__)
@@ -137,22 +140,27 @@ def _parse_csv(content: bytes) -> np.ndarray:
         raise ValueError(f"Could not parse CSV file: {e}")
 
 
-def load_mask_from_tiled(mask_uri: str, tiled_base_uri: str) -> np.ndarray:
+def load_mask_from_tiled(mask_uri: str) -> np.ndarray:
     """
-    Load a mask from Tiled.
+    Load a mask from the calibration Tiled server.
+
+    Masks live alongside calibrations on the calibration server.
+    Raises ``ValueError`` if the calibration server is not configured.
 
     Parameters
     ----------
     mask_uri : str
         Relative URI path to the mask in Tiled.
-    tiled_base_uri : str
-        Base Tiled URI.
 
     Returns
     -------
     np.ndarray
         2D boolean-like array where 1 = masked, 0 = unmasked.
     """
+    tiled_base_uri = get_tiled_calibration_base_uri()
+    if tiled_base_uri is None:
+        raise ValueError("Calibration Tiled server not configured")
+
     cache_key = f"{tiled_base_uri}:{mask_uri}"
 
     # Check cache first
@@ -164,7 +172,7 @@ def load_mask_from_tiled(mask_uri: str, tiled_base_uri: str) -> np.ndarray:
 
     # Construct full URI
     full_uri = tiled_base_uri.rstrip("/") + "/" + mask_uri.lstrip("/")
-    mask_client = get_tiled_client_for_uri(full_uri)
+    mask_client = get_tiled_calibration_client_for_uri(full_uri)
     mask_array = mask_client.read()
 
     # Ensure 2D

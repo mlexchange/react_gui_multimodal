@@ -51,10 +51,11 @@ def _load_mask_array(mask_uri: str) -> np.ndarray | None:
     if mask is not None:
         return mask
 
-    # Try loading from Tiled
+    # Try loading from Tiled (calibration server).
+    # If the calibration server is not configured, load_mask_from_tiled
+    # returns None.
     try:
-        tiled_base_uri = get_tiled_base_uri()
-        return load_mask_from_tiled(mask_uri, tiled_base_uri)
+        return load_mask_from_tiled(mask_uri)
     except Exception as e:
         logger.warning(f"Could not load mask '{mask_uri}': {e}")
         return None

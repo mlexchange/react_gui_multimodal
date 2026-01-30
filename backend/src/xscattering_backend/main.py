@@ -1,12 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from xscattering_backend.cache.tiled_cache import is_tiled_results_enabled
+from xscattering_backend.cache.tiled_cache import is_tiled_calibration_enabled, is_tiled_results_enabled
 from xscattering_backend.config.logging import get_log_config
 from xscattering_backend.config.settings import get_config, validate_config_on_startup
 from xscattering_backend.routers import (
     azimuthal_integrator,
     batch_processor,
     fetch_scan_image,
+    infrastructure,
     linecut,
     mask,
     q_space,
@@ -36,6 +37,7 @@ app.include_router(batch_processor.router, prefix="/api", tags=["Batch Processor
 app.include_router(linecut.router, prefix="/api", tags=["Linecut"])
 app.include_router(mask.router, prefix="/api", tags=["Mask"])
 app.include_router(save_results.router, prefix="/api", tags=["Save Results"])
+app.include_router(infrastructure.router, prefix="/api", tags=["Infrastructure"])
 
 # WebSocket router (/ws)
 app.include_router(websocket.router, prefix="/ws", tags=["WebSocket"])
@@ -52,6 +54,7 @@ def main():
 
     validate_config_on_startup()
     is_tiled_results_enabled()
+    is_tiled_calibration_enabled()
 
     config = get_config()
     uvicorn.run(

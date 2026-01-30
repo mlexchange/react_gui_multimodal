@@ -10,6 +10,8 @@ export default defineConfig(({ mode }) => {
 
   const tiledUrl = env.SCATTERING_TILED_URL || "http://localhost:8000";
   const tiledApiKey = env.SCATTERING_TILED_API_KEY || "";
+  const tiledCalibrationUrl = env.SCATTERING_TILED_CALIBRATION_URL || "";
+  const tiledCalibrationApiKey = env.SCATTERING_TILED_CALIBRATION_API_KEY || "";
 
   return {
     resolve: {
@@ -19,7 +21,12 @@ export default defineConfig(({ mode }) => {
     },
     define: {
       "import.meta.env.SCATTERING_TILED_URL": JSON.stringify(tiledUrl),
-      "import.meta.env.SCATTERING_TILED_API_KEY": JSON.stringify(tiledApiKey)
+      "import.meta.env.SCATTERING_TILED_API_KEY": JSON.stringify(tiledApiKey),
+      "import.meta.env.SCATTERING_TILED_CALIBRATION_URL":
+        JSON.stringify(tiledCalibrationUrl),
+      "import.meta.env.SCATTERING_TILED_CALIBRATION_API_KEY": JSON.stringify(
+        tiledCalibrationApiKey
+      )
     },
     plugins: [
       react(),

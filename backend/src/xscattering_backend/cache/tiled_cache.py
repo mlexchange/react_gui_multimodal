@@ -30,8 +30,6 @@ def get_tiled_client():
 def get_tiled_client_for_uri(uri: str):
     """
     Get cached tiled client for a specific URI (e.g., image URIs).
-
-    Uses dynamic LRU cache size from configuration.
     """
     config = get_config()
     return _get_tiled_client_for_uri_cached(uri, config["tiled_api_key"])
@@ -91,6 +89,68 @@ def get_tiled_results_client() -> Container | None:
             raise ValueError(f"Results URL does not point to a Container: {results_url}")
         return client
     return _navigate_to_container(base_uri, container_names, results_api_key)
+
+
+@lru_cache(maxsize=1)
+def is_tiled_calibration_enabled() -> bool:
+    """Check if the calibration Tiled server is configured and reachable.
+
+    Returns True if the calibration URL is set and the server can be contacted.
+    The result is cached for all subsequent calls.
+    """
+    config = get_config()
+    calibration_url = config.get("tiled_calibration_url")
+    if not calibration_url:
+        return False
+
+    calibration_api_key = config.get("tiled_calibration_api_key")
+    try:
+        from_uri(calibration_url, api_key=calibration_api_key)
+        logger.info("Tiled calibration server reachable: %s", calibration_url)
+        return True
+    except Exception as e:
+        logger.warning("Failed to reach Tiled calibration server: %s", e)
+        logger.warning("Loading calibrations from Tiled will be disabled")
+        return False
+
+
+@lru_cache(maxsize=1)
+def get_tiled_calibration_client():
+    """Get cached tiled client instance for the calibration server.
+
+    Returns None if not configured.
+    """
+    config = get_config()
+    calibration_url = config.get("tiled_calibration_url")
+    if not calibration_url:
+        return None
+    calibration_api_key = config.get("tiled_calibration_api_key")
+    return from_uri(calibration_url, api_key=calibration_api_key)
+
+
+def get_tiled_calibration_base_uri() -> str | None:
+    """Get the base URI from the calibration tiled client.
+
+    Returns None if calibration server is not configured.
+    """
+    client = get_tiled_calibration_client()
+    if client is not None:
+        return client.uri
+    return None
+
+
+def get_tiled_calibration_client_for_uri(uri: str):
+    """
+    Get cached tiled client for a specific URI on the calibration server.
+
+    Uses the calibration Tiled API key. Returns None if the calibration
+    server is not configured.
+    """
+    config = get_config()
+    calibration_api_key = config.get("tiled_calibration_api_key")
+    if calibration_api_key is None:
+        return None
+    return _get_tiled_client_for_uri_cached(uri, calibration_api_key)
 
 
 def _split_uri_at_metadata(uri: str) -> tuple[str, list[str]]:

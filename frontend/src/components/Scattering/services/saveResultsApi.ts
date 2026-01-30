@@ -1,11 +1,10 @@
 /**
  * Save results to Tiled API service.
  *
- * Provides a feature check, save functions, and a React hook for
- * conditionally enabling the "Save to Tiled" UI.
+ * Provides save functions and helper builders for persisting
+ * linecut and batch processing results to a writable Tiled container.
  */
 
-import { useState, useEffect } from "react";
 import type {
   CalibrationParams,
   BatchLinecutResult,
@@ -76,44 +75,6 @@ function buildCalibrationPayload(
     payload.incident_angle = calibration.incident_angle ?? 0;
   }
   return payload;
-}
-
-// ============================================================================
-// Feature Check
-// ============================================================================
-
-/**
- * Check if saving results to Tiled is enabled on the backend.
- */
-export async function checkSaveResultsEnabled(): Promise<boolean> {
-  try {
-    const response = await fetch("/api/check-save-results");
-    if (!response.ok) return false;
-    const data = await response.json();
-    return data.enabled ?? false;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Hook that checks once on mount whether saving results to Tiled is available.
- * Returns false by default and on any failure (graceful degradation).
- */
-export function useSaveResultsEnabled(): boolean {
-  const [enabled, setEnabled] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    checkSaveResultsEnabled().then((result) => {
-      if (!cancelled) setEnabled(result);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  return enabled;
 }
 
 // ============================================================================

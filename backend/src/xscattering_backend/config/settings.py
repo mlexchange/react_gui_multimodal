@@ -92,6 +92,9 @@ def get_config() -> dict:
         # Optional: Tiled results target (enables "Save to Tiled" feature)
         "tiled_results_url": os.getenv("SCATTERING_TILED_RESULTS_URL"),
         "tiled_results_api_key": os.getenv("SCATTERING_TILED_RESULTS_API_KEY"),
+        # Optional: Tiled calibration server (enables loading calibrations from Tiled)
+        "tiled_calibration_url": os.getenv("SCATTERING_TILED_CALIBRATION_URL"),
+        "tiled_calibration_api_key": os.getenv("SCATTERING_TILED_CALIBRATION_API_KEY"),
         # Server settings
         "development": os.getenv("SCATTERING_BACKEND_DEVELOPMENT", "false").lower() in ("true", "1", "yes"),
         "backend_host": os.getenv("SCATTERING_BACKEND_HOST", "0.0.0.0"),

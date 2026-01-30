@@ -1,36 +1,19 @@
 """
 Save results to Tiled router.
 
-Provides endpoints for checking if saving is available and for writing
-linecut and batch processing results to a writable Tiled container.
+Provides endpoints for writing linecut and batch processing results
+to a writable Tiled container.
 Only functional when SCATTERING_TILED_RESULTS_URL is configured.
 """
 
 import pandas as pd
 from fastapi import APIRouter, HTTPException
-from xscattering_backend.cache.tiled_cache import get_tiled_results_client, is_tiled_results_enabled
+from xscattering_backend.cache.tiled_cache import get_tiled_results_client
 from xscattering_backend.config.logging import get_logger
 from xscattering_backend.config.models import SaveBatchResultsRequest, SaveLinecutsRequest
 
 logger = get_logger(__name__)
 router = APIRouter()
-
-
-def _ensure_save_enabled():
-    """Raise 404 if Tiled results saving is not configured."""
-    if not is_tiled_results_enabled():
-        raise HTTPException(status_code=404, detail="Tiled results saving not configured")
-
-
-@router.get("/check-save-results")
-async def check_save_results():
-    """
-    Check if saving results to Tiled is available.
-
-    Returns a simple JSON flag that the frontend uses to conditionally
-    show or hide "Save to Tiled" buttons.
-    """
-    return {"enabled": is_tiled_results_enabled()}
 
 
 @router.post("/save-linecuts")
@@ -42,10 +25,11 @@ async def save_linecuts(request: SaveLinecutsRequest):
     named ``Linecut N (scan_name)`` for each linecut/side combination.
     Metadata includes both scan URIs/names and all numbered linecut parameters.
     """
-    _ensure_save_enabled()
 
     try:
         client = get_tiled_results_client()
+        if client is None:
+            raise HTTPException(status_code=404, detail="Tiled results saving not configured")
 
         if not request.linecuts:
             raise HTTPException(status_code=400, detail="No linecut data to save")
@@ -105,10 +89,10 @@ async def save_batch_results(request: SaveBatchResultsRequest):
     one column per successful scan (matching CSV export structure).
     Metadata includes calibration, linecut parameters, and scan info.
     """
-    _ensure_save_enabled()
-
     try:
         client = get_tiled_results_client()
+        if client is None:
+            raise HTTPException(status_code=404, detail="Tiled results saving not configured")
 
         successful = [r for r in request.results if r.success]
         if not successful:

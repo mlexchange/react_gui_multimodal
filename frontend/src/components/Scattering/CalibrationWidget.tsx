@@ -13,8 +13,9 @@ import { scatteringIcons } from "./icons";
 import { CalibrationParams, isCalibrationComplete } from "./types";
 import { extractContainerPath } from "./utils/extractContainerPath";
 
-const tiledUrl = import.meta.env.SCATTERING_TILED_URL;
-const tiledApiKey = import.meta.env.SCATTERING_TILED_API_KEY;
+const tiledCalibrationUrl = import.meta.env.SCATTERING_TILED_CALIBRATION_URL;
+const tiledCalibrationApiKey = import.meta.env
+  .SCATTERING_TILED_CALIBRATION_API_KEY;
 
 // Helper component for icon + label in calibration rows
 interface IconLabelProps {
@@ -152,7 +153,7 @@ export default function CalibrationWidget({
       try {
         const response = await fetch(links.self, {
           headers: {
-            "X-TILED-API-KEY": tiledApiKey
+            "X-TILED-API-KEY": tiledCalibrationApiKey
           }
         });
 
@@ -397,8 +398,8 @@ export default function CalibrationWidget({
       {/* Load Calibration Button */}
       <div className="w-full [&_button]:w-full [&_button]:font-medium [&_button]:bg-sky-500 [&_button]:hover:bg-sky-600 [&_button]:ml-0 [&_button]:text-md [&_button]:rounded-xl [&_button]:py-2 [&_button]:px-3">
         <Tiled
-          tiledBaseUrl={tiledUrl}
-          apiKey={tiledApiKey}
+          tiledBaseUrl={tiledCalibrationUrl}
+          apiKey={tiledCalibrationApiKey}
           isButtonMode={true}
           buttonModeText="Load calibration parameters"
           onSelectCallback={handleTiledCalibrationSelection}

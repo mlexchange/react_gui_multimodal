@@ -12,8 +12,8 @@ from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response
 from xscattering_backend.cache.mask_cache import get_cached_mask
 from xscattering_backend.cache.tiled_cache import (
-    get_tiled_base_uri,
-    get_tiled_client_for_uri,
+    get_tiled_calibration_base_uri,
+    get_tiled_calibration_client_for_uri,
 )
 from xscattering_backend.config.models import MaskResponse
 from xscattering_backend.utils.mask_loader import (
@@ -53,9 +53,14 @@ async def resolve_mask(
 
     try:
         # Fetch PONI metadata to get mask name
-        tiled_base_uri = get_tiled_base_uri()
+        tiled_base_uri = get_tiled_calibration_base_uri()
+        if tiled_base_uri is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Calibration Tiled server not configured",
+            )
         full_uri = tiled_base_uri.rstrip("/") + "/" + poni_uri
-        poni_client = get_tiled_client_for_uri(full_uri)
+        poni_client = get_tiled_calibration_client_for_uri(full_uri)
 
         # Get mask name from metadata
         metadata = poni_client.metadata
@@ -82,7 +87,7 @@ async def resolve_mask(
         # Check if mask exists in Tiled
         try:
             mask_full_uri = tiled_base_uri.rstrip("/") + "/" + mask_uri
-            mask_client = get_tiled_client_for_uri(mask_full_uri)
+            mask_client = get_tiled_calibration_client_for_uri(mask_full_uri)
             # Try to access it to verify existence
             _ = mask_client.metadata
 
@@ -136,7 +141,7 @@ async def get_mask(
 
     # For Tiled masks, also try with full cache key (handles key mismatch)
     if mask_array is None and not mask_id.startswith("uploaded_"):
-        tiled_base_uri = get_tiled_base_uri()
+        tiled_base_uri = get_tiled_calibration_base_uri()
         full_key = f"{tiled_base_uri}:{mask_id}"
         mask_array = get_cached_mask(full_key)
 
@@ -252,10 +257,10 @@ async def load_mask_from_tiled_endpoint(
     mask_uri = mask_uri.lstrip("/")
 
     try:
-        tiled_base_uri = get_tiled_base_uri()
-        mask_array = load_mask_from_tiled(mask_uri, tiled_base_uri)
+        mask_array = load_mask_from_tiled(mask_uri)
 
         # Use the full URI as the mask_id for Tiled masks
+        tiled_base_uri = get_tiled_calibration_base_uri()
         mask_id = f"{tiled_base_uri}:{mask_uri}"
         mask_height, mask_width = mask_array.shape
 
