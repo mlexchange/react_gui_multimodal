@@ -62,6 +62,8 @@ def process_scan_all_linecuts(
     azimuthal_integrations: list[dict],
     bypass_cache: bool = False,
     mask_uri: str | None = None,
+    npt_ip: int | None = None,
+    npt_oop: int | None = None,
 ) -> dict:
     """
     Process a single scan for ALL linecut types and integrations.
@@ -108,6 +110,8 @@ def process_scan_all_linecuts(
                 vertical_linecuts,
                 inclined_linecuts,
                 mask_uri,
+                npt_ip=npt_ip,
+                npt_oop=npt_oop,
             )
             # Skip azimuthal integration for GISAXS
             for integration in azimuthal_integrations:
@@ -247,6 +251,8 @@ def _process_gisaxs_linecuts(
     vertical_linecuts: list[dict],
     inclined_linecuts: list[dict],
     mask_uri: str | None,
+    npt_ip: int | None = None,
+    npt_oop: int | None = None,
 ) -> None:
     """
     Process linecuts for GISAXS experiment.
@@ -273,6 +279,7 @@ def _process_gisaxs_linecuts(
                 calibration,
                 linecut["position"],  # qoop position (display convention)
                 linecut.get("width", 0.0),
+                npt=npt_ip,
             )
             results["horizontal"][linecut_id] = create_linecut_result(q_values, intensities)
         except Exception as e:
@@ -288,6 +295,7 @@ def _process_gisaxs_linecuts(
                 calibration,
                 linecut["position"],  # qip position
                 linecut.get("width", 0.0),
+                npt=npt_oop,
             )
             results["vertical"][linecut_id] = create_linecut_result(q_values, intensities)
         except Exception as e:
@@ -329,6 +337,8 @@ def process_scan_for_batch(
     azimuthal_integrations: list[dict],
     batch_id: str,
     mask_uri: str | None = None,
+    npt_ip: int | None = None,
+    npt_oop: int | None = None,
 ) -> dict:
     """
     Process a single scan for batch processing with cancellation support.
@@ -362,6 +372,8 @@ def process_scan_for_batch(
         azimuthal_integrations,
         bypass_cache=True,  # Bypass cache for batch processing
         mask_uri=mask_uri,
+        npt_ip=npt_ip,
+        npt_oop=npt_oop,
     )
     status = "OK" if result.get("success", False) else "FAILED"
     logger.debug(f"Batch {batch_id[:8]}: Completed {scan_name} - {status}")
@@ -464,8 +476,10 @@ async def batch_all(request: BatchAllRequest):
     config = get_config()
     max_workers = config["batch_max_workers"]
 
-    # Get mask_uri from request
+    # Get mask_uri and npt params from request
     mask_uri = request.mask_uri
+    npt_ip = request.npt_ip
+    npt_oop = request.npt_oop
 
     try:
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -481,6 +495,8 @@ async def batch_all(request: BatchAllRequest):
                     azimuthal_integrations,
                     batch_id,
                     mask_uri,
+                    npt_ip,
+                    npt_oop,
                 ): uri
                 for uri in request.scan_uris
             }

@@ -63,6 +63,10 @@ export interface SessionState {
   /** Mask URI for uploaded or resolved mask */
   maskUri: string | null;
 
+  /** GISAXS npt (number of output points) for pyFAI integration */
+  gisaxsNptIp?: number | null;
+  gisaxsNptOop?: number | null;
+
   /** Batch processing results (optional) */
   batchResults?: BatchResultsStore;
   batchParameterHashes?: BatchParameterHashes;

@@ -18,6 +18,7 @@ import { useThrottledCallback } from "./useThrottledCallback";
 
 export interface UseHorizontalLinecutProps extends UseLinecutBaseProps {
   qYVector: number[];
+  npt?: number;
 }
 
 // ============================================================================
@@ -30,7 +31,8 @@ export default function useHorizontalLinecut({
   rightScanUri,
   calibrationParams,
   experimentType,
-  maskUri
+  maskUri,
+  npt
 }: UseHorizontalLinecutProps) {
   // =========================================================================
   // Configuration for base hook
@@ -91,7 +93,14 @@ export default function useHorizontalLinecut({
   // =========================================================================
 
   const base = useLinecutBase<Linecut, LinecutData>(
-    { leftScanUri, rightScanUri, calibrationParams, experimentType, maskUri },
+    {
+      leftScanUri,
+      rightScanUri,
+      calibrationParams,
+      experimentType,
+      maskUri,
+      npt
+    },
     {
       linecutType: "horizontal",
       createDefaultLinecut,

@@ -117,6 +117,11 @@ export default function Scattering({
   const [isHealthOpen, setIsHealthOpen] = useState(false);
   const [syncZoom, setSyncZoom] = useState(true);
 
+  // GISAXS npt (number of output points) for pyFAI integration
+  // null = use detector default (image width for qip, image height for qoop)
+  const [gisaxsNptIp, setGisaxsNptIp] = useState<number | null>(null);
+  const [gisaxsNptOop, setGisaxsNptOop] = useState<number | null>(null);
+
   // Y-axis scale type for each linecut/integration figure
   const [horizontalLinecutScale, setHorizontalLinecutScale] =
     useState<AxisScaleType>(ScaleType.Linear);
@@ -352,6 +357,14 @@ export default function Scattering({
     [rightImageIndex, scanUris]
   );
 
+  // Get image dimensions from imageData1 (assumes both images have same dimensions)
+  const imageHeight = useMemo(() => imageData1.length, [imageData1]);
+  const imageWidth = useMemo(() => imageData1[0]?.length || 0, [imageData1]);
+
+  // Effective npt values for GISAXS pyFAI integration (default to detector dimensions)
+  const effectiveNptIp = gisaxsNptIp ?? imageWidth;
+  const effectiveNptOop = gisaxsNptOop ?? imageHeight;
+
   // Linecut hooks - fetch data from backend API with debouncing
   const {
     horizontalLinecuts,
@@ -371,7 +384,8 @@ export default function Scattering({
     rightScanUri,
     calibrationParams,
     experimentType,
-    maskUri
+    maskUri,
+    npt: experimentType === "GISAXS" ? effectiveNptIp : undefined
   });
 
   const {
@@ -392,7 +406,8 @@ export default function Scattering({
     rightScanUri,
     calibrationParams,
     experimentType,
-    maskUri
+    maskUri,
+    npt: experimentType === "GISAXS" ? effectiveNptOop : undefined
   });
 
   const {
@@ -701,10 +716,6 @@ export default function Scattering({
     ]
   );
 
-  // Get image dimensions from imageData1 (assumes both images have same dimensions)
-  const imageHeight = useMemo(() => imageData1.length, [imageData1]);
-  const imageWidth = useMemo(() => imageData1[0]?.length || 0, [imageData1]);
-
   // Compute Q-magnitude matrix from qXMatrix and qYMatrix (already fetched by useScattering)
   const qMagnitudeMatrix = useMemo(() => {
     if (!qXMatrix?.length || !qYMatrix?.length) {
@@ -751,7 +762,9 @@ export default function Scattering({
     horizontalLinecuts,
     verticalLinecuts,
     inclinedLinecuts,
-    azimuthalIntegrations
+    azimuthalIntegrations,
+    nptIp: experimentType === "GISAXS" ? effectiveNptIp : undefined,
+    nptOop: experimentType === "GISAXS" ? effectiveNptOop : undefined
   });
 
   // ========== EXPERIMENT TYPE CHANGE HANDLER ==========
@@ -841,6 +854,14 @@ export default function Scattering({
     setIsSummaryCollapsed(restoredSession.isSummaryCollapsed);
     setOperationType(restoredSession.operationType);
 
+    // 5b. Restore GISAXS npt values
+    if (restoredSession.gisaxsNptIp !== undefined) {
+      setGisaxsNptIp(restoredSession.gisaxsNptIp ?? null);
+    }
+    if (restoredSession.gisaxsNptOop !== undefined) {
+      setGisaxsNptOop(restoredSession.gisaxsNptOop ?? null);
+    }
+
     // 6. Restore batch processing state if available
     if (restoredSession.batchResults && restoredSession.batchParameterHashes) {
       batchProcessing.restoreState(
@@ -921,6 +942,9 @@ export default function Scattering({
       isSummaryCollapsed,
       operationType,
       maskUri,
+      // GISAXS npt values
+      gisaxsNptIp,
+      gisaxsNptOop,
       // Batch processing state
       batchResults: batchProcessing.results,
       batchParameterHashes: batchProcessing.parameterHashes,
@@ -945,6 +969,8 @@ export default function Scattering({
     isSummaryCollapsed,
     operationType,
     maskUri,
+    gisaxsNptIp,
+    gisaxsNptOop,
     batchProcessing.results,
     batchProcessing.parameterHashes,
     batchProcessing.selectedScanUris,
@@ -1245,6 +1271,21 @@ export default function Scattering({
                             updateColor={updateHorizontalLinecutColor}
                             deleteLinecut={deleteHorizontalLinecut}
                             toggleVisibility={toggleHorizontalLinecutVisibility}
+                            nptValue={
+                              experimentType === "GISAXS"
+                                ? effectiveNptIp
+                                : undefined
+                            }
+                            nptMax={
+                              experimentType === "GISAXS"
+                                ? imageWidth
+                                : undefined
+                            }
+                            onNptChange={
+                              experimentType === "GISAXS"
+                                ? setGisaxsNptIp
+                                : undefined
+                            }
                           />
                         );
                       }
@@ -1267,6 +1308,21 @@ export default function Scattering({
                             updateColor={updateVerticalLinecutColor}
                             deleteLinecut={deleteVerticalLinecut}
                             toggleVisibility={toggleVerticalLinecutVisibility}
+                            nptValue={
+                              experimentType === "GISAXS"
+                                ? effectiveNptOop
+                                : undefined
+                            }
+                            nptMax={
+                              experimentType === "GISAXS"
+                                ? imageHeight
+                                : undefined
+                            }
+                            onNptChange={
+                              experimentType === "GISAXS"
+                                ? setGisaxsNptOop
+                                : undefined
+                            }
                           />
                         );
                       }

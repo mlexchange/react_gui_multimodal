@@ -106,6 +106,8 @@ interface BatchAllRequest {
   vertical_linecuts: BatchVerticalLinecutParams[];
   inclined_linecuts: BatchInclinedLinecutParams[];
   azimuthal_integrations: BatchAzimuthalParams[];
+  npt_ip?: number | null;
+  npt_oop?: number | null;
 }
 
 /** Response from /api/batch-all endpoint */
@@ -133,6 +135,8 @@ interface UseBatchProcessingProps {
   verticalLinecuts: Linecut[];
   inclinedLinecuts: InclinedLinecut[];
   azimuthalIntegrations: AzimuthalIntegration[];
+  nptIp?: number;
+  nptOop?: number;
 }
 
 // ============================================================================
@@ -163,7 +167,9 @@ export default function useBatchProcessing({
   horizontalLinecuts,
   verticalLinecuts,
   inclinedLinecuts,
-  azimuthalIntegrations
+  azimuthalIntegrations,
+  nptIp,
+  nptOop
 }: UseBatchProcessingProps) {
   // =========================================================================
   // State
@@ -541,7 +547,9 @@ export default function useBatchProcessing({
                 azimuth_range: i.azimuthRange,
                 q_range: i.qRange
               }))
-            : []
+            : [],
+        npt_ip: nptIp ?? null,
+        npt_oop: nptOop ?? null
       };
 
       // Make the API call
@@ -732,7 +740,9 @@ export default function useBatchProcessing({
     horizontalLinecuts,
     verticalLinecuts,
     inclinedLinecuts,
-    azimuthalIntegrations
+    azimuthalIntegrations,
+    nptIp,
+    nptOop
   ]);
 
   /**

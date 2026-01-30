@@ -22,6 +22,10 @@ interface LinecutWidgetProps {
   updateColor: (id: number, side: "left" | "right", color: string) => void;
   deleteLinecut: (id: number) => void;
   toggleVisibility: (id: number) => void;
+  /** Optional npt slider */
+  nptValue?: number;
+  nptMax?: number;
+  onNptChange?: (value: number | null) => void;
 }
 
 const extractMinMax = (vector: number[]): [number, number] => {
@@ -65,6 +69,21 @@ const getPositionLabel = (
   );
 };
 
+const getNptLabel = (direction: LinecutDirection): React.ReactNode => {
+  if (direction === "horizontal") {
+    return (
+      <>
+        Number of q<sub>ip</sub> points
+      </>
+    );
+  }
+  return (
+    <>
+      Number of q<sub>oop</sub> points
+    </>
+  );
+};
+
 const LinecutWidget: React.FC<LinecutWidgetProps> = ({
   direction,
   linecutType,
@@ -76,7 +95,10 @@ const LinecutWidget: React.FC<LinecutWidgetProps> = ({
   updateWidth,
   updateColor,
   deleteLinecut,
-  toggleVisibility
+  toggleVisibility,
+  nptValue,
+  nptMax,
+  onNptChange
 }) => {
   const {
     colorPickerRef,
@@ -102,9 +124,27 @@ const LinecutWidget: React.FC<LinecutWidgetProps> = ({
     return parseFloat(qRange.toFixed(2)) || 10;
   }, [minQValue, maxQValue]);
 
+  const showNpt =
+    nptValue != null && nptMax != null && nptMax > 0 && onNptChange != null;
+
   return (
     <div className="w-full relative mb-4">
       <LinecutSectionHeader>{linecutType} Linecuts</LinecutSectionHeader>
+
+      {showNpt && (
+        <div className="mb-2">
+          <h4 className="text-sm mb-1">{getNptLabel(direction)}</h4>
+          <InputSlider
+            min={1}
+            max={nptMax}
+            value={nptValue}
+            step={1}
+            onChange={(v) => onNptChange(v === nptMax ? null : v)}
+            marks={[1, nptMax]}
+            styles="w-full"
+          />
+        </div>
+      )}
 
       <div className="w-full">
         {linecuts.map((linecut) => (

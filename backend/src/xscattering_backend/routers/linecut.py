@@ -182,6 +182,7 @@ def _extract_gisaxs_linecut(request: SingleLinecutRequest, calibration_dict: dic
                 calibration_dict,
                 request.position,  # qoop position (display convention)
                 request.width or 0.0,
+                npt=request.npt,
             )
         else:  # vertical
             if request.position is None:
@@ -192,6 +193,7 @@ def _extract_gisaxs_linecut(request: SingleLinecutRequest, calibration_dict: dic
                 calibration_dict,
                 request.position,  # qip position
                 request.width or 0.0,
+                npt=request.npt,
             )
 
     elif request.linecut_type == "inclined":

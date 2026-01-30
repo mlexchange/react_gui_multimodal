@@ -47,6 +47,9 @@ export interface PersistableState {
   isSummaryCollapsed: boolean;
   operationType: "subtract" | "divide";
   maskUri: string | null;
+  // GISAXS npt (number of output points) for pyFAI integration
+  gisaxsNptIp?: number | null;
+  gisaxsNptOop?: number | null;
   // Batch processing state (optional - may not exist in saved sessions)
   batchResults?: BatchResultsStore;
   batchParameterHashes?: BatchParameterHashes;

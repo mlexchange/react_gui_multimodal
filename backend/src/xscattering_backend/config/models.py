@@ -78,6 +78,9 @@ class SingleLinecutRequest(BaseModel):
     # Optional mask
     mask_uri: str | None = None
 
+    # Number of output points for pyFAI integration (GISAXS)
+    npt: int | None = None
+
 
 # =============================================================================
 # Azimuthal Integration Models
@@ -106,6 +109,8 @@ class BatchAllRequest(BaseModel):
     inclined_linecuts: list[InclinedLinecutParams] = []
     azimuthal_integrations: list[AzimuthalParams] = []
     mask_uri: str | None = None  # Optional detector mask URI or mask_id
+    npt_ip: int | None = None  # npt for GISAXS horizontal linecuts (in-plane)
+    npt_oop: int | None = None  # npt for GISAXS vertical linecuts (out-of-plane)
 
 
 # =============================================================================

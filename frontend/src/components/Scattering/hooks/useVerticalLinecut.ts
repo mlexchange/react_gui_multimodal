@@ -18,6 +18,7 @@ import { useThrottledCallback } from "./useThrottledCallback";
 
 export interface UseVerticalLinecutProps extends UseLinecutBaseProps {
   qXVector: number[];
+  npt?: number;
 }
 
 // ============================================================================
@@ -30,7 +31,8 @@ export default function useVerticalLinecut({
   rightScanUri,
   calibrationParams,
   experimentType,
-  maskUri
+  maskUri,
+  npt
 }: UseVerticalLinecutProps) {
   // =========================================================================
   // Configuration for base hook
@@ -91,7 +93,14 @@ export default function useVerticalLinecut({
   // =========================================================================
 
   const base = useLinecutBase<Linecut, LinecutData>(
-    { leftScanUri, rightScanUri, calibrationParams, experimentType, maskUri },
+    {
+      leftScanUri,
+      rightScanUri,
+      calibrationParams,
+      experimentType,
+      maskUri,
+      npt
+    },
     {
       linecutType: "vertical",
       createDefaultLinecut,

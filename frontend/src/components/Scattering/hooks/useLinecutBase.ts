@@ -40,6 +40,7 @@ export interface UseLinecutBaseProps {
   calibrationParams: CalibrationParams | null;
   experimentType: string;
   maskUri?: string | null;
+  npt?: number;
 }
 
 /** Fetch function signature - uses generic params to match various API signatures */
@@ -118,7 +119,8 @@ export function useLinecutBase<TLinecut extends BaseLinecut, TData>(
     rightScanUri,
     calibrationParams,
     experimentType,
-    maskUri
+    maskUri,
+    npt
   } = props;
 
   const {
@@ -168,6 +170,7 @@ export function useLinecutBase<TLinecut extends BaseLinecut, TData>(
         calibration: calibrationParams,
         experimentType,
         maskUri,
+        ...(npt != null && { npt }),
         ...linecutParams
       };
 
@@ -245,6 +248,7 @@ export function useLinecutBase<TLinecut extends BaseLinecut, TData>(
       leftScanUri,
       rightScanUri,
       maskUri,
+      npt,
       linecutType,
       getLinecutParams,
       transformResult,
@@ -334,7 +338,14 @@ export function useLinecutBase<TLinecut extends BaseLinecut, TData>(
       fetchLinecutData(linecut);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [leftScanUri, rightScanUri, calibrationParams, experimentType, maskUri]);
+  }, [
+    leftScanUri,
+    rightScanUri,
+    calibrationParams,
+    experimentType,
+    maskUri,
+    npt
+  ]);
 
   // =========================================================================
   // Return

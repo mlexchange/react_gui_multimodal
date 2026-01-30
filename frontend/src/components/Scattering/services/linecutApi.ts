@@ -23,6 +23,7 @@ export interface HorizontalLinecutParams {
   position: number;
   width: number;
   maskUri?: string | null;
+  npt?: number;
 }
 
 export interface VerticalLinecutParams {
@@ -32,6 +33,7 @@ export interface VerticalLinecutParams {
   position: number;
   width: number;
   maskUri?: string | null;
+  npt?: number;
 }
 
 export interface InclinedLinecutParams {
@@ -114,7 +116,8 @@ async function fetchLinecutInternal(
     requestBody = {
       ...baseBody,
       position: typedParams.position,
-      width: typedParams.width
+      width: typedParams.width,
+      npt: typedParams.npt ?? null
     };
   } else {
     const typedParams = params as InclinedLinecutParams;
