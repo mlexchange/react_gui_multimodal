@@ -7,7 +7,7 @@ from xscattering_backend.routers import (
     azimuthal_integrator,
     batch_processor,
     fetch_scan_image,
-    infrastructure,
+    health,
     linecut,
     mask,
     q_space,
@@ -37,7 +37,7 @@ app.include_router(batch_processor.router, prefix="/api", tags=["Batch Processor
 app.include_router(linecut.router, prefix="/api", tags=["Linecut"])
 app.include_router(mask.router, prefix="/api", tags=["Mask"])
 app.include_router(save_results.router, prefix="/api", tags=["Save Results"])
-app.include_router(infrastructure.router, prefix="/api", tags=["Infrastructure"])
+app.include_router(health.router, prefix="/api", tags=["Health"])
 
 # WebSocket router (/ws)
 app.include_router(websocket.router, prefix="/ws", tags=["WebSocket"])

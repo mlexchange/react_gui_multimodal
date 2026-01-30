@@ -8,6 +8,7 @@ import {
   FloppyDiskIcon,
   InfoIcon,
   ListIcon,
+  PulseIcon,
   TreeStructureIcon,
   WarningIcon,
   WrenchIcon
@@ -54,6 +55,7 @@ import AzimuthalIntegrationFig from "./AzimuthalIntegrationFig";
 import SummaryFig from "./SummaryFig";
 import { BatchProcessingWidget } from "./BatchProcessingWidget";
 import SavedToTiledItemPopup from "./SavedToTiledItemPopup";
+import HealthOverlay from "./HealthOverlay";
 
 // Import utilities
 import {
@@ -61,7 +63,7 @@ import {
   addLinecut
 } from "./utils/linecutHandlers";
 import { captureSnapshot } from "./utils/snapshot";
-import { useInfrastructure } from "./services/infrastructureApi";
+import { useHealth } from "./services/healthApi";
 import { addSavedToTiledItem } from "./services/savedToTiledItemsStore";
 import {
   saveLinecutsToTiled,
@@ -107,11 +109,32 @@ export default function Scattering({
   const [savedToTiledItemPopup, setSavedToTiledItemPopup] =
     useState<SavedToTiledItem | null>(null);
 
-  // Check which infrastructure features are available
+  const [isHealthOpen, setIsHealthOpen] = useState(false);
+
+  // Check which services are available
   const {
     tiledCalibrationEnabled: backendTiledCalibrationEnabled,
-    tiledResultsEnabled: saveResultsEnabled
-  } = useInfrastructure();
+    tiledResultsEnabled: saveResultsEnabled,
+    health,
+    isHealthLoading,
+    overallStatus,
+    refreshHealth
+  } = useHealth();
+
+  // Backend is unreachable when fetch completed but returned null
+  const isBackendDown = health === null && !isHealthLoading;
+  const wasBackendDown = useRef(false);
+
+  // Force health overlay open while backend is down, auto-close only on recovery
+  useEffect(() => {
+    if (isBackendDown) {
+      wasBackendDown.current = true;
+      setIsHealthOpen(true);
+    } else if (wasBackendDown.current && health !== null) {
+      wasBackendDown.current = false;
+      setIsHealthOpen(false);
+    }
+  }, [isBackendDown, health]);
 
   // Session persistence hook
   const { isRestoring, hasRestoredSession, restoredSession, triggerAutoSave } =
@@ -979,278 +1002,325 @@ export default function Scattering({
           className={`border border-gray-300 bg-slate-200 shadow-lg relative transition-all duration-300 flex-shrink-0 flex flex-col h-full ${isSidebarCollapsed ? "w-[48px]" : "w-[280px]"}`}
         >
           {/* Scrollable Content Section */}
-          <div className="grid gap-2 overflow-y-auto overflow-x-hidden p-2">
-            {/* Experimental data section (non-accordion) */}
-            <div className="flex-1 flex-row">
-              {/* Header styled like accordion */}
-              <div
-                className={`flex items-center pb-2 text-sky-950 border-b border-gray-200 ${isSidebarCollapsed ? "justify-center" : "justify-between"}`}
-              >
+          <div className="flex-1 overflow-y-auto overflow-x-hidden">
+            <div className="grid gap-2 p-2">
+              {/* Experimental data section (non-accordion) */}
+              <div className="flex-1 flex-row">
+                {/* Header styled like accordion */}
+                <div
+                  className={`flex items-center pb-2 text-sky-950 border-b border-gray-200 ${isSidebarCollapsed ? "justify-center" : "justify-between"}`}
+                >
+                  {!isSidebarCollapsed && (
+                    <div className="flex items-center gap-3">
+                      <TreeStructureIcon size={24} weight="bold" />
+                      <span className="text-lg font-semibold">
+                        Experimental data
+                      </span>
+                    </div>
+                  )}
+                  <IconButton
+                    variant="subtle"
+                    size="md"
+                    onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                    tooltip={
+                      isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
+                    }
+                  >
+                    <ListIcon size={24} weight="bold" />
+                  </IconButton>
+                </div>
+
+                {/* Content */}
                 {!isSidebarCollapsed && (
-                  <div className="flex items-center gap-3">
-                    <TreeStructureIcon size={24} weight="bold" />
-                    <span className="text-lg font-semibold">
-                      Experimental data
-                    </span>
+                  <div className="grid pl-3 gap-2">
+                    {/* Experiment Type */}
+                    <Select
+                      label="Experiment type"
+                      value={experimentType}
+                      onChange={(value) =>
+                        handleExperimentTypeChange(
+                          value,
+                          setExperimentType,
+                          setSelectedLinecuts
+                        )
+                      }
+                      data={[
+                        { value: "SAXS", label: "SAXS" },
+                        { value: "GISAXS", label: "GISAXS" }
+                      ]}
+                    />
+
+                    {/* Tiled Load Data */}
+                    <div className="w-full [&_button]:w-full [&_button]:font-medium [&_button]:bg-sky-500 [&_button]:hover:bg-sky-600 [&_button]:ml-0 [&_button]:text-md [&_button]:rounded-xl [&_button]:py-2 [&_button]:px-3">
+                      <Tiled
+                        tiledBaseUrl={tiledUrl}
+                        apiKey={tiledApiKey}
+                        isButtonMode={true}
+                        buttonModeText="Select Data"
+                        onSelectCallback={handleTiledSelection}
+                      />
+                    </div>
+
+                    {/* Calibration Button */}
+                    {numOfFiles &&
+                    (!isCalibrationSet ||
+                      (experimentType === "GISAXS" &&
+                        !calibrationParams?.incident_angle)) ? (
+                      <ButtonWithIcon
+                        icon={
+                          <span className="flex items-center justify-center h-full">
+                            <WarningIcon weight="fill" size={20} />
+                          </span>
+                        }
+                        text="Calibration required"
+                        bgColor="bg-amber-500"
+                        hoverBgColor="hover:bg-amber-600"
+                        cb={() => setIsCalibrationOpen(true)}
+                        size="medium"
+                        styles="w-full"
+                      />
+                    ) : (
+                      <Button
+                        size="medium"
+                        styles="w-full disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+                        cb={() => setIsCalibrationOpen(true)}
+                        text="Calibration"
+                        disabled={isFetchingData || !numOfFiles}
+                      />
+                    )}
                   </div>
                 )}
-                <IconButton
-                  variant="subtle"
-                  size="md"
-                  onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                  tooltip={
-                    isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
-                  }
-                >
-                  <ListIcon size={24} weight="bold" />
-                </IconButton>
               </div>
 
-              {/* Content */}
+              {/* Linecuts Section */}
               {!isSidebarCollapsed && (
-                <div className="grid pl-3 gap-2">
-                  {/* Experiment Type */}
-                  <Select
-                    label="Experiment type"
-                    value={experimentType}
-                    onChange={(value) =>
-                      handleExperimentTypeChange(
-                        value,
-                        setExperimentType,
-                        setSelectedLinecuts
-                      )
-                    }
-                    data={[
-                      { value: "SAXS", label: "SAXS" },
-                      { value: "GISAXS", label: "GISAXS" }
-                    ]}
-                  />
-
-                  {/* Tiled Load Data */}
-                  <div className="w-full [&_button]:w-full [&_button]:font-medium [&_button]:bg-sky-500 [&_button]:hover:bg-sky-600 [&_button]:ml-0 [&_button]:text-md [&_button]:rounded-xl [&_button]:py-2 [&_button]:px-3">
-                    <Tiled
-                      tiledBaseUrl={tiledUrl}
-                      apiKey={tiledApiKey}
-                      isButtonMode={true}
-                      buttonModeText="Select Data"
-                      onSelectCallback={handleTiledSelection}
-                    />
+                <div className="pt-4">
+                  {/* Section Header */}
+                  <div className="flex items-center gap-3 pb-2 text-sky-950">
+                    <CircleHalfTiltIcon size={24} weight="bold" />
+                    <span className="text-lg font-semibold">Linecuts</span>
+                    <Tooltip
+                      content={
+                        <div className="max-w-xs space-y-2 text-sm">
+                          <p>
+                            <strong>Linecut widths:</strong> The selected width{" "}
+                            <i>w</i> covers <i>&minus;w/2</i> to <i>+w/2</i>{" "}
+                            relative to the central <i>q</i> point.
+                          </p>
+                          <p>
+                            <strong>Inclined linecut:</strong> This is an
+                            experimental feature.
+                          </p>
+                        </div>
+                      }
+                      side="right"
+                    >
+                      <InfoIcon
+                        size={24}
+                        className="ml-auto cursor-help transition-colors"
+                      />
+                    </Tooltip>
                   </div>
 
-                  {/* Calibration Button */}
-                  {numOfFiles &&
-                  (!isCalibrationSet ||
-                    (experimentType === "GISAXS" &&
-                      !calibrationParams?.incident_angle)) ? (
-                    <ButtonWithIcon
-                      icon={
-                        <span className="flex items-center justify-center h-full">
-                          <WarningIcon weight="fill" size={20} />
-                        </span>
+                  {/* Linecut Type Icons */}
+                  <div className="flex justify-around">
+                    {linecutButtonsConfig
+                      .filter(
+                        ({ saxsOnly }) => !saxsOnly || experimentType === "SAXS"
+                      )
+                      .map(({ type, icon, addFn }) => (
+                        <button
+                          key={type}
+                          className="flex flex-col items-center gap-1 p-1 rounded hover:bg-slate-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                          onClick={() => {
+                            addLinecut(
+                              type,
+                              selectedLinecuts,
+                              setSelectedLinecuts
+                            );
+                            addFn();
+                          }}
+                          disabled={
+                            isFetchingData || !numOfFiles || !isCalibrationSet
+                          }
+                          title={
+                            !isCalibrationSet
+                              ? "Set calibration parameters first"
+                              : undefined
+                          }
+                        >
+                          <div className="w-8 h-8">{icon}</div>
+                          <span className="text-xs text-slate-700">{type}</span>
+                        </button>
+                      ))}
+                  </div>
+
+                  {/* Render all selected LinecutSections */}
+                  <div className="w-full pl-3 mt-3">
+                    {/* Batch Processing Button */}
+                    <div className="my-3">
+                      <Button
+                        text="Batch Processing"
+                        cb={() => setIsBatchOverlayOpen(true)}
+                        size="small"
+                        disabled={
+                          !numOfFiles ||
+                          !isCalibrationSet ||
+                          (horizontalLinecuts.length === 0 &&
+                            verticalLinecuts.length === 0 &&
+                            inclinedLinecuts.length === 0 &&
+                            azimuthalIntegrations.length === 0)
+                        }
+                        styles="w-full disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed disabled:opacity-60"
+                      />
+                    </div>
+
+                    {LINECUT_ORDER.filter((linecut) =>
+                      selectedLinecuts.includes(linecut)
+                    ).map((linecutType) => {
+                      if (
+                        linecutType === "Horizontal" &&
+                        horizontalLinecuts.length > 0
+                      ) {
+                        return (
+                          <LinecutWidget
+                            key={`linecut-section-${linecutType}`}
+                            direction="horizontal"
+                            linecutType={linecutType}
+                            linecuts={horizontalLinecuts}
+                            qMatrix={qYMatrix}
+                            qStep={qStep}
+                            updatePosition={updateHorizontalLinecutPosition}
+                            updateWidth={updateHorizontalLinecutWidth}
+                            updateColor={updateHorizontalLinecutColor}
+                            deleteLinecut={deleteHorizontalLinecut}
+                            toggleVisibility={toggleHorizontalLinecutVisibility}
+                          />
+                        );
                       }
-                      text="Calibration required"
-                      bgColor="bg-amber-500"
-                      hoverBgColor="hover:bg-amber-600"
-                      cb={() => setIsCalibrationOpen(true)}
-                      size="medium"
-                      styles="w-full"
-                    />
-                  ) : (
-                    <Button
-                      size="medium"
-                      styles="w-full disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
-                      cb={() => setIsCalibrationOpen(true)}
-                      text="Calibration"
-                      disabled={isFetchingData || !numOfFiles}
-                    />
-                  )}
+
+                      if (
+                        linecutType === "Vertical" &&
+                        verticalLinecuts.length > 0
+                      ) {
+                        return (
+                          <LinecutWidget
+                            key={`linecut-section-${linecutType}`}
+                            direction="vertical"
+                            linecutType={linecutType}
+                            linecuts={verticalLinecuts}
+                            qMatrix={qXMatrix}
+                            qStep={qStep}
+                            updatePosition={updateVerticalLinecutPosition}
+                            updateWidth={updateVerticalLinecutWidth}
+                            updateColor={updateVerticalLinecutColor}
+                            deleteLinecut={deleteVerticalLinecut}
+                            toggleVisibility={toggleVerticalLinecutVisibility}
+                          />
+                        );
+                      }
+
+                      if (
+                        linecutType === "Inclined" &&
+                        inclinedLinecuts.length > 0
+                      ) {
+                        return (
+                          <InclinedLinecutWidget
+                            key={`linecut-section-${linecutType}`}
+                            linecutType={linecutType}
+                            linecuts={inclinedLinecuts}
+                            units="nm⁻¹"
+                            maxQWidth={maxQValue}
+                            qStep={qStep}
+                            updateInclinedLinecutAngle={
+                              updateInclinedLinecutAngle
+                            }
+                            updateInclinedLinecutWidth={
+                              updateInclinedLinecutWidth
+                            }
+                            updateInclinedLinecutColor={
+                              updateInclinedLinecutColor
+                            }
+                            deleteInclinedLinecut={deleteInclinedLinecut}
+                            toggleInclinedLinecutVisibility={
+                              toggleInclinedLinecutVisibility
+                            }
+                          />
+                        );
+                      }
+
+                      // Azimuthal integration
+                      if (
+                        linecutType === "Azimuthal" &&
+                        azimuthalIntegrations.length > 0
+                      ) {
+                        return (
+                          <AzimuthalIntegrationWidget
+                            key={`linecut-section-${linecutType}`}
+                            integrations={azimuthalIntegrations}
+                            maxQValue={maxQValue}
+                            qStep={qStep}
+                            updateAzimuthalQRange={updateAzimuthalQRange}
+                            updateAzimuthalRange={updateAzimuthalRange}
+                            updateAzimuthalColor={updateAzimuthalColor}
+                            deleteAzimuthalIntegration={
+                              deleteAzimuthalIntegration
+                            }
+                            toggleAzimuthalVisibility={
+                              toggleAzimuthalVisibility
+                            }
+                          />
+                        );
+                      }
+
+                      return null;
+                    })}
+                  </div>
                 </div>
               )}
             </div>
+          </div>
 
-            {/* Linecuts Section */}
-            {!isSidebarCollapsed && (
-              <div className="pt-4">
-                {/* Section Header */}
-                <div className="flex items-center gap-3 pb-2 text-sky-950">
-                  <CircleHalfTiltIcon size={24} weight="bold" />
-                  <span className="text-lg font-semibold">Linecuts</span>
-                  <Tooltip
-                    content={
-                      <div className="max-w-xs space-y-2 text-sm">
-                        <p>
-                          <strong>Linecut widths:</strong> The selected width{" "}
-                          <i>w</i> covers <i>&minus;w/2</i> to <i>+w/2</i>{" "}
-                          relative to the central <i>q</i> point.
-                        </p>
-                        <p>
-                          <strong>Inclined linecut:</strong> This is an
-                          experimental feature.
-                        </p>
-                      </div>
+          {/* Fixed Footer - Health Check Button */}
+          <div className="flex-shrink-0 border-t border-gray-300 p-2">
+            {isSidebarCollapsed ? (
+              <Tooltip content="Health Check & Saved Data" side="right">
+                <button
+                  onClick={() => setIsHealthOpen(true)}
+                  className="flex items-center justify-center w-full p-1 rounded hover:bg-slate-300 transition-colors"
+                  aria-label="Health Check & Saved Data"
+                >
+                  <PulseIcon
+                    size={22}
+                    weight="bold"
+                    className={
+                      overallStatus === "ok"
+                        ? "text-green-600"
+                        : overallStatus === "error"
+                          ? "text-red-500"
+                          : "text-gray-400"
                     }
-                    side="right"
-                  >
-                    <InfoIcon
-                      size={24}
-                      className="ml-auto cursor-help transition-colors"
-                    />
-                  </Tooltip>
-                </div>
-
-                {/* Linecut Type Icons */}
-                <div className="flex justify-around">
-                  {linecutButtonsConfig
-                    .filter(
-                      ({ saxsOnly }) => !saxsOnly || experimentType === "SAXS"
-                    )
-                    .map(({ type, icon, addFn }) => (
-                      <button
-                        key={type}
-                        className="flex flex-col items-center gap-1 p-1 rounded hover:bg-slate-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
-                        onClick={() => {
-                          addLinecut(
-                            type,
-                            selectedLinecuts,
-                            setSelectedLinecuts
-                          );
-                          addFn();
-                        }}
-                        disabled={
-                          isFetchingData || !numOfFiles || !isCalibrationSet
-                        }
-                        title={
-                          !isCalibrationSet
-                            ? "Set calibration parameters first"
-                            : undefined
-                        }
-                      >
-                        <div className="w-8 h-8">{icon}</div>
-                        <span className="text-xs text-slate-700">{type}</span>
-                      </button>
-                    ))}
-                </div>
-
-                {/* Render all selected LinecutSections */}
-                <div className="w-full pl-3 mt-3">
-                  {/* Batch Processing Button */}
-                  <div className="my-3">
-                    <Button
-                      text="Batch Processing"
-                      cb={() => setIsBatchOverlayOpen(true)}
-                      size="small"
-                      disabled={
-                        !numOfFiles ||
-                        !isCalibrationSet ||
-                        (horizontalLinecuts.length === 0 &&
-                          verticalLinecuts.length === 0 &&
-                          inclinedLinecuts.length === 0 &&
-                          azimuthalIntegrations.length === 0)
-                      }
-                      styles="w-full disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed disabled:opacity-60"
-                    />
-                  </div>
-
-                  {LINECUT_ORDER.filter((linecut) =>
-                    selectedLinecuts.includes(linecut)
-                  ).map((linecutType) => {
-                    if (
-                      linecutType === "Horizontal" &&
-                      horizontalLinecuts.length > 0
-                    ) {
-                      return (
-                        <LinecutWidget
-                          key={`linecut-section-${linecutType}`}
-                          direction="horizontal"
-                          linecutType={linecutType}
-                          linecuts={horizontalLinecuts}
-                          qMatrix={qYMatrix}
-                          qStep={qStep}
-                          updatePosition={updateHorizontalLinecutPosition}
-                          updateWidth={updateHorizontalLinecutWidth}
-                          updateColor={updateHorizontalLinecutColor}
-                          deleteLinecut={deleteHorizontalLinecut}
-                          toggleVisibility={toggleHorizontalLinecutVisibility}
-                        />
-                      );
-                    }
-
-                    if (
-                      linecutType === "Vertical" &&
-                      verticalLinecuts.length > 0
-                    ) {
-                      return (
-                        <LinecutWidget
-                          key={`linecut-section-${linecutType}`}
-                          direction="vertical"
-                          linecutType={linecutType}
-                          linecuts={verticalLinecuts}
-                          qMatrix={qXMatrix}
-                          qStep={qStep}
-                          updatePosition={updateVerticalLinecutPosition}
-                          updateWidth={updateVerticalLinecutWidth}
-                          updateColor={updateVerticalLinecutColor}
-                          deleteLinecut={deleteVerticalLinecut}
-                          toggleVisibility={toggleVerticalLinecutVisibility}
-                        />
-                      );
-                    }
-
-                    if (
-                      linecutType === "Inclined" &&
-                      inclinedLinecuts.length > 0
-                    ) {
-                      return (
-                        <InclinedLinecutWidget
-                          key={`linecut-section-${linecutType}`}
-                          linecutType={linecutType}
-                          linecuts={inclinedLinecuts}
-                          units="nm⁻¹"
-                          maxQWidth={maxQValue}
-                          qStep={qStep}
-                          updateInclinedLinecutAngle={
-                            updateInclinedLinecutAngle
-                          }
-                          updateInclinedLinecutWidth={
-                            updateInclinedLinecutWidth
-                          }
-                          updateInclinedLinecutColor={
-                            updateInclinedLinecutColor
-                          }
-                          deleteInclinedLinecut={deleteInclinedLinecut}
-                          toggleInclinedLinecutVisibility={
-                            toggleInclinedLinecutVisibility
-                          }
-                        />
-                      );
-                    }
-
-                    // Azimuthal integration
-                    if (
-                      linecutType === "Azimuthal" &&
-                      azimuthalIntegrations.length > 0
-                    ) {
-                      return (
-                        <AzimuthalIntegrationWidget
-                          key={`linecut-section-${linecutType}`}
-                          integrations={azimuthalIntegrations}
-                          maxQValue={maxQValue}
-                          qStep={qStep}
-                          updateAzimuthalQRange={updateAzimuthalQRange}
-                          updateAzimuthalRange={updateAzimuthalRange}
-                          updateAzimuthalColor={updateAzimuthalColor}
-                          deleteAzimuthalIntegration={
-                            deleteAzimuthalIntegration
-                          }
-                          toggleAzimuthalVisibility={toggleAzimuthalVisibility}
-                        />
-                      );
-                    }
-
-                    return null;
-                  })}
-                </div>
-              </div>
+                  />
+                </button>
+              </Tooltip>
+            ) : (
+              <button
+                onClick={() => setIsHealthOpen(true)}
+                className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-slate-300 transition-colors text-sm text-sky-950"
+              >
+                <PulseIcon
+                  size={20}
+                  weight="bold"
+                  className={
+                    overallStatus === "ok"
+                      ? "text-green-600"
+                      : overallStatus === "error"
+                        ? "text-red-500"
+                        : "text-gray-400"
+                  }
+                />
+                <span className="font-medium">Health Check & Saved Data</span>
+              </button>
             )}
           </div>
         </div>
@@ -1593,6 +1663,16 @@ export default function Scattering({
           addSavedToTiledItem(item);
           setSavedToTiledItemPopup(item);
         }}
+      />
+
+      {/* Health Check Overlay */}
+      <HealthOverlay
+        isOpen={isHealthOpen}
+        onClose={() => setIsHealthOpen(false)}
+        health={health}
+        isHealthLoading={isHealthLoading}
+        onRefreshHealth={refreshHealth}
+        isBackendDown={isBackendDown}
       />
 
       {/* Saved to Tiled Item Popup */}

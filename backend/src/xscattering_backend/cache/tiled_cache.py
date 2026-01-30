@@ -83,7 +83,6 @@ def get_tiled_results_client() -> Container | None:
     results_api_key = config.get("tiled_results_api_key")
     base_uri, container_names = _split_uri_at_metadata(results_url)
     if not container_names:
-        # URL has no container path — use as-is (e.g. bare API URL)
         client = from_uri(results_url, api_key=results_api_key)
         if not isinstance(client, Container):
             raise ValueError(f"Results URL does not point to a Container: {results_url}")
@@ -176,7 +175,6 @@ def _split_uri_at_metadata(uri: str) -> tuple[str, list[str]]:
             container_names = segments[i + 1 :]
             return f"{parsed.scheme}://{parsed.netloc}/{base_path}", container_names
 
-    # No "metadata" segment — return original URI with no containers
     return uri, []
 
 
