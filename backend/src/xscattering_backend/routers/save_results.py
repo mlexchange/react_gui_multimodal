@@ -63,14 +63,18 @@ async def save_linecuts(request: SaveLinecutsRequest):
             "scan_names": request.scan_names,
         }
 
-        client.write_dataframe(df, metadata=metadata, specs=["xscattering_linecut"])
+        result = client.write_dataframe(df, metadata=metadata, specs=["xscattering_linecut"])
 
         n = len(request.linecuts)
-        logger.info("Saved %d %s linecut(s) to Tiled", n, linecut_type)
+        tiled_id = result.item["id"]
+        tiled_uri = result.uri
+        logger.info("Saved %d %s linecut(s) to Tiled (id=%s)", n, linecut_type, tiled_id)
 
         return {
             "success": True,
             "message": f"Saved {n} {linecut_type} linecut(s)",
+            "tiled_id": tiled_id,
+            "tiled_uri": tiled_uri,
         }
 
     except HTTPException:
@@ -113,14 +117,18 @@ async def save_batch_results(request: SaveBatchResultsRequest):
             "num_scans": len(successful),
         }
 
-        client.write_dataframe(df, metadata=metadata, specs=["xscattering_batch"])
+        result = client.write_dataframe(df, metadata=metadata, specs=["xscattering_batch"])
 
         label = request.linecut_parameters.type
-        logger.info("Saved batch %s results to Tiled (%d scans)", label, len(successful))
+        tiled_id = result.item["id"]
+        tiled_uri = result.uri
+        logger.info("Saved batch %s results to Tiled (%d scans, id=%s)", label, len(successful), tiled_id)
 
         return {
             "success": True,
             "message": f"Saved {label} batch results ({len(successful)} scans)",
+            "tiled_id": tiled_id,
+            "tiled_uri": tiled_uri,
         }
 
     except HTTPException:

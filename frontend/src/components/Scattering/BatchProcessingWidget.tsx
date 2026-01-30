@@ -30,7 +30,8 @@ import type {
   Linecut,
   InclinedLinecut,
   AzimuthalIntegration,
-  CalibrationParams
+  CalibrationParams,
+  SavedToTiledItem
 } from "./types";
 import {
   saveBatchToTiled,
@@ -103,6 +104,7 @@ interface BatchProcessingWidgetProps {
   // Save to Tiled (optional feature)
   saveResultsEnabled?: boolean;
   calibrationParams: CalibrationParams | null;
+  onSavedToTiledItem?: (item: SavedToTiledItem) => void;
 }
 
 export function BatchProcessingWidget({
@@ -134,7 +136,8 @@ export function BatchProcessingWidget({
   onCancel,
   experimentType,
   saveResultsEnabled = false,
-  calibrationParams
+  calibrationParams,
+  onSavedToTiledItem
 }: BatchProcessingWidgetProps) {
   // Get linecuts for the active tab
   const activeLinecuts = useMemo(() => {
@@ -285,6 +288,16 @@ export function BatchProcessingWidget({
         results: currentResult.results
       });
 
+      if (result.tiled_id && result.tiled_uri && onSavedToTiledItem) {
+        onSavedToTiledItem({
+          id: result.tiled_id,
+          uri: result.tiled_uri,
+          type: `batch_${activeTab}`,
+          label: result.message,
+          timestamp: Date.now()
+        });
+      }
+
       notifications.update({
         id: notificationId,
         color: "green",
@@ -307,7 +320,8 @@ export function BatchProcessingWidget({
     calibrationParams,
     experimentType,
     currentLinecut,
-    activeTab
+    activeTab,
+    onSavedToTiledItem
   ]);
 
   if (!isOpen) return null;

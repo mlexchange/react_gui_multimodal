@@ -21,7 +21,8 @@ import type {
   LinecutData,
   InclinedLinecutData,
   AzimuthalData,
-  LinecutDataEntry
+  LinecutDataEntry,
+  SavedToTiledItem
 } from "./types";
 
 import { Button, ButtonWithIcon } from "@blueskyproject/finch";
@@ -52,6 +53,7 @@ import InclinedLinecutFig from "./InclinedLinecutFig";
 import AzimuthalIntegrationFig from "./AzimuthalIntegrationFig";
 import SummaryFig from "./SummaryFig";
 import { BatchProcessingWidget } from "./BatchProcessingWidget";
+import SavedToTiledItemPopup from "./SavedToTiledItemPopup";
 
 // Import utilities
 import {
@@ -60,6 +62,7 @@ import {
 } from "./utils/linecutHandlers";
 import { captureSnapshot } from "./utils/snapshot";
 import { useInfrastructure } from "./services/infrastructureApi";
+import { addSavedToTiledItem } from "./services/savedToTiledItemsStore";
 import {
   saveLinecutsToTiled,
   buildLinecutParams,
@@ -101,6 +104,8 @@ export default function Scattering({
   const [isSummaryCollapsed, setIsSummaryCollapsed] = useState(false);
   const [operationType, setOperationType] = useState<OperationType>("subtract");
   const [isBatchOverlayOpen, setIsBatchOverlayOpen] = useState(false);
+  const [savedToTiledItemPopup, setSavedToTiledItemPopup] =
+    useState<SavedToTiledItem | null>(null);
 
   // Check which infrastructure features are available
   const {
@@ -406,7 +411,7 @@ export default function Scattering({
           right_intensities: rightData.get(lc.id)?.intensities
         }));
 
-        await saveLinecutsToTiled({
+        const result = await saveLinecutsToTiled({
           scanUris: [leftScanUri, rightScanUri].filter((u): u is string => !!u),
           scanNames: [leftScanName, rightScanName].filter(
             (n): n is string => !!n
@@ -424,6 +429,18 @@ export default function Scattering({
           message: `${direction.charAt(0).toUpperCase() + direction.slice(1)} linecuts saved successfully`,
           autoClose: 3000
         });
+
+        if (result.tiled_id && result.tiled_uri) {
+          const item: SavedToTiledItem = {
+            id: result.tiled_id,
+            uri: result.tiled_uri,
+            type: direction,
+            label: result.message,
+            timestamp: Date.now()
+          };
+          addSavedToTiledItem(item);
+          setSavedToTiledItemPopup(item);
+        }
       } catch (error) {
         const msg = error instanceof Error ? error.message : "Unknown error";
         notifications.update({
@@ -477,7 +494,7 @@ export default function Scattering({
           right_intensities: rightData.get(lc.id)?.intensities
         }));
 
-        await saveLinecutsToTiled({
+        const result = await saveLinecutsToTiled({
           scanUris: [leftScanUri, rightScanUri].filter((u): u is string => !!u),
           scanNames: [leftScanName, rightScanName].filter(
             (n): n is string => !!n
@@ -495,6 +512,18 @@ export default function Scattering({
           message: "Inclined linecuts saved successfully",
           autoClose: 3000
         });
+
+        if (result.tiled_id && result.tiled_uri) {
+          const item: SavedToTiledItem = {
+            id: result.tiled_id,
+            uri: result.tiled_uri,
+            type: "inclined",
+            label: result.message,
+            timestamp: Date.now()
+          };
+          addSavedToTiledItem(item);
+          setSavedToTiledItemPopup(item);
+        }
       } catch (error) {
         const msg = error instanceof Error ? error.message : "Unknown error";
         notifications.update({
@@ -549,7 +578,7 @@ export default function Scattering({
           right_intensities: data2.find((d) => d.id === integ.id)?.intensity
         }));
 
-        await saveLinecutsToTiled({
+        const result = await saveLinecutsToTiled({
           scanUris: [leftScanUri, rightScanUri].filter((u): u is string => !!u),
           scanNames: [leftScanName, rightScanName].filter(
             (n): n is string => !!n
@@ -567,6 +596,18 @@ export default function Scattering({
           message: "Azimuthal integrations saved successfully",
           autoClose: 3000
         });
+
+        if (result.tiled_id && result.tiled_uri) {
+          const item: SavedToTiledItem = {
+            id: result.tiled_id,
+            uri: result.tiled_uri,
+            type: "azimuthal",
+            label: result.message,
+            timestamp: Date.now()
+          };
+          addSavedToTiledItem(item);
+          setSavedToTiledItemPopup(item);
+        }
       } catch (error) {
         const msg = error instanceof Error ? error.message : "Unknown error";
         notifications.update({
@@ -1548,7 +1589,19 @@ export default function Scattering({
         experimentType={experimentType}
         saveResultsEnabled={saveResultsEnabled}
         calibrationParams={calibrationParams}
+        onSavedToTiledItem={(item: SavedToTiledItem) => {
+          addSavedToTiledItem(item);
+          setSavedToTiledItemPopup(item);
+        }}
       />
+
+      {/* Saved to Tiled Item Popup */}
+      {savedToTiledItemPopup && (
+        <SavedToTiledItemPopup
+          item={savedToTiledItemPopup}
+          onClose={() => setSavedToTiledItemPopup(null)}
+        />
+      )}
     </div>
   );
 }

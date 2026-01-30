@@ -208,4 +208,15 @@ export interface LinecutDataEntry {
 export interface SaveResult {
   success: boolean;
   message: string;
+  tiled_id?: string;
+  tiled_uri?: string;
+}
+
+/** A saved item tracked in sessionStorage for the status overlay. */
+export interface SavedToTiledItem {
+  id: string;
+  uri: string;
+  type: string;
+  label: string;
+  timestamp: number;
 }
