@@ -6,6 +6,7 @@ from xscattering_backend.config.settings import get_config, validate_config_on_s
 from xscattering_backend.routers import (
     azimuthal_integrator,
     batch_processor,
+    calibration,
     fetch_scan_image,
     health,
     linecut,
@@ -36,6 +37,7 @@ app.include_router(q_space.router, prefix="/api", tags=["Q Space"])
 app.include_router(batch_processor.router, prefix="/api", tags=["Batch Processor"])
 app.include_router(linecut.router, prefix="/api", tags=["Linecut"])
 app.include_router(mask.router, prefix="/api", tags=["Mask"])
+app.include_router(calibration.router, prefix="/api", tags=["Calibration"])
 app.include_router(save_results.router, prefix="/api", tags=["Save Results"])
 app.include_router(health.router, prefix="/api", tags=["Health"])
 

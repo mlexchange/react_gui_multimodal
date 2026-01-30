@@ -1,116 +1,22 @@
 """
 Mask management endpoints.
 
-Handles mask lookup from PONI files and mask uploads.
+Handles mask uploads and retrieval.
 """
 
-import os
 from typing import Optional
 
 import msgpack
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response
 from xscattering_backend.cache.mask_cache import get_cached_mask
-from xscattering_backend.cache.tiled_cache import (
-    get_tiled_calibration_base_uri,
-    get_tiled_calibration_client_for_uri,
-)
-from xscattering_backend.config.models import MaskResponse
+from xscattering_backend.cache.tiled_cache import get_tiled_calibration_base_uri
 from xscattering_backend.utils.mask_loader import (
     load_mask_from_bytes,
     load_mask_from_tiled,
 )
 
 router = APIRouter()
-
-
-@router.get("/resolve-mask", response_model=MaskResponse)
-async def resolve_mask(
-    poni_uri: str = Query(..., description="URI of the PONI calibration file"),
-) -> MaskResponse:
-    """
-    Resolve the mask referenced by a PONI calibration file.
-
-    The mask is expected to be in a sibling 'masks' folder (../masks/ from PONI).
-    The mask filename is read from the "mask" key in the PONI metadata.
-
-    Example:
-        PONI at: calibration/results/AgB_test
-        Mask name in PONI metadata: "detector_pilatus"
-        Resolved mask at: calibration/masks/detector_pilatus
-
-    Parameters
-    ----------
-    poni_uri : str
-        URI path to the PONI file in Tiled (e.g., "rawdata/exp1/results/calib_1")
-
-    Returns
-    -------
-    MaskResponse
-        Contains found status, mask_uri if found, and mask_name.
-    """
-    poni_uri = poni_uri.lstrip("/")
-
-    try:
-        # Fetch PONI metadata to get mask name
-        tiled_base_uri = get_tiled_calibration_base_uri()
-        if tiled_base_uri is None:
-            raise HTTPException(
-                status_code=404,
-                detail="Calibration Tiled server not configured",
-            )
-        full_uri = tiled_base_uri.rstrip("/") + "/" + poni_uri
-        poni_client = get_tiled_calibration_client_for_uri(full_uri)
-
-        # Get mask name from metadata
-        metadata = poni_client.metadata
-        mask_name = metadata.get("mask")
-
-        if not mask_name:
-            return MaskResponse(
-                found=False,
-                mask_name=None,
-                message="No mask reference found in PONI metadata",
-            )
-
-        # Extract just the filename if it's a full path
-        if "/" in mask_name or "\\" in mask_name:
-            mask_name = os.path.basename(mask_name)
-
-        # Resolve mask path: sibling to 'results' folder
-        # e.g., calibration/results/AgB_test -> calibration/masks/{mask_name}
-        path_parts = poni_uri.split("/")
-        parent_parts = path_parts[:-2]  # Remove PONI file and 'results' folder
-        mask_path_parts = parent_parts + ["masks", mask_name]
-        mask_uri = "/".join(mask_path_parts)
-
-        # Check if mask exists in Tiled
-        try:
-            mask_full_uri = tiled_base_uri.rstrip("/") + "/" + mask_uri
-            mask_client = get_tiled_calibration_client_for_uri(mask_full_uri)
-            # Try to access it to verify existence
-            _ = mask_client.metadata
-
-            return MaskResponse(
-                found=True,
-                mask_uri=mask_uri,
-                mask_name=mask_name,
-                message=f"Mask '{mask_name}' found",
-            )
-
-        except Exception:
-            return MaskResponse(
-                found=False,
-                mask_uri=None,
-                mask_name=mask_name,
-                message=f"Mask '{mask_name}' referenced but not found at '{mask_uri}'",
-            )
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error resolving PONI mask: {str(e)}",
-        )
 
 
 @router.get("/get-mask")

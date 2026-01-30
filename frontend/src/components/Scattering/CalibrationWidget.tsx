@@ -150,19 +150,19 @@ export default function CalibrationWidget({
   const handleTiledCalibrationSelection = useCallback(
     async (links: TiledItemLinks) => {
       const containerPath = extractContainerPath(links.self);
-      const calibrationName = containerPath.split("/").pop() || "calibration";
       console.log("Calibration item selected:", containerPath);
 
       try {
-        const response = await fetch(links.self, {
-          headers: {
-            "X-TILED-API-KEY": tiledCalibrationApiKey
-          }
-        });
+        const response = await fetch(
+          `/api/load-calibration?path=${encodeURIComponent(containerPath)}`
+        );
 
         if (!response.ok) {
+          const error = await response.json().catch(() => null);
           setCalibrationStatus({
-            message: `Failed to fetch calibration: ${response.statusText}`,
+            message:
+              error?.detail ||
+              `Failed to fetch calibration: ${response.statusText}`,
             type: "error"
           });
           return;
@@ -171,68 +171,30 @@ export default function CalibrationWidget({
         const data = await response.json();
         console.log("Calibration data:", data);
 
-        // Check if this is a poni calibration file
-        const specs = data?.data?.attributes?.specs || [];
-        const isPoni = specs.some(
-          (spec: { name: string }) => spec.name === "poni"
-        );
-
-        if (!isPoni) {
+        if (!data.params) {
           setCalibrationStatus({
-            message: "Selected item is not a PONI calibration file",
+            message: data.message,
             type: "warning"
           });
           return;
         }
 
-        // Extract calibration parameters from metadata
-        const metadata = data?.data?.attributes?.metadata;
-        if (!metadata) {
-          setCalibrationStatus({
-            message: "No metadata found in calibration file",
-            type: "warning"
-          });
-          return;
-        }
-
-        const newParams: CalibrationParams = {
-          sample_detector_distance: metadata.directDist,
-          beam_center_x: metadata.centerX,
-          beam_center_y: metadata.centerY,
-          pixel_size_x: metadata.pixelX,
-          pixel_size_y: metadata.pixelY,
-          wavelength: metadata.wavelength,
-          tilt: metadata.tilt ?? 0,
-          tilt_plan_rotation: metadata.tiltPlanRotation ?? 0
-        };
+        const newParams: CalibrationParams = data.params;
 
         console.log("Imported calibration parameters:", newParams);
         setLocalParams(newParams);
-        setEnergy(wavelengthToEnergy(metadata.wavelength));
+        setEnergy(wavelengthToEnergy(newParams.wavelength ?? 0));
         setIsModified(true);
         setCalibrationStatus({
-          message: `Loaded: ${calibrationName}`,
+          message: data.message,
           type: "success"
         });
 
-        // Try to resolve mask from PONI file
-        try {
-          const maskResponse = await fetch(
-            `/api/resolve-mask?poni_uri=${encodeURIComponent(containerPath)}`
-          );
-          if (maskResponse.ok) {
-            const maskData = await maskResponse.json();
-            if (maskData.found && maskData.mask_uri) {
-              // Ask user if they want to load the mask
-              setPendingMaskUri(maskData.mask_uri);
-              setPendingMaskName(maskData.mask_name);
-              setShowMaskDialog(true);
-            } else {
-              console.log("Mask not found:", maskData.message);
-            }
-          }
-        } catch (maskError) {
-          console.warn("Could not resolve mask:", maskError);
+        // Show mask dialog if a mask was found alongside the PONI file
+        if (data.mask) {
+          setPendingMaskUri(data.mask.mask_uri);
+          setPendingMaskName(data.mask.mask_name);
+          setShowMaskDialog(true);
         }
       } catch (error) {
         console.error("Error fetching calibration data:", error);

@@ -109,20 +109,6 @@ class BatchAllRequest(BaseModel):
 
 
 # =============================================================================
-# Mask Models
-# =============================================================================
-
-
-class MaskResponse(BaseModel):
-    """Response model for mask lookup endpoint."""
-
-    found: bool
-    mask_uri: str | None = None
-    mask_name: str | None = None
-    message: str
-
-
-# =============================================================================
 # TypedDicts for Response Structures
 # =============================================================================
 

@@ -7,7 +7,6 @@ from xscattering_backend.config.models import (
     CalibrationParams,
     HorizontalLinecutParams,
     InclinedLinecutParams,
-    MaskResponse,
     SingleLinecutRequest,
     VerticalLinecutParams,
 )
@@ -33,5 +32,4 @@ __all__ = [
     "SingleLinecutRequest",
     "AzimuthalParams",
     "BatchAllRequest",
-    "MaskResponse",
 ]
