@@ -45,6 +45,8 @@ interface CalibrationWidgetProps {
   expectedImageWidth?: number;
   /** Expected image height for mask validation */
   expectedImageHeight?: number;
+  /** When false, hides the Tiled calibration browser (manual-only mode). Default true. */
+  tiledCalibrationEnabled?: boolean;
 }
 
 type MaskStatusType = "success" | "warning" | "error";
@@ -73,7 +75,8 @@ export default function CalibrationWidget({
   onMaskUpdate,
   onMaskDataUpdate,
   expectedImageWidth,
-  expectedImageHeight
+  expectedImageHeight,
+  tiledCalibrationEnabled = true
 }: CalibrationWidgetProps) {
   const [isModified, setIsModified] = useState(false);
   const [localParams, setLocalParams] = useState<CalibrationParams>(
@@ -395,31 +398,33 @@ export default function CalibrationWidget({
 
   return (
     <div className="space-y-4">
-      {/* Load Calibration Button */}
-      <div className="w-full [&_button]:w-full [&_button]:font-medium [&_button]:bg-sky-500 [&_button]:hover:bg-sky-600 [&_button]:ml-0 [&_button]:text-md [&_button]:rounded-xl [&_button]:py-2 [&_button]:px-3">
-        <Tiled
-          tiledBaseUrl={tiledCalibrationUrl}
-          apiKey={tiledCalibrationApiKey}
-          isButtonMode={true}
-          buttonModeText="Load calibration parameters"
-          onSelectCallback={handleTiledCalibrationSelection}
-        />
+      {/* Load Calibration Button (hidden when Tiled calibration is disabled) */}
+      {tiledCalibrationEnabled && (
+        <div className="w-full [&_button]:w-full [&_button]:font-medium [&_button]:bg-sky-500 [&_button]:hover:bg-sky-600 [&_button]:ml-0 [&_button]:text-md [&_button]:rounded-xl [&_button]:py-2 [&_button]:px-3">
+          <Tiled
+            tiledBaseUrl={tiledCalibrationUrl}
+            apiKey={tiledCalibrationApiKey}
+            isButtonMode={true}
+            buttonModeText="Load calibration parameters"
+            onSelectCallback={handleTiledCalibrationSelection}
+          />
 
-        {/* Calibration Status */}
-        {calibrationStatus && (
-          <div
-            className={`text-sm px-3 py-2 rounded-lg mb-2 ${
-              calibrationStatus.type === "success"
-                ? "text-green-600 bg-green-50"
-                : calibrationStatus.type === "warning"
-                  ? "text-amber-600 bg-amber-50"
-                  : "text-red-600 bg-red-50"
-            }`}
-          >
-            {calibrationStatus.message}
-          </div>
-        )}
-      </div>
+          {/* Calibration Status */}
+          {calibrationStatus && (
+            <div
+              className={`text-sm px-3 py-2 rounded-lg mb-2 ${
+                calibrationStatus.type === "success"
+                  ? "text-green-600 bg-green-50"
+                  : calibrationStatus.type === "warning"
+                    ? "text-amber-600 bg-amber-50"
+                    : "text-red-600 bg-red-50"
+              }`}
+            >
+              {calibrationStatus.message}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Row 1: Sample-to-detector distance */}
       <div className="flex items-center gap-4">

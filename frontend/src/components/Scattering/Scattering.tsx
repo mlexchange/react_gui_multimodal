@@ -88,9 +88,14 @@ const LINECUT_ORDER = [
 
 interface ScatteringProps {
   standalone?: boolean;
+  /** When false, hides Tiled calibration loading and forces manual-only input. */
+  enableTiledCalibration?: boolean;
 }
 
-export default function Scattering({ standalone = false }: ScatteringProps) {
+export default function Scattering({
+  standalone = false,
+  enableTiledCalibration
+}: ScatteringProps) {
   const [isCalibrationOpen, setIsCalibrationOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isSummaryCollapsed, setIsSummaryCollapsed] = useState(false);
@@ -98,7 +103,10 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
   const [isBatchOverlayOpen, setIsBatchOverlayOpen] = useState(false);
 
   // Check which infrastructure features are available
-  const { tiledResultsEnabled: saveResultsEnabled } = useInfrastructure();
+  const {
+    tiledCalibrationEnabled: backendTiledCalibrationEnabled,
+    tiledResultsEnabled: saveResultsEnabled
+  } = useInfrastructure();
 
   // Session persistence hook
   const { isRestoring, hasRestoredSession, restoredSession, triggerAutoSave } =
@@ -1503,6 +1511,9 @@ export default function Scattering({ standalone = false }: ScatteringProps) {
           onMaskDataUpdate={updateMaskData}
           expectedImageWidth={imageWidth}
           expectedImageHeight={imageHeight}
+          tiledCalibrationEnabled={
+            enableTiledCalibration !== false && backendTiledCalibrationEnabled
+          }
         />
       </Modal>
 
