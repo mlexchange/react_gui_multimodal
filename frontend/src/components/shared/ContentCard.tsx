@@ -21,11 +21,11 @@ export function ContentCard({
 }: ContentCardProps) {
   return (
     <div
-      className={`bg-white border border-gray-200 rounded-lg shadow-sm overflow-visible flex flex-col ${className}`}
+      className={`bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden flex flex-col ${className}`}
     >
       {/* Header */}
       <div
-        className={`flex items-center px-4 py-1 border-b border-gray-200 flex-shrink-0 text-sky-950 relative z-10 ${
+        className={`flex items-center px-4 py-1 border-b border-gray-200 flex-shrink-0 text-sky-950 relative z-10 overflow-visible ${
           centerHeader ? "justify-center" : "justify-between"
         }`}
       >
