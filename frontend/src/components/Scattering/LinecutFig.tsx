@@ -32,11 +32,12 @@ interface LinecutFigProps {
   leftLinecutData?: Map<number, LinecutData>;
   rightLinecutData?: Map<number, LinecutData>;
   yScaleType: AxisScaleType;
+  experimentType?: string;
 }
 
 interface DirectionConfig {
-  xAxisLabel: (units: string) => string;
-  positionLabel: (pos: number, units: string) => string;
+  xAxisLabel: (units: string, isGisaxs: boolean) => string;
+  positionLabel: (pos: number, units: string, isGisaxs: boolean) => string;
   extractZoomVector: (vectors: {
     qXVector: number[];
     qYVector: number[];
@@ -53,8 +54,12 @@ interface DirectionConfig {
 
 const directionConfig: Record<LinecutDirection, DirectionConfig> = {
   horizontal: {
-    xAxisLabel: (units) => `qₓ (${units})`,
-    positionLabel: (pos, units) => `qᵧ=${pos.toFixed(1)} ${units}`,
+    xAxisLabel: (units, isGisaxs) =>
+      isGisaxs ? `qᵢₚ (${units})` : `qₓ (${units})`,
+    positionLabel: (pos, units, isGisaxs) =>
+      isGisaxs
+        ? `qₒₒₚ=${pos.toFixed(1)} ${units}`
+        : `qᵧ=${pos.toFixed(1)} ${units}`,
     extractZoomVector: ({ qXVector }) => qXVector ?? [],
     getZoomPixelRange: ({ xRange }) => xRange,
     isInRange: (linecut, { yRange }) => {
@@ -66,8 +71,12 @@ const directionConfig: Record<LinecutDirection, DirectionConfig> = {
     }
   },
   vertical: {
-    xAxisLabel: (units) => `qᵧ (${units})`,
-    positionLabel: (pos, units) => `qₓ=${pos.toFixed(1)} ${units}`,
+    xAxisLabel: (units, isGisaxs) =>
+      isGisaxs ? `qₒₒₚ (${units})` : `qᵧ (${units})`,
+    positionLabel: (pos, units, isGisaxs) =>
+      isGisaxs
+        ? `qᵢₚ=${pos.toFixed(1)} ${units}`
+        : `qₓ=${pos.toFixed(1)} ${units}`,
     extractZoomVector: ({ qYVector }) => qYVector ?? [],
     getZoomPixelRange: ({ yRange }) => yRange,
     isInRange: (linecut, { xRange }) => {
@@ -92,7 +101,8 @@ const LinecutFig = forwardRef<HTMLDivElement, LinecutFigProps>(
       units = "nm⁻¹",
       leftLinecutData,
       rightLinecutData,
-      yScaleType
+      yScaleType,
+      experimentType
     },
     ref
   ) => {
@@ -111,7 +121,12 @@ const LinecutFig = forwardRef<HTMLDivElement, LinecutFigProps>(
         const entries: LegendEntry[] = [];
 
         visibleLinecuts.forEach((linecut) => {
-          const positionLabel = config.positionLabel(linecut.position, units);
+          const isGisaxs = experimentType?.toLowerCase() === "gisaxs";
+          const positionLabel = config.positionLabel(
+            linecut.position,
+            units,
+            isGisaxs
+          );
           const leftApiData = leftLinecutData?.get(linecut.id);
           const rightApiData = rightLinecutData?.get(linecut.id);
 
@@ -206,7 +221,8 @@ const LinecutFig = forwardRef<HTMLDivElement, LinecutFigProps>(
         rightLinecutData,
         zoomedXPixelRange,
         zoomedYPixelRange,
-        zoomVector
+        zoomVector,
+        experimentType
       ]);
 
     // Show message if no data
@@ -230,7 +246,10 @@ const LinecutFig = forwardRef<HTMLDivElement, LinecutFigProps>(
             abscissaConfig={{
               visDomain: xDomain,
               showGrid: true,
-              label: config.xAxisLabel(units)
+              label: config.xAxisLabel(
+                units,
+                experimentType?.toLowerCase() === "gisaxs"
+              )
             }}
             ordinateConfig={{
               visDomain: getSafeDomainForScale(

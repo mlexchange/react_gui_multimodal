@@ -146,14 +146,14 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
   const unit = "nm\u207B\u00B9"; // nm⁻¹ with superscript
   const xAxisLabel = showQSpaceAxes
     ? experimentType?.toLowerCase() === "gisaxs"
-      ? `q (in-plane) (${unit})`
+      ? `qᵢₚ (${unit})`
       : `qₓ (${unit})`
     : "X (pixels)";
   // Only show y-axis label if showYAxisLabel is true
   const yAxisLabel = showYAxisLabel
     ? showQSpaceAxes
       ? experimentType?.toLowerCase() === "gisaxs"
-        ? `q (out-of-plane) (${unit})`
+        ? `qₒₒₚ (${unit})`
         : `qᵧ (${unit})`
       : "Y (pixels)"
     : undefined;
@@ -329,7 +329,7 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
                   return (
                     <div className="text-sm">
                       <div>
-                        qip={qip?.toFixed(4) ?? "N/A"}, qoop=
+                        qᵢₚ={qip?.toFixed(4) ?? "N/A"}, qₒₒₚ=
                         {qoop?.toFixed(4) ?? "N/A"}
                       </div>
                       <div className="font-semibold">

@@ -1592,6 +1592,7 @@ export default function Scattering({
                         leftLinecutData={horizontalLeftData}
                         rightLinecutData={horizontalRightData}
                         yScaleType={horizontalLinecutScale}
+                        experimentType={experimentType}
                       />
                     </ContentCard>
                   )}
@@ -1639,6 +1640,7 @@ export default function Scattering({
                         leftLinecutData={verticalLeftData}
                         rightLinecutData={verticalRightData}
                         yScaleType={verticalLinecutScale}
+                        experimentType={experimentType}
                       />
                     </ContentCard>
                   )}
