@@ -95,11 +95,14 @@ interface ScatteringProps {
   standalone?: boolean;
   /** When false, hides Tiled calibration loading and forces manual-only input. */
   enableTiledCalibration?: boolean;
+  /** When false, hides save-to-Tiled buttons regardless of backend availability. */
+  enableTiledResults?: boolean;
 }
 
 export default function Scattering({
   standalone = false,
-  enableTiledCalibration
+  enableTiledCalibration = true,
+  enableTiledResults = true
 }: ScatteringProps) {
   const [isCalibrationOpen, setIsCalibrationOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -114,12 +117,15 @@ export default function Scattering({
   // Check which services are available
   const {
     tiledCalibrationEnabled: backendTiledCalibrationEnabled,
-    tiledResultsEnabled: saveResultsEnabled,
+    tiledResultsEnabled: backendTiledResultsEnabled,
     health,
     isHealthLoading,
     overallStatus,
     refreshHealth
   } = useHealth();
+
+  const saveResultsEnabled =
+    enableTiledResults && backendTiledResultsEnabled;
 
   // Backend is unreachable when fetch completed but returned null
   const isBackendDown = health === null && !isHealthLoading;
@@ -1623,7 +1629,7 @@ export default function Scattering({
           expectedImageWidth={imageWidth}
           expectedImageHeight={imageHeight}
           tiledCalibrationEnabled={
-            enableTiledCalibration !== false && backendTiledCalibrationEnabled
+            enableTiledCalibration && backendTiledCalibrationEnabled
           }
         />
       </Modal>
