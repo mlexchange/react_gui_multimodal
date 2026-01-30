@@ -78,17 +78,16 @@ export default function useAzimuthalIntegration(
         q2: number[];
         intensity1: number[];
         intensity2: number[];
-        qArray1: number[][];
-        qArray2: number[][];
+        qArray: number[][];
       }
     ) => {
-      const { q1, q2, intensity1, intensity2, qArray1, qArray2 } = data;
+      const { q1, q2, intensity1, intensity2, qArray } = data;
 
       setAzimuthalData1((prev) => {
         const filtered = prev.filter((d) => d.id !== id);
         return [
           ...filtered,
-          { id, q: q1, intensity: intensity1, qArray: qArray1 }
+          { id, q: q1, intensity: intensity1, qArray }
         ];
       });
 
@@ -96,7 +95,7 @@ export default function useAzimuthalIntegration(
         const filtered = prev.filter((d) => d.id !== id);
         return [
           ...filtered,
-          { id, q: q2, intensity: intensity2, qArray: qArray2 }
+          { id, q: q2, intensity: intensity2, qArray }
         ];
       });
     },
@@ -140,8 +139,7 @@ export default function useAzimuthalIntegration(
                 q2: result.q_2,
                 intensity1: result.intensity_1,
                 intensity2: result.intensity_2,
-                qArray1: filterByQRange(result.q_array_filtered_1, qRange),
-                qArray2: filterByQRange(result.q_array_filtered_2, qRange)
+                qArray: filterByQRange(result.q_array_filtered, qRange)
               });
             } else {
               console.error(

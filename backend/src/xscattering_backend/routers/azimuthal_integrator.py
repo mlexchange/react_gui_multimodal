@@ -74,28 +74,17 @@ async def azimuthal_integration(
 
     q_max = max(q_1.max(), q_2.max())
 
-    q_array_initial_1 = ai.qArray(scatter_image_array_1.shape)
-    chi_array_1 = ai.center_array(scatter_image_array_1.shape, unit="chi_rad")
-
-    q_array_initial_2 = ai.qArray(scatter_image_array_2.shape)
-    chi_array_2 = ai.center_array(scatter_image_array_2.shape, unit="chi_rad")
+    q_array_initial = ai.qArray(scatter_image_array_1.shape)
+    chi_array = ai.center_array(scatter_image_array_1.shape, unit="chi_rad")
 
     # Convert azimuthal range to radians for the chi array calculations
     azimuth_range_rad = np.radians(azimuth_range)
 
-    # Create masks for both images based on the azimuthal range
-    # Create a boolean mask that selects only the pixels within our desired azimuthal range
-    # True values in the mask indicate pixels to keep
-    # False values indicate pixels outside the angular region of interest
-    mask_1 = (chi_array_1 >= azimuth_range_rad[0]) & (chi_array_1 <= azimuth_range_rad[1])
-    mask_2 = (chi_array_2 >= azimuth_range_rad[0]) & (chi_array_2 <= azimuth_range_rad[1])
+    # Boolean mask selecting pixels within the desired azimuthal range
+    mask = (chi_array >= azimuth_range_rad[0]) & (chi_array <= azimuth_range_rad[1])
 
-    # Apply the mask to our q-array. This creates an array where:
-    # - Pixels within our desired angular range maintain their q-values
-    # - Pixels outside our range are set to NaN (Not a Number)
-    # This filtered array can be used for subsequent analysis or visualization
-    q_array_filtered_1 = np.where(mask_1, q_array_initial_1, np.nan)
-    q_array_filtered_2 = np.where(mask_2, q_array_initial_2, np.nan)
+    # Pixels outside the angular region are set to NaN
+    q_array_filtered = np.where(mask, q_array_initial, np.nan)
 
     # Package the results for frontend using msgpack
     # Convert NumPy arrays to lists for serialization
@@ -104,8 +93,7 @@ async def azimuthal_integration(
         "q_2": q_2.tolist(),
         "intensity_1": intensity_1.tolist(),
         "intensity_2": intensity_2.tolist(),
-        "q_array_filtered_1": q_array_filtered_1.tolist(),
-        "q_array_filtered_2": q_array_filtered_2.tolist(),
+        "q_array_filtered": q_array_filtered.tolist(),
         "q_max": q_max,
     }
 

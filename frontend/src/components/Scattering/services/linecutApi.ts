@@ -66,8 +66,7 @@ export interface AzimuthalIntegrationResult {
   q_2: number[];
   intensity_1: number[];
   intensity_2: number[];
-  q_array_filtered_1: number[][];
-  q_array_filtered_2: number[][];
+  q_array_filtered: number[][];
   success: boolean;
   error_message: string | null;
 }
@@ -210,8 +209,7 @@ async function fetchAzimuthalInternal(
       q_2: [],
       intensity_1: [],
       intensity_2: [],
-      q_array_filtered_1: [],
-      q_array_filtered_2: [],
+      q_array_filtered: [],
       success: false,
       error_message: `Request failed: ${response.status} - ${errorText}`
     };
