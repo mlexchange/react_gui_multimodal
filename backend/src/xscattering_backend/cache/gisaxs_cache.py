@@ -106,15 +106,12 @@ def get_or_compute_gisaxs_transform(
     cache_key = _compute_cache_key(scan_uri, calibration, mask_uri)
 
     def compute() -> GISAXSTransformResult:
-        # Get the original image from cache
-        # Note: The image already has masked pixels set to NaN, so we don't need
-        # to pass the mask to the transform - NaN values propagate naturally
+        # Get the original image from cache (includes binary mask for pyFAI)
         processed = get_cached_processed_image(scan_uri.lstrip("/"), mask_uri=mask_uri)
         image_array = processed.array
 
-        # Compute GISAXS transform
-        # No mask passed - the NaN values in the image handle masking
-        return transform_gisaxs_to_qspace(image_array, calibration)
+        # Compute GISAXS transform, passing explicit mask to pyFAI
+        return transform_gisaxs_to_qspace(image_array, calibration, mask=processed.mask)
 
     return _get_cache().get_or_compute(cache_key, compute)
 

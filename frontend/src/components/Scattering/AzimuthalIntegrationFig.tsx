@@ -7,7 +7,8 @@ import {
   XAxisZoom,
   YAxisZoom,
   Pan,
-  SelectToZoom
+  SelectToZoom,
+  type AxisScaleType
 } from "@h5web/lib";
 import { AzimuthalIntegration, AzimuthalData } from "./types";
 import { H5WebLegend, LegendEntry } from "./H5WebLegend";
@@ -16,7 +17,8 @@ import {
   Domain,
   calculateCurveDomains,
   createTooltipRenderer,
-  clampDomainToData
+  clampDomainToData,
+  getSafeDomainForScale
 } from "./utils/linePlotUtils";
 import { calculateZoomedAzimuthalQRange } from "./utils/calculateZoomedQRange";
 
@@ -27,6 +29,7 @@ interface AzimuthalIntegrationFigProps {
   zoomedXPixelRange: [number, number] | null;
   zoomedYPixelRange: [number, number] | null;
   qMagnitudeMatrix: number[][] | null;
+  yScaleType: AxisScaleType;
 }
 
 const AzimuthalIntegrationFig = forwardRef<
@@ -40,81 +43,87 @@ const AzimuthalIntegrationFig = forwardRef<
       azimuthalData2,
       zoomedXPixelRange,
       zoomedYPixelRange,
-      qMagnitudeMatrix
+      qMagnitudeMatrix,
+      yScaleType
     },
     ref
   ) => {
     // Prepare curve data for H5Web
-    const { curves, legendEntries, xDomain, yDomain } = useMemo(() => {
-      const curveData: CurveData[] = [];
-      const entries: LegendEntry[] = [];
+    const { curves, legendEntries, xDomain, yDomain, yMinPositive } =
+      useMemo(() => {
+        const curveData: CurveData[] = [];
+        const entries: LegendEntry[] = [];
 
-      integrations
-        .filter((integration) => !integration.hidden)
-        .forEach((integration) => {
-          const data1 = azimuthalData1.find((d) => d.id === integration.id);
-          const data2 = azimuthalData2.find((d) => d.id === integration.id);
+        integrations
+          .filter((integration) => !integration.hidden)
+          .forEach((integration) => {
+            const data1 = azimuthalData1.find((d) => d.id === integration.id);
+            const data2 = azimuthalData2.find((d) => d.id === integration.id);
 
-          if (data1 && data1.q.length > 0) {
-            const label = `Left #${integration.id}`;
-            curveData.push({
-              id: `left-${integration.id}`,
-              abscissas: data1.q,
-              ordinates: data1.intensity,
-              color: integration.leftColor,
-              label
-            });
-            entries.push({
-              id: `left-${integration.id}`,
-              label,
-              color: integration.leftColor
-            });
-          }
+            if (data1 && data1.q.length > 0) {
+              const label = `Left #${integration.id}`;
+              curveData.push({
+                id: `left-${integration.id}`,
+                abscissas: data1.q,
+                ordinates: data1.intensity,
+                color: integration.leftColor,
+                label
+              });
+              entries.push({
+                id: `left-${integration.id}`,
+                label,
+                color: integration.leftColor
+              });
+            }
 
-          if (data2 && data2.q.length > 0) {
-            const label = `Right #${integration.id}`;
-            curveData.push({
-              id: `right-${integration.id}`,
-              abscissas: data2.q,
-              ordinates: data2.intensity,
-              color: integration.rightColor,
-              label
-            });
-            entries.push({
-              id: `right-${integration.id}`,
-              label,
-              color: integration.rightColor
-            });
-          }
-        });
+            if (data2 && data2.q.length > 0) {
+              const label = `Right #${integration.id}`;
+              curveData.push({
+                id: `right-${integration.id}`,
+                abscissas: data2.q,
+                ordinates: data2.intensity,
+                color: integration.rightColor,
+                label
+              });
+              entries.push({
+                id: `right-${integration.id}`,
+                label,
+                color: integration.rightColor
+              });
+            }
+          });
 
-      const { xDomain: baseDomain, yDomain: calculatedYDomain } =
-        calculateCurveDomains(curveData);
+        const {
+          xDomain: baseDomain,
+          yDomain: calculatedYDomain,
+          yMinPositive
+        } = calculateCurveDomains(curveData);
 
-      let finalXDomain: Domain = baseDomain;
-      if (zoomedXPixelRange && zoomedYPixelRange && qMagnitudeMatrix) {
-        const qRange = calculateZoomedAzimuthalQRange({
-          zoomedXPixelRange,
-          zoomedYPixelRange,
-          qMagnitudeMatrix
-        });
-        finalXDomain = clampDomainToData(qRange, baseDomain) ?? baseDomain;
-      }
+        let finalXDomain: Domain = baseDomain;
+        if (zoomedXPixelRange && zoomedYPixelRange && qMagnitudeMatrix) {
+          const qRange = calculateZoomedAzimuthalQRange({
+            zoomedXPixelRange,
+            zoomedYPixelRange,
+            qMagnitudeMatrix
+          });
+          finalXDomain = clampDomainToData(qRange, baseDomain) ?? baseDomain;
+        }
 
-      return {
-        curves: curveData,
-        legendEntries: entries,
-        xDomain: finalXDomain,
-        yDomain: calculatedYDomain
-      };
-    }, [
-      integrations,
-      azimuthalData1,
-      azimuthalData2,
-      zoomedXPixelRange,
-      zoomedYPixelRange,
-      qMagnitudeMatrix
-    ]);
+        return {
+          curves: curveData,
+          legendEntries: entries,
+          xDomain: finalXDomain,
+          yDomain: calculatedYDomain,
+          yMinPositive
+        };
+      }, [
+        integrations,
+        azimuthalData1,
+        azimuthalData2,
+        zoomedXPixelRange,
+        zoomedYPixelRange,
+        qMagnitudeMatrix
+      ]);
 
     // Show message if no data
     if (curves.length === 0) {
@@ -142,9 +151,14 @@ const AzimuthalIntegrationFig = forwardRef<
               label: "q (nm⁻¹)"
             }}
             ordinateConfig={{
-              visDomain: yDomain,
+              visDomain: getSafeDomainForScale(
+                yDomain,
+                yScaleType,
+                yMinPositive
+              ),
               showGrid: true,
-              label: "Intensity"
+              label: "Intensity",
+              scaleType: yScaleType
             }}
             aspect="auto"
           >

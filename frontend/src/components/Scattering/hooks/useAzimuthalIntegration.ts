@@ -85,18 +85,12 @@ export default function useAzimuthalIntegration(
 
       setAzimuthalData1((prev) => {
         const filtered = prev.filter((d) => d.id !== id);
-        return [
-          ...filtered,
-          { id, q: q1, intensity: intensity1, qArray }
-        ];
+        return [...filtered, { id, q: q1, intensity: intensity1, qArray }];
       });
 
       setAzimuthalData2((prev) => {
         const filtered = prev.filter((d) => d.id !== id);
-        return [
-          ...filtered,
-          { id, q: q2, intensity: intensity2, qArray }
-        ];
+        return [...filtered, { id, q: q2, intensity: intensity2, qArray }];
       });
     },
     []

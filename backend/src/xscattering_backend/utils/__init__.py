@@ -17,6 +17,7 @@ from xscattering_backend.utils.mask_loader import (
 from xscattering_backend.utils.q_space import (
     GISAXSTransformResult,
     compute_saxs_q_matrices,
+    create_fiber_integrator,
     transform_gisaxs_to_qspace,
 )
 from xscattering_backend.utils.scans import (
@@ -39,6 +40,7 @@ __all__ = [
     "normalize_mask",
     # Q-space (SAXS and GISAXS)
     "compute_saxs_q_matrices",
+    "create_fiber_integrator",
     "transform_gisaxs_to_qspace",
     "GISAXSTransformResult",
     # Scans

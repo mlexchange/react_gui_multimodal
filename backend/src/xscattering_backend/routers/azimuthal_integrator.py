@@ -1,5 +1,3 @@
-from typing import Optional, Tuple
-
 import msgpack
 import numpy as np
 from fastapi import APIRouter, Query
@@ -31,9 +29,9 @@ async def azimuthal_integration(
     tilt_plan_rotation: float = Query(default=0.0, description="Rotation of tilt plane in degrees"),
     azimuth_start_deg: float = Query(default=-180.0, description="Start of azimuthal range in degrees"),
     azimuth_end_deg: float = Query(default=180.0, description="End of azimuthal range in degrees"),
-    q_range_start: Optional[float] = Query(None, description="Start of Q-range (nm^-1). If None, uses 0."),
-    q_range_end: Optional[float] = Query(None, description="End of Q-range (nm^-1). If None, uses max Q."),
-    mask_uri: Optional[str] = Query(None, description="Optional mask URI or mask_id"),
+    q_range_start: float | None = Query(None, description="Start of Q-range (nm^-1). If None, uses 0."),
+    q_range_end: float | None = Query(None, description="End of Q-range (nm^-1). If None, uses max Q."),
+    mask_uri: str | None = Query(None, description="Optional mask URI or mask_id"),
 ):
     """
     Performs azimuthal integration on two scatter images to convert 2D detector images
@@ -43,18 +41,18 @@ async def azimuthal_integration(
     Now uses direct scan URIs instead of folder_url + indices for more efficient access.
     """
 
-    # Get images from cache
-    # This reuses cached images if the user previously viewed them in the scatter subplot
-    # Masked pixels are set to NaN, which pyFAI handles during integration
+    # Get images from cache (includes binary mask for pyFAI)
     processed_1 = get_cached_processed_image(left_scan_uri.lstrip("/"), mask_uri=mask_uri)
     processed_2 = get_cached_processed_image(right_scan_uri.lstrip("/"), mask_uri=mask_uri)
 
     scatter_image_array_1 = processed_1.array
     scatter_image_array_2 = processed_2.array
+    mask_1 = processed_1.mask
+    mask_2 = processed_2.mask
 
     # Build range tuples from individual parameters
-    azimuth_range: Tuple[float, float] = (azimuth_start_deg, azimuth_end_deg)
-    q_range_tuple: Optional[Tuple[float, float]] = None
+    azimuth_range: tuple[float, float] = (azimuth_start_deg, azimuth_end_deg)
+    q_range_tuple: tuple[float, float] | None = None
     if q_range_start is not None and q_range_end is not None:
         q_range_tuple = (q_range_start, q_range_end)
 
@@ -69,8 +67,8 @@ async def azimuthal_integration(
         tilt_plan_rotation=tilt_plan_rotation,
     )
 
-    q_1, intensity_1 = integrate_1d(ai, scatter_image_array_1, azimuth_range=azimuth_range, q_range=q_range_tuple)
-    q_2, intensity_2 = integrate_1d(ai, scatter_image_array_2, azimuth_range=azimuth_range, q_range=q_range_tuple)
+    q_1, intensity_1 = integrate_1d(ai, scatter_image_array_1, azimuth_range=azimuth_range, q_range=q_range_tuple, mask=mask_1)
+    q_2, intensity_2 = integrate_1d(ai, scatter_image_array_2, azimuth_range=azimuth_range, q_range=q_range_tuple, mask=mask_2)
 
     q_max = max(q_1.max(), q_2.max())
 

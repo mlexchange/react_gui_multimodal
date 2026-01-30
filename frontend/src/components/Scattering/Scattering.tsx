@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { ScaleSelector, ScaleType, type AxisScaleType } from "@h5web/lib";
 import { Select, IconButton, Tooltip, notifications } from "@/components/ui";
 import { ContentCard, Modal } from "@/components/shared";
 import {
@@ -62,6 +63,7 @@ import {
   handleExperimentTypeChange,
   addLinecut
 } from "./utils/linecutHandlers";
+import { AXIS_SCALE_OPTIONS } from "./utils/constants";
 import { captureSnapshot } from "./utils/snapshot";
 import { useHealth } from "./services/healthApi";
 import { addSavedToTiledItem } from "./services/savedToTiledItemsStore";
@@ -113,6 +115,18 @@ export default function Scattering({
     useState<SavedToTiledItem | null>(null);
 
   const [isHealthOpen, setIsHealthOpen] = useState(false);
+  const [syncZoom, setSyncZoom] = useState(true);
+
+  // Y-axis scale type for each linecut/integration figure
+  const [horizontalLinecutScale, setHorizontalLinecutScale] =
+    useState<AxisScaleType>(ScaleType.Linear);
+  const [verticalLinecutScale, setVerticalLinecutScale] =
+    useState<AxisScaleType>(ScaleType.Linear);
+  const [inclinedLinecutScale, setInclinedLinecutScale] =
+    useState<AxisScaleType>(ScaleType.Linear);
+  const [azimuthalScale, setAzimuthalScale] = useState<AxisScaleType>(
+    ScaleType.Linear
+  );
 
   // Check which services are available
   const {
@@ -124,8 +138,7 @@ export default function Scattering({
     refreshHealth
   } = useHealth();
 
-  const saveResultsEnabled =
-    enableTiledResults && backendTiledResultsEnabled;
+  const saveResultsEnabled = enableTiledResults && backendTiledResultsEnabled;
 
   // Backend is unreachable when fetch completed but returned null
   const isBackendDown = health === null && !isHealthLoading;
@@ -185,6 +198,8 @@ export default function Scattering({
     qXMatrix,
     qYMatrix,
     setGisaxsQMatrices,
+    gisaxsQipAxisValues,
+    gisaxsQoopAxisValues,
     maskUri,
     setMaskUri,
     maskData,
@@ -197,8 +212,25 @@ export default function Scattering({
     restoreState: restoreScatteringState
   } = useScattering();
 
-  const qXVector = useMemo(() => qXMatrix[0] ?? [], [qXMatrix]);
-  const qYVector = useMemo(() => qYMatrix.map((row) => row[0]), [qYMatrix]);
+  // For GISAXS Q-space mode, create Q matrices from the 1D transform axis
+  // values. This ensures slider bounds, linecut overlay positions, and default
+  // linecut positions all match the displayed Q-space image (uniform grid)
+  // rather than the non-uniform pixel-space Q mapping.
+  const isGisaxsQSpace =
+    experimentType === "GISAXS" &&
+    showQSpaceAxes &&
+    gisaxsQipAxisValues != null &&
+    gisaxsQoopAxisValues != null;
+
+  const qXVector = useMemo(() => {
+    if (isGisaxsQSpace && gisaxsQipAxisValues) return gisaxsQipAxisValues;
+    return qXMatrix?.[0] ?? [];
+  }, [isGisaxsQSpace, gisaxsQipAxisValues, qXMatrix]);
+
+  const qYVector = useMemo(() => {
+    if (isGisaxsQSpace && gisaxsQoopAxisValues) return gisaxsQoopAxisValues;
+    return qYMatrix?.map((row) => row[0]) ?? [];
+  }, [isGisaxsQSpace, gisaxsQoopAxisValues, qYMatrix]);
 
   // Calculate Q step size from actual spacing (use minimum of X and Y for inclined linecuts)
   const qStep = useMemo(() => {
@@ -224,15 +256,26 @@ export default function Scattering({
     []
   );
 
-  // Reusable header buttons for ContentCard (snapshot + download + optional save)
+  // Reusable header buttons for ContentCard (snapshot + download + optional save + optional scale selector)
   const renderHeaderButtons = useCallback(
     (
       ref: React.RefObject<HTMLDivElement>,
       name: string,
       onDownload: () => void,
-      onSave?: () => void
+      onSave?: () => void,
+      scaleOptions?: {
+        value: AxisScaleType;
+        onChange: (scale: AxisScaleType) => void;
+      }
     ) => (
       <div className="flex items-center gap-1">
+        {scaleOptions && (
+          <ScaleSelector
+            value={scaleOptions.value}
+            onScaleChange={scaleOptions.onChange}
+            options={AXIS_SCALE_OPTIONS}
+          />
+        )}
         {saveResultsEnabled && onSave && (
           <button
             onClick={onSave}
@@ -323,7 +366,7 @@ export default function Scattering({
     toggleHorizontalLinecutVisibility,
     restoreLinecuts: restoreHorizontalLinecuts
   } = useHorizontalLinecut({
-    qYMatrix,
+    qYVector,
     leftScanUri,
     rightScanUri,
     calibrationParams,
@@ -344,7 +387,7 @@ export default function Scattering({
     toggleVerticalLinecutVisibility,
     restoreLinecuts: restoreVerticalLinecuts
   } = useVerticalLinecut({
-    qXMatrix,
+    qXVector,
     leftScanUri,
     rightScanUri,
     calibrationParams,
@@ -1194,7 +1237,8 @@ export default function Scattering({
                             direction="horizontal"
                             linecutType={linecutType}
                             linecuts={horizontalLinecuts}
-                            qMatrix={qYMatrix}
+                            qVector={qYVector}
+                            experimentType={experimentType}
                             qStep={qStep}
                             updatePosition={updateHorizontalLinecutPosition}
                             updateWidth={updateHorizontalLinecutWidth}
@@ -1215,7 +1259,8 @@ export default function Scattering({
                             direction="vertical"
                             linecutType={linecutType}
                             linecuts={verticalLinecuts}
-                            qMatrix={qXMatrix}
+                            qVector={qXVector}
+                            experimentType={experimentType}
                             qStep={qStep}
                             updatePosition={updateVerticalLinecutPosition}
                             updateWidth={updateVerticalLinecutWidth}
@@ -1371,6 +1416,8 @@ export default function Scattering({
                   qMagnitudeMatrix={qMagnitudeMatrix}
                   maxQValue={maxQValue}
                   calibrationParams={calibrationParams}
+                  qYVector={qYVector}
+                  qXVector={qXVector}
                   qYMatrix={qYMatrix}
                   qXMatrix={qXMatrix}
                   // Mask
@@ -1385,6 +1432,8 @@ export default function Scattering({
                   setShowMaskOverlay={setShowMaskOverlay}
                   onGisaxsPixelQUpdate={setGisaxsQMatrices}
                   onZoomChange={handleHeatmapZoomChange}
+                  syncZoom={syncZoom}
+                  onSyncZoomToggle={() => setSyncZoom((v) => !v)}
                 />
               </div>
             </ContentCard>
@@ -1468,20 +1517,25 @@ export default function Scattering({
                             "horizontal",
                             horizontalLeftData,
                             horizontalRightData
-                          )
+                          ),
+                        {
+                          value: horizontalLinecutScale,
+                          onChange: setHorizontalLinecutScale
+                        }
                       )}
                     >
                       <LinecutFig
                         ref={horizontalLinecutRef}
                         direction="horizontal"
                         linecuts={horizontalLinecuts}
-                        zoomedXPixelRange={zoomedXPixelRange}
-                        zoomedYPixelRange={zoomedYPixelRange}
-                        qXMatrix={qXMatrix}
-                        qYMatrix={qYMatrix}
+                        zoomedXPixelRange={syncZoom ? zoomedXPixelRange : null}
+                        zoomedYPixelRange={syncZoom ? zoomedYPixelRange : null}
+                        qXVector={qXVector}
+                        qYVector={qYVector}
                         units="nm⁻¹"
                         leftLinecutData={horizontalLeftData}
                         rightLinecutData={horizontalRightData}
+                        yScaleType={horizontalLinecutScale}
                       />
                     </ContentCard>
                   )}
@@ -1510,20 +1564,25 @@ export default function Scattering({
                             "vertical",
                             verticalLeftData,
                             verticalRightData
-                          )
+                          ),
+                        {
+                          value: verticalLinecutScale,
+                          onChange: setVerticalLinecutScale
+                        }
                       )}
                     >
                       <LinecutFig
                         ref={verticalLinecutRef}
                         direction="vertical"
                         linecuts={verticalLinecuts}
-                        zoomedXPixelRange={zoomedXPixelRange}
-                        zoomedYPixelRange={zoomedYPixelRange}
-                        qXMatrix={qXMatrix}
-                        qYMatrix={qYMatrix}
+                        zoomedXPixelRange={syncZoom ? zoomedXPixelRange : null}
+                        zoomedYPixelRange={syncZoom ? zoomedYPixelRange : null}
+                        qXVector={qXVector}
+                        qYVector={qYVector}
                         units="nm⁻¹"
                         leftLinecutData={verticalLeftData}
                         rightLinecutData={verticalRightData}
+                        yScaleType={verticalLinecutScale}
                       />
                     </ContentCard>
                   )}
@@ -1550,7 +1609,11 @@ export default function Scattering({
                             inclinedLinecuts,
                             inclinedLeftLinecutData,
                             inclinedRightLinecutData
-                          )
+                          ),
+                        {
+                          value: inclinedLinecutScale,
+                          onChange: setInclinedLinecutScale
+                        }
                       )}
                     >
                       <InclinedLinecutFig
@@ -1560,11 +1623,12 @@ export default function Scattering({
                         rightLinecutData={inclinedRightLinecutData}
                         beamCenterX={calibrationParams?.beam_center_x ?? 0}
                         beamCenterY={calibrationParams?.beam_center_y ?? 0}
-                        zoomedXPixelRange={zoomedXPixelRange}
-                        zoomedYPixelRange={zoomedYPixelRange}
+                        zoomedXPixelRange={syncZoom ? zoomedXPixelRange : null}
+                        zoomedYPixelRange={syncZoom ? zoomedYPixelRange : null}
                         qXVector={qXVector}
                         qYVector={qYVector}
                         units="nm⁻¹"
+                        yScaleType={inclinedLinecutScale}
                       />
                     </ContentCard>
                   )}
@@ -1592,7 +1656,11 @@ export default function Scattering({
                             azimuthalIntegrations,
                             azimuthalData1,
                             azimuthalData2
-                          )
+                          ),
+                        {
+                          value: azimuthalScale,
+                          onChange: setAzimuthalScale
+                        }
                       )}
                     >
                       <AzimuthalIntegrationFig
@@ -1600,9 +1668,10 @@ export default function Scattering({
                         integrations={azimuthalIntegrations}
                         azimuthalData1={azimuthalData1}
                         azimuthalData2={azimuthalData2}
-                        zoomedXPixelRange={zoomedXPixelRange}
-                        zoomedYPixelRange={zoomedYPixelRange}
+                        zoomedXPixelRange={syncZoom ? zoomedXPixelRange : null}
+                        zoomedYPixelRange={syncZoom ? zoomedYPixelRange : null}
                         qMagnitudeMatrix={qMagnitudeMatrix}
+                        yScaleType={azimuthalScale}
                       />
                     </ContentCard>
                   )}

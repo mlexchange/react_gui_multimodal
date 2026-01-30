@@ -14,7 +14,8 @@ interface LinecutWidgetProps {
   direction: LinecutDirection;
   linecutType: string | null;
   linecuts: Linecut[];
-  qMatrix: number[][];
+  qVector: number[];
+  experimentType?: string;
   qStep?: number;
   updatePosition: (id: number, position: number) => void;
   updateWidth: (id: number, width: number) => void;
@@ -23,55 +24,53 @@ interface LinecutWidgetProps {
   toggleVisibility: (id: number) => void;
 }
 
-const directionConfig = {
-  horizontal: {
-    positionLabel: (
+const extractMinMax = (vector: number[]): [number, number] => {
+  if (!vector || !vector.length) return [0, 1];
+  let minVal = Infinity;
+  let maxVal = -Infinity;
+  for (let i = 0; i < vector.length; i++) {
+    if (vector[i] !== undefined) {
+      minVal = Math.min(minVal, vector[i]);
+      maxVal = Math.max(maxVal, vector[i]);
+    }
+  }
+  if (minVal === Infinity || maxVal === -Infinity) return [0, 1];
+  return [parseFloat(minVal.toFixed(4)), parseFloat(maxVal.toFixed(4))];
+};
+
+const getPositionLabel = (
+  direction: LinecutDirection,
+  experimentType?: string
+): React.ReactNode => {
+  const isGisaxs = experimentType?.toLowerCase() === "gisaxs";
+  if (direction === "horizontal") {
+    return isGisaxs ? (
+      <>
+        q<sub>oop</sub> value (nm⁻¹)
+      </>
+    ) : (
       <>
         q<sub>y</sub> value (nm⁻¹)
       </>
-    ),
-    extractMinMax: (matrix: number[][]) => {
-      if (!matrix || !matrix.length) return [0, 1];
-      let minVal = Infinity;
-      let maxVal = -Infinity;
-      for (let y = 0; y < matrix.length; y++) {
-        if (matrix[y] && matrix[y][0] !== undefined) {
-          minVal = Math.min(minVal, matrix[y][0]);
-          maxVal = Math.max(maxVal, matrix[y][0]);
-        }
-      }
-      if (minVal === Infinity || maxVal === -Infinity) return [0, 1];
-      return [parseFloat(minVal.toFixed(4)), parseFloat(maxVal.toFixed(4))];
-    }
-  },
-  vertical: {
-    positionLabel: (
-      <>
-        q<sub>x</sub> value (nm⁻¹)
-      </>
-    ),
-    extractMinMax: (matrix: number[][]) => {
-      if (!matrix || !matrix.length || !matrix[0] || !matrix[0].length)
-        return [0, 1];
-      let minVal = Infinity;
-      let maxVal = -Infinity;
-      for (let x = 0; x < matrix[0].length; x++) {
-        if (matrix[0][x] !== undefined) {
-          minVal = Math.min(minVal, matrix[0][x]);
-          maxVal = Math.max(maxVal, matrix[0][x]);
-        }
-      }
-      if (minVal === Infinity || maxVal === -Infinity) return [0, 1];
-      return [parseFloat(minVal.toFixed(4)), parseFloat(maxVal.toFixed(4))];
-    }
+    );
   }
+  return isGisaxs ? (
+    <>
+      q<sub>ip</sub> value (nm⁻¹)
+    </>
+  ) : (
+    <>
+      q<sub>x</sub> value (nm⁻¹)
+    </>
+  );
 };
 
 const LinecutWidget: React.FC<LinecutWidgetProps> = ({
   direction,
   linecutType,
   linecuts,
-  qMatrix,
+  qVector,
+  experimentType,
   qStep = 0.1,
   updatePosition,
   updateWidth,
@@ -88,10 +87,13 @@ const LinecutWidget: React.FC<LinecutWidgetProps> = ({
     handleCancelColor
   } = useColorPicker({ onColorChange: updateColor });
 
-  const config = directionConfig[direction];
+  const positionLabel = React.useMemo(
+    () => getPositionLabel(direction, experimentType),
+    [direction, experimentType]
+  );
   const [minQValue, maxQValue] = React.useMemo(
-    () => config.extractMinMax(qMatrix),
-    [qMatrix, config]
+    () => extractMinMax(qVector),
+    [qVector]
   );
 
   // Calculate max width based on q-range (rounded to 2 decimal places)
@@ -151,7 +153,7 @@ const LinecutWidget: React.FC<LinecutWidgetProps> = ({
             </div>
 
             <div>
-              <h4 className="text-sm mb-1">{config.positionLabel}</h4>
+              <h4 className="text-sm mb-1">{positionLabel}</h4>
               <InputSlider
                 min={minQValue}
                 max={maxQValue}

@@ -120,24 +120,20 @@ describe("HeatmapPanel Component", () => {
     });
 
     it("shows Q-space axis labels when enabled for SAXS", () => {
-      const qXMatrix = Array(100)
-        .fill(null)
-        .map(() =>
-          Array(100)
-            .fill(0)
-            .map((_, i) => i * 0.01)
-        );
-      const qYMatrix = Array(100)
-        .fill(null)
-        .map((_, j) => Array(100).fill(j * 0.01));
+      const qXVector = Array(100)
+        .fill(0)
+        .map((_, i) => i * 0.01);
+      const qYVector = Array(100)
+        .fill(0)
+        .map((_, j) => j * 0.01);
 
       render(
         <HeatmapPanel
           {...defaultProps}
           showQSpaceAxes={true}
           experimentType="SAXS"
-          qXMatrix={qXMatrix}
-          qYMatrix={qYMatrix}
+          qXVector={qXVector}
+          qYVector={qYVector}
         />
       );
 
@@ -146,24 +142,20 @@ describe("HeatmapPanel Component", () => {
     });
 
     it("shows GISAXS axis labels when enabled for GISAXS", () => {
-      const qXMatrix = Array(100)
-        .fill(null)
-        .map(() =>
-          Array(100)
-            .fill(0)
-            .map((_, i) => i * 0.01)
-        );
-      const qYMatrix = Array(100)
-        .fill(null)
-        .map((_, j) => Array(100).fill(j * 0.01));
+      const qXVector = Array(100)
+        .fill(0)
+        .map((_, i) => i * 0.01);
+      const qYVector = Array(100)
+        .fill(0)
+        .map((_, j) => j * 0.01);
 
       render(
         <HeatmapPanel
           {...defaultProps}
           showQSpaceAxes={true}
           experimentType="GISAXS"
-          qXMatrix={qXMatrix}
-          qYMatrix={qYMatrix}
+          qXVector={qXVector}
+          qYVector={qYVector}
           gisaxsQipValues={Array(100)
             .fill(0)
             .map((_, i) => i * 0.01)}

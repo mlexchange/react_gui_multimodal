@@ -4,8 +4,6 @@ Mask management endpoints.
 Handles mask uploads and retrieval.
 """
 
-from typing import Optional
-
 import msgpack
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response
@@ -68,8 +66,8 @@ async def get_mask(
 @router.post("/upload-mask")
 async def upload_mask(
     file: UploadFile = File(..., description="Mask file (.npy, .tiff, .edf, .cbf, .csv)"),
-    expected_width: Optional[int] = Query(None, description="Expected image width for validation"),
-    expected_height: Optional[int] = Query(None, description="Expected image height for validation"),
+    expected_width: int | None = Query(None, description="Expected image width for validation"),
+    expected_height: int | None = Query(None, description="Expected image height for validation"),
 ) -> Response:
     """
     Upload a mask file.
@@ -140,8 +138,8 @@ async def upload_mask(
 @router.get("/load-mask-from-tiled")
 async def load_mask_from_tiled_endpoint(
     mask_uri: str = Query(..., description="URI of the mask in Tiled"),
-    expected_width: Optional[int] = Query(None, description="Expected image width for validation"),
-    expected_height: Optional[int] = Query(None, description="Expected image height for validation"),
+    expected_width: int | None = Query(None, description="Expected image width for validation"),
+    expected_height: int | None = Query(None, description="Expected image height for validation"),
 ) -> Response:
     """
     Load a mask from Tiled and cache it.

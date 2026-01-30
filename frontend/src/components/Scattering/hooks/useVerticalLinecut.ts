@@ -17,7 +17,7 @@ import { useThrottledCallback } from "./useThrottledCallback";
 // ============================================================================
 
 export interface UseVerticalLinecutProps extends UseLinecutBaseProps {
-  qXMatrix: number[][];
+  qXVector: number[];
 }
 
 // ============================================================================
@@ -25,7 +25,7 @@ export interface UseVerticalLinecutProps extends UseLinecutBaseProps {
 // ============================================================================
 
 export default function useVerticalLinecut({
-  qXMatrix,
+  qXVector,
   leftScanUri,
   rightScanUri,
   calibrationParams,
@@ -42,22 +42,18 @@ export default function useVerticalLinecut({
       let minQ = Infinity;
       let maxQ = -Infinity;
 
-      if (qXMatrix && qXMatrix.length > 0 && qXMatrix[0]) {
-        for (let x = 0; x < qXMatrix[0].length; x++) {
-          if (qXMatrix[0][x] !== undefined) {
-            minQ = Math.min(minQ, qXMatrix[0][x]);
-            maxQ = Math.max(maxQ, qXMatrix[0][x]);
+      if (qXVector && qXVector.length > 0) {
+        for (let x = 0; x < qXVector.length; x++) {
+          if (qXVector[x] !== undefined) {
+            minQ = Math.min(minQ, qXVector[x]);
+            maxQ = Math.max(maxQ, qXVector[x]);
           }
         }
       }
 
       const defaultQ =
         minQ !== Infinity && maxQ !== -Infinity ? (minQ + maxQ) / 2 : 0;
-      const pixelPosition = findPixelPositionForQValue(
-        defaultQ,
-        qXMatrix,
-        "vertical"
-      );
+      const pixelPosition = findPixelPositionForQValue(defaultQ, qXVector);
 
       return {
         id,
@@ -70,7 +66,7 @@ export default function useVerticalLinecut({
         type: "vertical"
       };
     },
-    [qXMatrix]
+    [qXVector]
   );
 
   const getLinecutParams = useCallback((linecut: Linecut) => {
@@ -112,9 +108,9 @@ export default function useVerticalLinecut({
 
   const findClosestPixelForQValue = useCallback(
     (targetQ: number): number => {
-      return findPixelPositionForQValue(targetQ, qXMatrix, "vertical");
+      return findPixelPositionForQValue(targetQ, qXVector);
     },
-    [qXMatrix]
+    [qXVector]
   );
 
   // =========================================================================
@@ -161,12 +157,12 @@ export default function useVerticalLinecut({
   );
 
   // =========================================================================
-  // Vertical-specific: sync pixel positions when qXMatrix changes
+  // Vertical-specific: sync pixel positions when qXVector changes
   // =========================================================================
 
   const { setLinecuts } = base;
   useEffect(() => {
-    if (!qXMatrix || !qXMatrix.length) return;
+    if (!qXVector || !qXVector.length) return;
 
     setLinecuts((prev) => {
       if (!prev.length) return prev;
@@ -176,7 +172,7 @@ export default function useVerticalLinecut({
         return { ...linecut, pixelPosition };
       });
     });
-  }, [qXMatrix, findClosestPixelForQValue, setLinecuts]);
+  }, [qXVector, findClosestPixelForQValue, setLinecuts]);
 
   // =========================================================================
   // Return with vertical-specific naming

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { ScaleType, type AxisScaleType } from "@h5web/lib";
 import LinecutFig from "../LinecutFig";
 import type { Linecut } from "../types";
 
@@ -58,15 +59,11 @@ const createMockLinecut = (
   hidden: false
 });
 
-// Create dummy Q matrices
-const createQMatrix = (rows: number, cols: number, scale: number = 0.01) =>
-  Array(rows)
+// Create dummy Q vectors
+const createQVector = (length: number, scale: number = 0.01) =>
+  Array(length)
     .fill(null)
-    .map((_, row) =>
-      Array(cols)
-        .fill(null)
-        .map((_, col) => (row + col) * scale)
-    );
+    .map((_, i) => i * scale);
 
 describe("LinecutFig Component", () => {
   const defaultProps = {
@@ -74,11 +71,12 @@ describe("LinecutFig Component", () => {
     linecuts: [createMockLinecut(1)],
     zoomedXPixelRange: null as [number, number] | null,
     zoomedYPixelRange: null as [number, number] | null,
-    qXMatrix: createQMatrix(100, 100),
-    qYMatrix: createQMatrix(100, 100),
+    qXVector: createQVector(100),
+    qYVector: createQVector(100),
     units: "nm⁻¹",
     leftLinecutData: new Map([[1, createMockLinecutData()]]),
-    rightLinecutData: new Map([[1, createMockLinecutData()]])
+    rightLinecutData: new Map([[1, createMockLinecutData()]]),
+    yScaleType: ScaleType.Linear as AxisScaleType
   };
 
   describe("Basic Rendering", () => {

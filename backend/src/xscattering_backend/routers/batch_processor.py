@@ -26,9 +26,9 @@ from xscattering_backend.utils.azimuthal_integration import (
     integrate_1d,
 )
 from xscattering_backend.utils.linecut_extraction import (
-    extract_gisaxs_horizontal_linecut,
+    extract_gisaxs_horizontal_linecut_pyfai,
     extract_gisaxs_inclined_linecut,
-    extract_gisaxs_vertical_linecut,
+    extract_gisaxs_vertical_linecut_pyfai,
     extract_horizontal_linecut,
     extract_inclined_linecut,
     extract_vertical_linecut,
@@ -158,6 +158,7 @@ def _process_saxs_linecuts(
         bypass_cache=bypass_cache,
     )
     image_array = processed_image.array
+    image_mask = processed_image.mask
 
     # Compute SAXS Q matrices ONCE
     q_x_matrix, q_y_matrix = compute_saxs_q_matrices(image_array.shape, calibration)
@@ -230,7 +231,9 @@ def _process_saxs_linecuts(
             azimuth_range = integration.get("azimuth_range", (-180, 180))
             q_range = integration.get("q_range")
 
-            q_values, intensities = integrate_1d(ai, image_array, azimuth_range=azimuth_range, q_range=q_range)
+            q_values, intensities = integrate_1d(
+                ai, image_array, azimuth_range=azimuth_range, q_range=q_range, mask=image_mask
+            )
             results["azimuthal"][integration_id] = create_linecut_result(q_values, intensities)
         except Exception as e:
             results["azimuthal"][integration_id] = create_error_linecut_result(str(e))
@@ -246,70 +249,75 @@ def _process_gisaxs_linecuts(
     mask_uri: str | None,
 ) -> None:
     """
-    Process linecuts for GISAXS experiment from transformed Q-space image.
+    Process linecuts for GISAXS experiment.
 
-    Uses cached GISAXS transform which bins detector pixels into a regular
-    qip/qoop grid. All linecuts are extracted from this transformed image.
+    Horizontal and vertical linecuts use pyFAI direct integration from
+    detector pixels (single-pass, no double-binning). Inclined linecuts
+    use the cached 2D GISAXS transform (pyFAI has no native inclined integration).
     """
-    from xscattering_backend.cache.gisaxs_cache import get_or_compute_gisaxs_transform
-
-    # Get the cached GISAXS transform
-    gisaxs_result = get_or_compute_gisaxs_transform(
+    # Get the raw detector image + mask for direct pyFAI integration
+    processed = get_cached_processed_image(
         scan_uri.lstrip("/"),
-        calibration,
         mask_uri=mask_uri,
     )
+    image_array = processed.array
+    image_mask = processed.mask
 
-    transformed_image = gisaxs_result.transformed_image
-    qip_values = gisaxs_result.qip_values
-    qoop_values = gisaxs_result.qoop_values
-
-    # Process horizontal linecuts (constant qoop, returns qip vs intensity)
+    # Process horizontal linecuts via pyFAI (constant qoop, returns qip vs intensity)
     for linecut in horizontal_linecuts:
         linecut_id = linecut["id"]
         try:
-            q_values, intensities = extract_gisaxs_horizontal_linecut(
-                transformed_image,
-                qip_values,
-                qoop_values,
-                linecut["position"],  # qoop position
-                linecut.get("width", 0.0),  # qoop width
+            q_values, intensities = extract_gisaxs_horizontal_linecut_pyfai(
+                image_array,
+                image_mask,
+                calibration,
+                linecut["position"],  # qoop position (display convention)
+                linecut.get("width", 0.0),
             )
             results["horizontal"][linecut_id] = create_linecut_result(q_values, intensities)
         except Exception as e:
             results["horizontal"][linecut_id] = create_error_linecut_result(str(e))
 
-    # Process vertical linecuts (constant qip, returns qoop vs intensity)
+    # Process vertical linecuts via pyFAI (constant qip, returns qoop vs intensity)
     for linecut in vertical_linecuts:
         linecut_id = linecut["id"]
         try:
-            q_values, intensities = extract_gisaxs_vertical_linecut(
-                transformed_image,
-                qip_values,
-                qoop_values,
+            q_values, intensities = extract_gisaxs_vertical_linecut_pyfai(
+                image_array,
+                image_mask,
+                calibration,
                 linecut["position"],  # qip position
-                linecut.get("width", 0.0),  # qip width
+                linecut.get("width", 0.0),
             )
             results["vertical"][linecut_id] = create_linecut_result(q_values, intensities)
         except Exception as e:
             results["vertical"][linecut_id] = create_error_linecut_result(str(e))
 
-    # Process inclined linecuts (enabled for GISAXS on transformed Q-grid)
-    for linecut in inclined_linecuts:
-        linecut_id = linecut["id"]
-        try:
-            q_values, intensities = extract_gisaxs_inclined_linecut(
-                transformed_image,
-                qip_values,
-                qoop_values,
-                linecut["q_x_position"],  # qip position
-                linecut["q_y_position"],  # qoop position
-                linecut["angle"],
-                linecut.get("q_width", 0.0),
-            )
-            results["inclined"][linecut_id] = create_linecut_result(q_values, intensities)
-        except Exception as e:
-            results["inclined"][linecut_id] = create_error_linecut_result(str(e))
+    # Process inclined linecuts from cached 2D transform (no pyFAI native support)
+    if inclined_linecuts:
+        from xscattering_backend.cache.gisaxs_cache import get_or_compute_gisaxs_transform
+
+        gisaxs_result = get_or_compute_gisaxs_transform(
+            scan_uri.lstrip("/"),
+            calibration,
+            mask_uri=mask_uri,
+        )
+
+        for linecut in inclined_linecuts:
+            linecut_id = linecut["id"]
+            try:
+                q_values, intensities = extract_gisaxs_inclined_linecut(
+                    gisaxs_result.transformed_image,
+                    gisaxs_result.qip_values,
+                    gisaxs_result.qoop_values,
+                    linecut["q_x_position"],  # qip position
+                    linecut["q_y_position"],  # qoop position
+                    linecut["angle"],
+                    linecut.get("q_width", 0.0),
+                )
+                results["inclined"][linecut_id] = create_linecut_result(q_values, intensities)
+            except Exception as e:
+                results["inclined"][linecut_id] = create_error_linecut_result(str(e))
 
 
 def process_scan_for_batch(

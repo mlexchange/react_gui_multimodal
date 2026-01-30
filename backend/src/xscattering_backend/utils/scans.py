@@ -97,7 +97,7 @@ def ensure_2d_image(image: np.ndarray) -> np.ndarray:
     return squeezed
 
 
-def get_processed_image(image, mask_detector):
+def get_processed_image(image, mask_detector) -> tuple[np.ndarray, np.ndarray]:
     """Process the image using the detector mask.
 
     Always masks:
@@ -107,6 +107,11 @@ def get_processed_image(image, mask_detector):
     If mask_detector is provided:
     - Original mask_detector has: 1 = masked area (beam stop etc), 0 = unmasked area
     - We invert it so that: 0 = masked area, 1 = unmasked area
+
+    Returns:
+        (processed_image, combined_mask) where:
+        - processed_image: float32 array with NaN for masked pixels
+        - combined_mask: uint8 array using pyFAI convention (0=valid, 1=masked)
     """
     # Ensure 2D and convert to float32
     image_2d = ensure_2d_image(image)
@@ -126,4 +131,5 @@ def get_processed_image(image, mask_detector):
     # Apply mask by setting masked values to NaN
     processed_image[mask] = np.nan
 
-    return processed_image
+    # Return mask in pyFAI convention: 0=valid, 1=masked
+    return processed_image, mask.astype(np.uint8)

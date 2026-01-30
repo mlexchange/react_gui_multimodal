@@ -7,7 +7,8 @@ import {
   XAxisZoom,
   YAxisZoom,
   Pan,
-  SelectToZoom
+  SelectToZoom,
+  type AxisScaleType
 } from "@h5web/lib";
 import { InclinedLinecut, InclinedLinecutData } from "./types";
 import { calculateInclinedLineEndpoints } from "./utils/calculateInclinedLinecutEndpoints";
@@ -18,7 +19,8 @@ import {
   Domain,
   calculateCurveDomains,
   createTooltipRenderer,
-  clampDomainToData
+  clampDomainToData,
+  getSafeDomainForScale
 } from "./utils/linePlotUtils";
 
 interface InclinedLinecutFigProps {
@@ -32,6 +34,7 @@ interface InclinedLinecutFigProps {
   qXVector: number[];
   qYVector: number[];
   units: string;
+  yScaleType: AxisScaleType;
 }
 
 const InclinedLinecutFig = forwardRef<HTMLDivElement, InclinedLinecutFigProps>(
@@ -46,7 +49,8 @@ const InclinedLinecutFig = forwardRef<HTMLDivElement, InclinedLinecutFigProps>(
       zoomedYPixelRange,
       qXVector,
       qYVector,
-      units
+      units,
+      yScaleType
     },
     ref
   ) => {
@@ -145,118 +149,123 @@ const InclinedLinecutFig = forwardRef<HTMLDivElement, InclinedLinecutFigProps>(
     );
 
     // Prepare curve data for H5Web
-    const { curves, legendEntries, xDomain, yDomain } = useMemo(() => {
-      const curveData: CurveData[] = [];
-      const entries: LegendEntry[] = [];
-
-      linecuts
-        .filter((linecut) => !linecut.hidden)
-        .forEach((linecut) => {
-          const leftData = leftLinecutData.get(linecut.id);
-          const rightData = rightLinecutData.get(linecut.id);
-
-          if (!leftData || !rightData) return;
-
-          const leftIntensities = leftData.intensities;
-          const rightIntensities = rightData.intensities;
-          const qRadialValues = computeQRadialDistance(
-            linecut,
-            leftIntensities.length
-          );
-
-          if (
-            qRadialValues.length === 0 ||
-            leftIntensities.length === 0 ||
-            rightIntensities.length === 0
-          ) {
-            return;
-          }
-
-          const leftLabel = `Left #${linecut.id}`;
-          curveData.push({
-            id: `left-${linecut.id}`,
-            abscissas: qRadialValues,
-            ordinates: leftIntensities,
-            color: linecut.leftColor,
-            label: leftLabel
-          });
-          entries.push({
-            id: `left-${linecut.id}`,
-            label: leftLabel,
-            color: linecut.leftColor
-          });
-
-          const rightLabel = `Right #${linecut.id}`;
-          curveData.push({
-            id: `right-${linecut.id}`,
-            abscissas: qRadialValues,
-            ordinates: rightIntensities,
-            color: linecut.rightColor,
-            label: rightLabel
-          });
-          entries.push({
-            id: `right-${linecut.id}`,
-            label: rightLabel,
-            color: linecut.rightColor
-          });
-        });
-
-      const { xDomain: baseDomain, yDomain: calculatedYDomain } =
-        calculateCurveDomains(curveData);
-
-      let finalXDomain: Domain = baseDomain;
-      if (
-        zoomedXPixelRange &&
-        zoomedYPixelRange &&
-        beamCenterX !== undefined &&
-        beamCenterY !== undefined
-      ) {
-        let minQ = Infinity;
-        let maxQ = -Infinity;
+    const { curves, legendEntries, xDomain, yDomain, yMinPositive } =
+      useMemo(() => {
+        const curveData: CurveData[] = [];
+        const entries: LegendEntry[] = [];
 
         linecuts
           .filter((linecut) => !linecut.hidden)
           .forEach((linecut) => {
-            const qRange = calculateZoomedInclinedQRange({
+            const leftData = leftLinecutData.get(linecut.id);
+            const rightData = rightLinecutData.get(linecut.id);
+
+            if (!leftData || !rightData) return;
+
+            const leftIntensities = leftData.intensities;
+            const rightIntensities = rightData.intensities;
+            const qRadialValues = computeQRadialDistance(
               linecut,
-              zoomedXPixelRange,
-              zoomedYPixelRange,
-              qXVector,
-              qYVector,
-              beamCenterX,
-              beamCenterY
+              leftIntensities.length
+            );
+
+            if (
+              qRadialValues.length === 0 ||
+              leftIntensities.length === 0 ||
+              rightIntensities.length === 0
+            ) {
+              return;
+            }
+
+            const leftLabel = `Left #${linecut.id}`;
+            curveData.push({
+              id: `left-${linecut.id}`,
+              abscissas: qRadialValues,
+              ordinates: leftIntensities,
+              color: linecut.leftColor,
+              label: leftLabel
+            });
+            entries.push({
+              id: `left-${linecut.id}`,
+              label: leftLabel,
+              color: linecut.leftColor
             });
 
-            if (qRange) {
-              minQ = Math.min(minQ, qRange[0]);
-              maxQ = Math.max(maxQ, qRange[1]);
-            }
+            const rightLabel = `Right #${linecut.id}`;
+            curveData.push({
+              id: `right-${linecut.id}`,
+              abscissas: qRadialValues,
+              ordinates: rightIntensities,
+              color: linecut.rightColor,
+              label: rightLabel
+            });
+            entries.push({
+              id: `right-${linecut.id}`,
+              label: rightLabel,
+              color: linecut.rightColor
+            });
           });
 
-        if (Number.isFinite(minQ) && Number.isFinite(maxQ)) {
-          finalXDomain =
-            clampDomainToData([minQ, maxQ], baseDomain) ?? baseDomain;
-        }
-      }
+        const {
+          xDomain: baseDomain,
+          yDomain: calculatedYDomain,
+          yMinPositive
+        } = calculateCurveDomains(curveData);
 
-      return {
-        curves: curveData,
-        legendEntries: entries,
-        xDomain: finalXDomain,
-        yDomain: calculatedYDomain
-      };
-    }, [
-      linecuts,
-      leftLinecutData,
-      rightLinecutData,
-      zoomedXPixelRange,
-      zoomedYPixelRange,
-      qXVector,
-      qYVector,
-      beamCenterX,
-      beamCenterY,
-      computeQRadialDistance
-    ]);
+        let finalXDomain: Domain = baseDomain;
+        if (
+          zoomedXPixelRange &&
+          zoomedYPixelRange &&
+          beamCenterX !== undefined &&
+          beamCenterY !== undefined
+        ) {
+          let minQ = Infinity;
+          let maxQ = -Infinity;
+
+          linecuts
+            .filter((linecut) => !linecut.hidden)
+            .forEach((linecut) => {
+              const qRange = calculateZoomedInclinedQRange({
+                linecut,
+                zoomedXPixelRange,
+                zoomedYPixelRange,
+                qXVector,
+                qYVector,
+                beamCenterX,
+                beamCenterY
+              });
+
+              if (qRange) {
+                minQ = Math.min(minQ, qRange[0]);
+                maxQ = Math.max(maxQ, qRange[1]);
+              }
+            });
+
+          if (Number.isFinite(minQ) && Number.isFinite(maxQ)) {
+            finalXDomain =
+              clampDomainToData([minQ, maxQ], baseDomain) ?? baseDomain;
+          }
+        }
+
+        return {
+          curves: curveData,
+          legendEntries: entries,
+          xDomain: finalXDomain,
+          yDomain: calculatedYDomain,
+          yMinPositive
+        };
+      }, [
+        linecuts,
+        leftLinecutData,
+        rightLinecutData,
+        zoomedXPixelRange,
+        zoomedYPixelRange,
+        qXVector,
+        qYVector,
+        beamCenterX,
+        beamCenterY,
+        computeQRadialDistance
+      ]);
 
     // Show a message if no data is available
     if (linecuts.filter((l) => !l.hidden).length === 0) {
@@ -292,9 +301,14 @@ const InclinedLinecutFig = forwardRef<HTMLDivElement, InclinedLinecutFigProps>(
               label: `Signed qᵣ (${units})`
             }}
             ordinateConfig={{
-              visDomain: yDomain,
+              visDomain: getSafeDomainForScale(
+                yDomain,
+                yScaleType,
+                yMinPositive
+              ),
               showGrid: true,
-              label: "Intensity"
+              label: "Intensity",
+              scaleType: yScaleType
             }}
             aspect="auto"
           >

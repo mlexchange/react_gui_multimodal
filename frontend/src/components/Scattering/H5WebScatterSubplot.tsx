@@ -15,7 +15,8 @@ import {
   ToggleBtn,
   type ColorMap,
   type CustomDomain,
-  type HistogramParams
+  type HistogramParams,
+  type InteractionInfo
 } from "@h5web/lib";
 import { getSafeDomainForScale, type Domain } from "./utils/linePlotUtils";
 import {
@@ -26,7 +27,8 @@ import {
   ChartLineIcon,
   MaskHappyIcon,
   GitDiffIcon,
-  CrosshairSimpleIcon
+  CrosshairSimpleIcon,
+  LinkSimpleIcon
 } from "@phosphor-icons/react";
 
 import { HeatmapPanel, type ZoomState } from "./HeatmapPanel";
@@ -58,6 +60,13 @@ import {
   type GISAXSTransformedData
 } from "./services/scatteringImageCache";
 
+const INTERACTION_HELP: InteractionInfo[] = [
+  { shortcut: "Drag", description: "Pan" },
+  { shortcut: "Wheel", description: "Zoom X-axis" },
+  { shortcut: "Shift+Wheel", description: "Zoom Y-axis" },
+  { shortcut: "Ctrl+Drag", description: "Select area to zoom" }
+];
+
 // Props interface
 interface H5WebScatterSubplotProps {
   // Image selection
@@ -87,6 +96,9 @@ interface H5WebScatterSubplotProps {
   qMagnitudeMatrix?: number[][] | null;
   maxQValue: number;
   calibrationParams: CalibrationParams | null;
+  qYVector: number[];
+  qXVector: number[];
+  // Q-space data for HeatmapPanel (raw 2D matrices for SAXS tick formatters)
   qYMatrix: number[][];
   qXMatrix: number[][];
   // Mask
@@ -102,13 +114,18 @@ interface H5WebScatterSubplotProps {
   // GISAXS callback
   onGisaxsPixelQUpdate?: (
     qipMatrix: number[][],
-    qoopMatrix: number[][]
+    qoopMatrix: number[][],
+    qipAxisValues?: number[],
+    qoopAxisValues?: number[]
   ) => void;
   // Zoom callback - broadcasts visible pixel range to parent
   onZoomChange?: (
     xVisibleDomain: [number, number] | null,
     yVisibleDomain: [number, number] | null
   ) => void;
+  // Sync zoom toggle - controls whether heatmap zoom syncs with linecut figures
+  syncZoom: boolean;
+  onSyncZoomToggle: () => void;
 }
 
 const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
@@ -140,6 +157,9 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
     qMagnitudeMatrix,
     calibrationParams,
     maxQValue,
+    qYVector,
+    qXVector,
+    // Q-space data for HeatmapPanel
     qYMatrix,
     qXMatrix,
     // Mask
@@ -155,7 +175,10 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
     // GISAXS callback
     onGisaxsPixelQUpdate,
     // Zoom callback
-    onZoomChange
+    onZoomChange,
+    // Sync zoom toggle
+    syncZoom,
+    onSyncZoomToggle
   }) => {
     const [isComparisonLoading, setIsComparisonLoading] = useState(false);
     const [isTogglingQSpace, setIsTogglingQSpace] = useState(false);
@@ -393,10 +416,18 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
           // Use pixel Q from left image (same for both since same calibration)
           const pixelQ = leftProcessed.gisaxsPixelQ ?? null;
 
-          // Notify parent of GISAXS pixel Q data for linecut slider ranges
-          // This ensures sliders use the same pyFAI-calculated Q values as the image
+          // Notify parent of GISAXS pixel Q data and axis values
+          // Pixel Q matrices are used for pixel-space overlays
+          // 1D axis values are used for Q-space mode slider bounds and overlays
           if (pixelQ && onGisaxsPixelQUpdate) {
-            onGisaxsPixelQUpdate(pixelQ.qipMatrix, pixelQ.qoopMatrix);
+            const qipAxis = leftProcessed.gisaxsTransformed?.qipValues;
+            const qoopAxis = leftProcessed.gisaxsTransformed?.qoopValues;
+            onGisaxsPixelQUpdate(
+              pixelQ.qipMatrix,
+              pixelQ.qoopMatrix,
+              qipAxis,
+              qoopAxis
+            );
           }
 
           setIsLoadingImages?.(false);
@@ -665,41 +696,20 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
 
     // Calculate pixel width using local q-to-pixel scale (not affected by edge clamping)
     const calculateLocalPixelWidth = useCallback(
-      (
-        qWidth: number,
-        qMatrix: number[][],
-        direction: "horizontal" | "vertical"
-      ): number => {
-        if (qWidth <= 0 || !qMatrix || qMatrix.length === 0) return 0;
-        if (!qMatrix[0] || qMatrix[0].length === 0) return 0;
+      (qWidth: number, qVector: number[]): number => {
+        if (qWidth <= 0 || !qVector || qVector.length < 2) return 0;
 
-        // Calculate average q-to-pixel ratio from the center of the image
+        // Calculate average q-to-pixel ratio from the center of the vector
         // This gives a consistent width regardless of position
-        if (direction === "horizontal") {
-          const rows = qMatrix.length;
-          if (rows < 2) return 0;
-          // Use middle portion of the image to calculate q-per-pixel
-          const midRow = Math.floor(rows / 2);
-          const startRow = Math.max(0, midRow - 10);
-          const endRow = Math.min(rows - 1, midRow + 10);
-          const qRange = Math.abs(qMatrix[endRow][0] - qMatrix[startRow][0]);
-          const pixelRange = endRow - startRow;
-          if (pixelRange === 0 || qRange === 0) return 0;
-          const qPerPixel = qRange / pixelRange;
-          return Math.abs(qWidth / qPerPixel);
-        } else {
-          const cols = qMatrix[0].length;
-          if (cols < 2) return 0;
-          // Use middle portion of the image to calculate q-per-pixel
-          const midCol = Math.floor(cols / 2);
-          const startCol = Math.max(0, midCol - 10);
-          const endCol = Math.min(cols - 1, midCol + 10);
-          const qRange = Math.abs(qMatrix[0][endCol] - qMatrix[0][startCol]);
-          const pixelRange = endCol - startCol;
-          if (pixelRange === 0 || qRange === 0) return 0;
-          const qPerPixel = qRange / pixelRange;
-          return Math.abs(qWidth / qPerPixel);
-        }
+        const len = qVector.length;
+        const mid = Math.floor(len / 2);
+        const start = Math.max(0, mid - 10);
+        const end = Math.min(len - 1, mid + 10);
+        const qRange = Math.abs(qVector[end] - qVector[start]);
+        const pixelRange = end - start;
+        if (pixelRange === 0 || qRange === 0) return 0;
+        const qPerPixel = qRange / pixelRange;
+        return Math.abs(qWidth / qPerPixel);
       },
       []
     );
@@ -708,13 +718,12 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
     const leftImageLinecuts = useMemo(() => {
       const linecuts: LinecutOverlayProps["linecuts"] = [];
 
-      // Add horizontal linecuts (use qYMatrix for position-aware width calculation)
+      // Add horizontal linecuts (use qYVector for position-aware width calculation)
       horizontalLinecuts.forEach((lc) => {
         const pixelWidth = calculateQSpaceToPixelWidth(
           lc.position,
           lc.width,
-          qYMatrix,
-          "horizontal"
+          qYVector
         );
         linecuts.push({
           position: lc.pixelPosition,
@@ -725,13 +734,12 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
         });
       });
 
-      // Add vertical linecuts (use qXMatrix for position-aware width calculation)
+      // Add vertical linecuts (use qXVector for position-aware width calculation)
       verticalLinecuts.forEach((lc) => {
         const pixelWidth = calculateQSpaceToPixelWidth(
           lc.position,
           lc.width,
-          qXMatrix,
-          "vertical"
+          qXVector
         );
         linecuts.push({
           position: lc.pixelPosition,
@@ -743,19 +751,18 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
       });
 
       return linecuts;
-    }, [horizontalLinecuts, verticalLinecuts, qYMatrix, qXMatrix]);
+    }, [horizontalLinecuts, verticalLinecuts, qYVector, qXVector]);
 
     // Transform linecuts to overlay format for right image
     const rightImageLinecuts = useMemo(() => {
       const linecuts: LinecutOverlayProps["linecuts"] = [];
 
-      // Add horizontal linecuts (use qYMatrix for position-aware width calculation)
+      // Add horizontal linecuts (use qYVector for position-aware width calculation)
       horizontalLinecuts.forEach((lc) => {
         const pixelWidth = calculateQSpaceToPixelWidth(
           lc.position,
           lc.width,
-          qYMatrix,
-          "horizontal"
+          qYVector
         );
         linecuts.push({
           position: lc.pixelPosition,
@@ -766,13 +773,12 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
         });
       });
 
-      // Add vertical linecuts (use qXMatrix for position-aware width calculation)
+      // Add vertical linecuts (use qXVector for position-aware width calculation)
       verticalLinecuts.forEach((lc) => {
         const pixelWidth = calculateQSpaceToPixelWidth(
           lc.position,
           lc.width,
-          qXMatrix,
-          "vertical"
+          qXVector
         );
         linecuts.push({
           position: lc.pixelPosition,
@@ -784,14 +790,7 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
       });
 
       return linecuts;
-    }, [horizontalLinecuts, verticalLinecuts, qYMatrix, qXMatrix]);
-
-    // Derive 1D q-vectors from 2D matrices for inclined linecut calculations
-    const qXVector = useMemo(() => qXMatrix?.[0] ?? [], [qXMatrix]);
-    const qYVector = useMemo(
-      () => qYMatrix?.map((row) => row[0]) ?? [],
-      [qYMatrix]
-    );
+    }, [horizontalLinecuts, verticalLinecuts, qYVector, qXVector]);
 
     // Calculate inclined linecut pixel width using position and angle-aware calculation
     const calculateInclinedPixelWidth = useCallback(
@@ -803,16 +802,8 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
       ): number => {
         if (!qXVector.length || !qYVector.length) {
           // Fallback to average of horizontal/vertical if vectors not available
-          const hPixelWidth = calculateLocalPixelWidth(
-            qWidth,
-            qYMatrix,
-            "horizontal"
-          );
-          const vPixelWidth = calculateLocalPixelWidth(
-            qWidth,
-            qXMatrix,
-            "vertical"
-          );
+          const hPixelWidth = calculateLocalPixelWidth(qWidth, qYVector);
+          const vPixelWidth = calculateLocalPixelWidth(qWidth, qXVector);
           return (hPixelWidth + vPixelWidth) / 2;
         }
         return calculateInclinedQSpaceToPixelWidth(
@@ -824,7 +815,7 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
           qYVector
         );
       },
-      [qXVector, qYVector, qXMatrix, qYMatrix, calculateLocalPixelWidth]
+      [qXVector, qYVector, calculateLocalPixelWidth]
     );
 
     // Transform inclined linecuts to overlay format for left image
@@ -925,7 +916,7 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
       <div className="flex flex-col w-full h-full min-h-0">
         {/* Toolbar - shrink-0 ensures it only takes needed height */}
         <div className="shrink-0">
-          <Toolbar>
+          <Toolbar interactions={INTERACTION_HELP}>
             <ToggleBtn
               label="Q-Space"
               Icon={ChartLineIcon as ToolbarIcon}
@@ -1019,6 +1010,13 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
               onToggle={() => setShowGrid(!showGrid)}
             />
 
+            <ToggleBtn
+              label="Sync zoom"
+              Icon={LinkSimpleIcon as ToolbarIcon}
+              value={syncZoom}
+              onToggle={onSyncZoomToggle}
+            />
+
             <Separator />
 
             <SnapshotMenu
@@ -1085,8 +1083,8 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
               beamCenterY={calibrationParams?.beam_center_y}
               maxQValue={maxQValue}
               showQSpaceAxes={showQSpaceAxes}
-              qXMatrix={qXMatrix}
-              qYMatrix={qYMatrix}
+              qXVector={qXVector}
+              qYVector={qYVector}
               experimentType={experimentType}
               maskData={displayMask.data}
               maskShape={displayMask.shape}
@@ -1134,8 +1132,8 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
               beamCenterY={calibrationParams?.beam_center_y}
               maxQValue={maxQValue}
               showQSpaceAxes={showQSpaceAxes}
-              qXMatrix={qXMatrix}
-              qYMatrix={qYMatrix}
+              qXVector={qXVector}
+              qYVector={qYVector}
               experimentType={experimentType}
               maskData={displayMask.data}
               maskShape={displayMask.shape}
@@ -1181,8 +1179,8 @@ const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
               isLoading={isComparisonLoading}
               loadingMessage="Calculating..."
               showQSpaceAxes={showQSpaceAxes}
-              qXMatrix={qXMatrix}
-              qYMatrix={qYMatrix}
+              qXVector={qXVector}
+              qYVector={qYVector}
               experimentType={experimentType}
               beamCenterX={calibrationParams?.beam_center_x}
               beamCenterY={calibrationParams?.beam_center_y}

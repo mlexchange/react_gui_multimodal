@@ -1,4 +1,4 @@
-import { ScaleType } from "@h5web/lib";
+import { ScaleType, type AxisScaleType } from "@h5web/lib";
 
 // ============================================================================
 // Color Palettes
@@ -51,4 +51,14 @@ export const SCALE_OPTIONS: ColorScaleType[] = [
   ScaleType.Log,
   ScaleType.SymLog,
   ScaleType.Sqrt
+];
+
+/**
+ * Available axis scale options (Linear, Log, SymLog) for line plot Y-axes.
+ * These are the scale types supported by h5web's VisCanvas ordinateConfig.
+ */
+export const AXIS_SCALE_OPTIONS: AxisScaleType[] = [
+  ScaleType.Linear,
+  ScaleType.Log,
+  ScaleType.SymLog
 ];

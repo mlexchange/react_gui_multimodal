@@ -7,7 +7,8 @@ import {
   XAxisZoom,
   YAxisZoom,
   Pan,
-  SelectToZoom
+  SelectToZoom,
+  type AxisScaleType
 } from "@h5web/lib";
 import { Linecut, LinecutData, LinecutDirection } from "./types";
 import { H5WebLegend, LegendEntry } from "./H5WebLegend";
@@ -16,7 +17,8 @@ import {
   Domain,
   calculateCurveDomains,
   createTooltipRenderer,
-  clampDomainToData
+  clampDomainToData,
+  getSafeDomainForScale
 } from "./utils/linePlotUtils";
 
 interface LinecutFigProps {
@@ -24,19 +26,20 @@ interface LinecutFigProps {
   linecuts: Linecut[];
   zoomedXPixelRange: [number, number] | null;
   zoomedYPixelRange: [number, number] | null;
-  qXMatrix: number[][];
-  qYMatrix: number[][];
+  qXVector: number[];
+  qYVector: number[];
   units?: string;
   leftLinecutData?: Map<number, LinecutData>;
   rightLinecutData?: Map<number, LinecutData>;
+  yScaleType: AxisScaleType;
 }
 
 interface DirectionConfig {
   xAxisLabel: (units: string) => string;
   positionLabel: (pos: number, units: string) => string;
-  extractZoomVector: (matrices: {
-    qXMatrix: number[][];
-    qYMatrix: number[][];
+  extractZoomVector: (vectors: {
+    qXVector: number[];
+    qYVector: number[];
   }) => number[];
   getZoomPixelRange: (ranges: {
     xRange: [number, number] | null;
@@ -52,12 +55,7 @@ const directionConfig: Record<LinecutDirection, DirectionConfig> = {
   horizontal: {
     xAxisLabel: (units) => `qₓ (${units})`,
     positionLabel: (pos, units) => `qᵧ=${pos.toFixed(1)} ${units}`,
-    extractZoomVector: ({ qXMatrix }) => {
-      if (qXMatrix && qXMatrix.length > 0 && qXMatrix[0]) {
-        return qXMatrix[0];
-      }
-      return [];
-    },
+    extractZoomVector: ({ qXVector }) => qXVector ?? [],
     getZoomPixelRange: ({ xRange }) => xRange,
     isInRange: (linecut, { yRange }) => {
       if (!yRange) return false;
@@ -70,12 +68,7 @@ const directionConfig: Record<LinecutDirection, DirectionConfig> = {
   vertical: {
     xAxisLabel: (units) => `qᵧ (${units})`,
     positionLabel: (pos, units) => `qₓ=${pos.toFixed(1)} ${units}`,
-    extractZoomVector: ({ qYMatrix }) => {
-      if (qYMatrix && qYMatrix.length > 0) {
-        return qYMatrix.map((row) => row[0]);
-      }
-      return [];
-    },
+    extractZoomVector: ({ qYVector }) => qYVector ?? [],
     getZoomPixelRange: ({ yRange }) => yRange,
     isInRange: (linecut, { xRange }) => {
       if (!xRange) return false;
@@ -94,120 +87,127 @@ const LinecutFig = forwardRef<HTMLDivElement, LinecutFigProps>(
       linecuts,
       zoomedXPixelRange,
       zoomedYPixelRange,
-      qXMatrix,
-      qYMatrix,
+      qXVector,
+      qYVector,
       units = "nm⁻¹",
       leftLinecutData,
-      rightLinecutData
+      rightLinecutData,
+      yScaleType
     },
     ref
   ) => {
     const config = directionConfig[direction];
 
     const zoomVector = useMemo(
-      () => config.extractZoomVector({ qXMatrix, qYMatrix }),
-      [qXMatrix, qYMatrix, config]
+      () => config.extractZoomVector({ qXVector, qYVector }),
+      [qXVector, qYVector, config]
     );
 
     // Prepare curve data for H5Web
-    const { curves, legendEntries, xDomain, yDomain } = useMemo(() => {
-      const visibleLinecuts = linecuts.filter((linecut) => !linecut.hidden);
-      const curveData: CurveData[] = [];
-      const entries: LegendEntry[] = [];
+    const { curves, legendEntries, xDomain, yDomain, yMinPositive } =
+      useMemo(() => {
+        const visibleLinecuts = linecuts.filter((linecut) => !linecut.hidden);
+        const curveData: CurveData[] = [];
+        const entries: LegendEntry[] = [];
 
-      visibleLinecuts.forEach((linecut) => {
-        const positionLabel = config.positionLabel(linecut.position, units);
-        const leftApiData = leftLinecutData?.get(linecut.id);
-        const rightApiData = rightLinecutData?.get(linecut.id);
+        visibleLinecuts.forEach((linecut) => {
+          const positionLabel = config.positionLabel(linecut.position, units);
+          const leftApiData = leftLinecutData?.get(linecut.id);
+          const rightApiData = rightLinecutData?.get(linecut.id);
 
-        if (leftApiData && leftApiData.qValues.length > 0) {
-          const label = `Left #${linecut.id} (${positionLabel})`;
-          curveData.push({
-            id: `left-${linecut.id}`,
-            abscissas: leftApiData.qValues,
-            ordinates: leftApiData.intensities,
-            color: linecut.leftColor,
-            label
-          });
-          entries.push({
-            id: `left-${linecut.id}`,
-            label,
-            color: linecut.leftColor
-          });
-        }
+          if (leftApiData && leftApiData.qValues.length > 0) {
+            const label = `Left #${linecut.id} (${positionLabel})`;
+            curveData.push({
+              id: `left-${linecut.id}`,
+              abscissas: leftApiData.qValues,
+              ordinates: leftApiData.intensities,
+              color: linecut.leftColor,
+              label
+            });
+            entries.push({
+              id: `left-${linecut.id}`,
+              label,
+              color: linecut.leftColor
+            });
+          }
 
-        if (rightApiData && rightApiData.qValues.length > 0) {
-          const label = `Right #${linecut.id} (${positionLabel})`;
-          curveData.push({
-            id: `right-${linecut.id}`,
-            abscissas: rightApiData.qValues,
-            ordinates: rightApiData.intensities,
-            color: linecut.rightColor,
-            label
-          });
-          entries.push({
-            id: `right-${linecut.id}`,
-            label,
-            color: linecut.rightColor
-          });
-        }
-      });
+          if (rightApiData && rightApiData.qValues.length > 0) {
+            const label = `Right #${linecut.id} (${positionLabel})`;
+            curveData.push({
+              id: `right-${linecut.id}`,
+              abscissas: rightApiData.qValues,
+              ordinates: rightApiData.intensities,
+              color: linecut.rightColor,
+              label
+            });
+            entries.push({
+              id: `right-${linecut.id}`,
+              label,
+              color: linecut.rightColor
+            });
+          }
+        });
 
-      const { xDomain: baseDomain, yDomain: calculatedYDomain } =
-        calculateCurveDomains(curveData);
+        const {
+          xDomain: baseDomain,
+          yDomain: calculatedYDomain,
+          yMinPositive
+        } = calculateCurveDomains(curveData);
 
-      const hasLinecutInRange = visibleLinecuts.some((linecut) =>
-        config.isInRange(linecut, {
+        const hasLinecutInRange = visibleLinecuts.some((linecut) =>
+          config.isInRange(linecut, {
+            xRange: zoomedXPixelRange,
+            yRange: zoomedYPixelRange
+          })
+        );
+        const zoomPixelRange = config.getZoomPixelRange({
           xRange: zoomedXPixelRange,
           yRange: zoomedYPixelRange
-        })
-      );
-      const zoomPixelRange = config.getZoomPixelRange({
-        xRange: zoomedXPixelRange,
-        yRange: zoomedYPixelRange
-      });
+        });
 
-      let finalXDomain: Domain = baseDomain;
-      if (zoomPixelRange && hasLinecutInRange && zoomVector.length > 0) {
-        const rawIdx0 = Math.round(zoomPixelRange[0]);
-        const rawIdx1 = Math.round(zoomPixelRange[1]);
-        const minIdx = Math.max(0, Math.min(rawIdx0, rawIdx1));
-        const maxIdx = Math.min(
-          zoomVector.length - 1,
-          Math.max(rawIdx0, rawIdx1)
-        );
+        let finalXDomain: Domain = baseDomain;
+        if (zoomPixelRange && hasLinecutInRange && zoomVector.length > 0) {
+          const rawIdx0 = Math.round(zoomPixelRange[0]);
+          const rawIdx1 = Math.round(zoomPixelRange[1]);
+          const minIdx = Math.max(0, Math.min(rawIdx0, rawIdx1));
+          const maxIdx = Math.min(
+            zoomVector.length - 1,
+            Math.max(rawIdx0, rawIdx1)
+          );
 
-        if (minIdx < maxIdx && minIdx >= 0 && maxIdx < zoomVector.length) {
-          const qMin = zoomVector[minIdx];
-          const qMax = zoomVector[maxIdx];
-          if (
-            qMin !== undefined &&
-            qMax !== undefined &&
-            Number.isFinite(qMin) &&
-            Number.isFinite(qMax)
-          ) {
-            const sortedQ: Domain = qMin < qMax ? [qMin, qMax] : [qMax, qMin];
-            finalXDomain = clampDomainToData(sortedQ, baseDomain) ?? baseDomain;
+          if (minIdx < maxIdx && minIdx >= 0 && maxIdx < zoomVector.length) {
+            const qMin = zoomVector[minIdx];
+            const qMax = zoomVector[maxIdx];
+            if (
+              qMin !== undefined &&
+              qMax !== undefined &&
+              Number.isFinite(qMin) &&
+              Number.isFinite(qMax)
+            ) {
+              const sortedQ: Domain = qMin < qMax ? [qMin, qMax] : [qMax, qMin];
+              finalXDomain =
+                clampDomainToData(sortedQ, baseDomain) ?? baseDomain;
+            }
           }
         }
-      }
 
-      return {
-        curves: curveData,
-        legendEntries: entries,
-        xDomain: finalXDomain,
-        yDomain: calculatedYDomain
-      };
-    }, [
-      linecuts,
-      units,
-      config,
-      leftLinecutData,
-      rightLinecutData,
-      zoomedXPixelRange,
-      zoomedYPixelRange,
-      zoomVector
-    ]);
+        return {
+          curves: curveData,
+          legendEntries: entries,
+          xDomain: finalXDomain,
+          yDomain: calculatedYDomain,
+          yMinPositive
+        };
+      }, [
+        linecuts,
+        units,
+        config,
+        leftLinecutData,
+        rightLinecutData,
+        zoomedXPixelRange,
+        zoomedYPixelRange,
+        zoomVector
+      ]);
 
     // Show message if no data
     if (curves.length === 0) {
@@ -233,9 +233,14 @@ const LinecutFig = forwardRef<HTMLDivElement, LinecutFigProps>(
               label: config.xAxisLabel(units)
             }}
             ordinateConfig={{
-              visDomain: yDomain,
+              visDomain: getSafeDomainForScale(
+                yDomain,
+                yScaleType,
+                yMinPositive
+              ),
               showGrid: true,
-              label: "Intensity"
+              label: "Intensity",
+              scaleType: yScaleType
             }}
             aspect="auto"
           >

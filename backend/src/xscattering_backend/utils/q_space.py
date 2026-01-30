@@ -13,7 +13,6 @@ GISAXS:
 """
 
 from dataclasses import dataclass
-from typing import Tuple
 
 import numpy as np
 from pyFAI import units
@@ -30,10 +29,10 @@ logger = get_logger(__name__)
 
 
 def compute_saxs_q_matrices(
-    image_shape: Tuple[int, int],
+    image_shape: tuple[int, int],
     calibration: dict,
     invert_qy: bool = True,
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Compute Q-value matrices (qx, qy) for a SAXS image using pyFAI.
 
@@ -102,7 +101,7 @@ class GISAXSTransformResult:
     qoop_pixel_matrix: np.ndarray
 
 
-def _create_fiber_integrator(calibration: dict) -> FiberIntegrator:
+def create_fiber_integrator(calibration: dict) -> FiberIntegrator:
     """
     Create and configure a FiberIntegrator from calibration parameters.
 
@@ -131,6 +130,7 @@ def _create_fiber_integrator(calibration: dict) -> FiberIntegrator:
 def transform_gisaxs_to_qspace(
     image_array: np.ndarray,
     calibration: dict,
+    mask: np.ndarray | None = None,
 ) -> GISAXSTransformResult:
     """
     Transform GISAXS detector image to regular Q-space grid.
@@ -145,9 +145,6 @@ def transform_gisaxs_to_qspace(
     "wedge" of missing data (NaN) where the detector doesn't cover certain
     Q-space regions.
 
-    Note: Masking should be applied to image_array before calling this function
-    (masked pixels as NaN). The NaN values propagate through the transformation.
-
     Args:
         image_array: Detector image with masked pixels as NaN, shape (height, width)
         calibration: Dict with:
@@ -157,6 +154,8 @@ def transform_gisaxs_to_qspace(
             - wavelength: X-ray wavelength in Angstroms
             - incident_angle: Incident angle in degrees (required)
             - tilt, tilt_plan_rotation: Optional tilt parameters in degrees
+        mask: Optional binary mask array (0=valid, 1=masked, pyFAI convention).
+              If provided, passed explicitly to pyFAI for optimized integration.
 
     Returns:
         GISAXSTransformResult with transformed image and Q-coordinate arrays
@@ -164,7 +163,7 @@ def transform_gisaxs_to_qspace(
     Raises:
         ValueError: If incident_angle is not provided in calibration
     """
-    fi = _create_fiber_integrator(calibration)
+    fi = create_fiber_integrator(calibration)
 
     # Get incident angle (required for GISAXS), convert to radians
     incident_angle_deg = calibration.get("incident_angle")
@@ -184,8 +183,8 @@ def transform_gisaxs_to_qspace(
 
     # Perform grazing incidence integration (2D transformation)
     # sample_orientation=1: horizontal sample, detector above sample
-    # Note: No mask passed - masked pixels should already be NaN in image_array
-    result = fi.integrate2d_grazing_incidence(
+    # Pass mask explicitly to pyFAI for optimized integration paths
+    integrate_kwargs = dict(
         data=image_array,
         npt_ip=npt_ip,
         npt_oop=npt_oop,
@@ -196,6 +195,22 @@ def transform_gisaxs_to_qspace(
         sample_orientation=1,
         angle_unit="rad",
     )
+    if mask is not None:
+        integrate_kwargs["mask"] = mask
+
+    result = fi.integrate2d_grazing_incidence(**integrate_kwargs)
+
+    # Replace empty bins with NaN. pyFAI puts 0.0 in bins where no detector
+    # pixels contribute (count == 0). Using NaN instead lets the frontend
+    # distinguish "no Q-space coverage" from "real low-intensity signal",
+    # and excludes these bins from color scale domain calculations.
+    transformed_image = result.intensity.copy()
+    if hasattr(result, "count") and result.count is not None:
+        transformed_image[result.count == 0] = np.nan
+    else:
+        # Fallback: if count is unavailable, use exact-zero heuristic.
+        # Real scattering data virtually never has exactly 0.0 intensity.
+        transformed_image[transformed_image == 0.0] = np.nan
 
     # Compute pixel-space Q matrices for overlay mapping
     # These give qip/qoop value at each detector pixel
@@ -228,7 +243,7 @@ def transform_gisaxs_to_qspace(
     )
 
     return GISAXSTransformResult(
-        transformed_image=result.intensity,
+        transformed_image=transformed_image,
         qip_values=result.inplane,
         qoop_values=qoop_values,
         qip_pixel_matrix=qip_pixel_matrix,

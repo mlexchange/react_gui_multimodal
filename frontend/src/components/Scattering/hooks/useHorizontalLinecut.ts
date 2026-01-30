@@ -17,7 +17,7 @@ import { useThrottledCallback } from "./useThrottledCallback";
 // ============================================================================
 
 export interface UseHorizontalLinecutProps extends UseLinecutBaseProps {
-  qYMatrix: number[][];
+  qYVector: number[];
 }
 
 // ============================================================================
@@ -25,7 +25,7 @@ export interface UseHorizontalLinecutProps extends UseLinecutBaseProps {
 // ============================================================================
 
 export default function useHorizontalLinecut({
-  qYMatrix,
+  qYVector,
   leftScanUri,
   rightScanUri,
   calibrationParams,
@@ -42,22 +42,18 @@ export default function useHorizontalLinecut({
       let minQ = Infinity;
       let maxQ = -Infinity;
 
-      if (qYMatrix && qYMatrix.length > 0) {
-        for (let y = 0; y < qYMatrix.length; y++) {
-          if (qYMatrix[y] && qYMatrix[y][0] !== undefined) {
-            minQ = Math.min(minQ, qYMatrix[y][0]);
-            maxQ = Math.max(maxQ, qYMatrix[y][0]);
+      if (qYVector && qYVector.length > 0) {
+        for (let y = 0; y < qYVector.length; y++) {
+          if (qYVector[y] !== undefined) {
+            minQ = Math.min(minQ, qYVector[y]);
+            maxQ = Math.max(maxQ, qYVector[y]);
           }
         }
       }
 
       const defaultQ =
         minQ !== Infinity && maxQ !== -Infinity ? (minQ + maxQ) / 2 : 0;
-      const pixelPosition = findPixelPositionForQValue(
-        defaultQ,
-        qYMatrix,
-        "horizontal"
-      );
+      const pixelPosition = findPixelPositionForQValue(defaultQ, qYVector);
 
       return {
         id,
@@ -70,7 +66,7 @@ export default function useHorizontalLinecut({
         type: "horizontal"
       };
     },
-    [qYMatrix]
+    [qYVector]
   );
 
   const getLinecutParams = useCallback((linecut: Linecut) => {
@@ -112,9 +108,9 @@ export default function useHorizontalLinecut({
 
   const findClosestPixelForQValue = useCallback(
     (targetQ: number): number => {
-      return findPixelPositionForQValue(targetQ, qYMatrix, "horizontal");
+      return findPixelPositionForQValue(targetQ, qYVector);
     },
-    [qYMatrix]
+    [qYVector]
   );
 
   // =========================================================================
@@ -161,12 +157,12 @@ export default function useHorizontalLinecut({
   );
 
   // =========================================================================
-  // Horizontal-specific: sync pixel positions when qYMatrix changes
+  // Horizontal-specific: sync pixel positions when qYVector changes
   // =========================================================================
 
   const { setLinecuts } = base;
   useEffect(() => {
-    if (!qYMatrix || !qYMatrix.length) return;
+    if (!qYVector || !qYVector.length) return;
 
     setLinecuts((prev) => {
       if (!prev.length) return prev;
@@ -176,7 +172,7 @@ export default function useHorizontalLinecut({
         return { ...linecut, pixelPosition };
       });
     });
-  }, [qYMatrix, findClosestPixelForQValue, setLinecuts]);
+  }, [qYVector, findClosestPixelForQValue, setLinecuts]);
 
   // =========================================================================
   // Return with horizontal-specific naming

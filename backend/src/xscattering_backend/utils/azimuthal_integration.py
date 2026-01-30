@@ -1,7 +1,5 @@
 """Azimuthal integration utilities using pyFAI."""
 
-from typing import Optional, Tuple
-
 import numpy as np
 from pyFAI.integrator.azimuthal import AzimuthalIntegrator
 
@@ -34,20 +32,37 @@ def create_azimuthal_integrator(
 def integrate_1d(
     ai: AzimuthalIntegrator,
     image_array: np.ndarray,
-    azimuth_range: Optional[Tuple[float, float]] = None,
-    q_range: Optional[Tuple[float, float]] = None,
-    npt: int = 500,
-) -> Tuple[np.ndarray, np.ndarray]:
-    """Perform 1D azimuthal integration. Returns (q_values, intensities)."""
+    azimuth_range: tuple[float, float] | None = None,
+    q_range: tuple[float, float] | None = None,
+    npt: int | None = None,
+    mask: np.ndarray | None = None,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Perform 1D azimuthal integration. Returns (q_values, intensities).
+
+    Args:
+        ai: Configured AzimuthalIntegrator instance
+        image_array: 2D detector image
+        azimuth_range: Optional (start, end) azimuthal range in degrees
+        q_range: Optional (start, end) Q-range in nm^-1
+        npt: Number of output points. Defaults to max(image_array.shape)
+             to match detector resolution.
+        mask: Optional binary mask (0=valid, 1=masked, pyFAI convention)
+    """
+    if npt is None:
+        npt = max(image_array.shape)
+
     method = ("full", "csr", "cython")
 
-    result = ai.integrate1d(
-        image_array,
-        npt,
+    integrate_kwargs = dict(
+        npt=npt,
         method=method,
         azimuth_range=azimuth_range,
         radial_range=q_range,
     )
+    if mask is not None:
+        integrate_kwargs["mask"] = mask
+
+    result = ai.integrate1d(image_array, **integrate_kwargs)
 
     # Return the result directly from integrate1d which respects the radial_range
     return result.radial, result.intensity

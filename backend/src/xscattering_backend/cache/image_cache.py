@@ -28,8 +28,9 @@ logger = get_logger(__name__)
 class ProcessedImageData:
     """Processed image data."""
 
-    array: np.ndarray  # 2D float32 array
+    array: np.ndarray  # 2D float32 array with NaN for masked pixels
     shape: tuple[int, int]  # (height, width)
+    mask: np.ndarray | None  # 0=valid, 1=masked (pyFAI convention)
 
 
 def _load_mask_array(mask_uri: str) -> np.ndarray | None:
@@ -96,7 +97,7 @@ def _fetch_and_process_image(
                 mask_array = None
 
     # Apply processing (converts to float32, masks negatives/NaN, applies detector mask)
-    processed_image = get_processed_image(image_array, mask_detector=mask_array)
+    processed_image, combined_mask = get_processed_image(image_array, mask_detector=mask_array)
 
     # Ensure float32 (avoid redundant conversion if already float32)
     if processed_image.dtype != np.float32:
@@ -105,6 +106,7 @@ def _fetch_and_process_image(
     return ProcessedImageData(
         array=processed_image,
         shape=processed_image.shape,
+        mask=combined_mask,
     )
 
 

@@ -79,6 +79,15 @@ export default function useScattering() {
   const [qXMatrix, setQXMatrix] = useState<number[][]>([]);
   const [qYMatrix, setQYMatrix] = useState<number[][]>([]);
 
+  // GISAXS 1D axis values from the Q-space transform
+  // These define the uniform Q-space grid axes for the transformed image
+  const [gisaxsQipAxisValues, setGisaxsQipAxisValues] = useState<
+    number[] | null
+  >(null);
+  const [gisaxsQoopAxisValues, setGisaxsQoopAxisValues] = useState<
+    number[] | null
+  >(null);
+
   // Note: Experiment type change handling is done in Scattering.tsx
   // This hook only manages the state, not the change detection logic
 
@@ -101,6 +110,8 @@ export default function useScattering() {
     if (experimentType === "GISAXS") {
       setQXMatrix([]);
       setQYMatrix([]);
+      setGisaxsQipAxisValues(null);
+      setGisaxsQoopAxisValues(null);
       return;
     }
 
@@ -153,14 +164,26 @@ export default function useScattering() {
   ]);
 
   /**
-   * Set Q matrices directly from GISAXS pixel Q data (from image fetch)
-   * This ensures the same pyFAI FiberIntegrator calculations are used for
-   * both the image display and the linecut sliders.
+   * Set Q matrices and axis values from GISAXS data (from image fetch).
+   *
+   * Stores both:
+   * - Pixel-space Q matrices (2D, Q value at each detector pixel)
+   * - Q-space axis values (1D, uniform grid from the pyFAI transform)
+   *
+   * The 1D axis values are used in Q-space mode for slider bounds and overlay
+   * positions, since the pixel-space matrices don't match the transformed image.
    */
   const setGisaxsQMatrices = useCallback(
-    (qipMatrix: number[][], qoopMatrix: number[][]) => {
+    (
+      qipMatrix: number[][],
+      qoopMatrix: number[][],
+      qipAxisValues?: number[],
+      qoopAxisValues?: number[]
+    ) => {
       setQXMatrix(qipMatrix);
       setQYMatrix(qoopMatrix);
+      setGisaxsQipAxisValues(qipAxisValues ?? null);
+      setGisaxsQoopAxisValues(qoopAxisValues ?? null);
     },
     []
   );
@@ -283,6 +306,8 @@ export default function useScattering() {
   const clearCalibrationState = useCallback(() => {
     setQXMatrix([]);
     setQYMatrix([]);
+    setGisaxsQipAxisValues(null);
+    setGisaxsQoopAxisValues(null);
     setCalibrationParams(null);
     setMaskUri(null);
     setMaskData(null);
@@ -320,6 +345,8 @@ export default function useScattering() {
     qXMatrix,
     qYMatrix,
     setGisaxsQMatrices, // For GISAXS: set Q matrices from image fetch
+    gisaxsQipAxisValues, // 1D axis values for Q-space grid
+    gisaxsQoopAxisValues, // 1D axis values for Q-space grid
 
     // Mask
     maskUri,

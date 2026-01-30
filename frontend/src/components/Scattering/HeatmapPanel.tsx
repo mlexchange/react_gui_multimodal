@@ -24,7 +24,8 @@ import {
   AXIS_LEFT_OFFSET,
   AXIS_LEFT_OFFSET_NO_LABEL,
   AXIS_RIGHT_OFFSET,
-  formatTickAsInteger
+  formatTickAsInteger,
+  binarySearchClosest
 } from "./utils/h5webUtils";
 import {
   ZoomBroadcaster,
@@ -66,8 +67,8 @@ export interface HeatmapPanelProps {
   isLoading?: boolean;
   loadingMessage?: string;
   showQSpaceAxes?: boolean;
-  qXMatrix?: number[][];
-  qYMatrix?: number[][];
+  qXVector?: number[];
+  qYVector?: number[];
   experimentType?: string;
   maskData?: Uint8Array | null;
   maskShape?: [number, number] | null;
@@ -118,8 +119,8 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
   isLoading = false,
   loadingMessage,
   showQSpaceAxes = false,
-  qXMatrix = [],
-  qYMatrix = [],
+  qXVector = [],
+  qYVector = [],
   experimentType = "SAXS",
   maskData,
   maskShape,
@@ -185,17 +186,17 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
       };
     }
 
-    // For SAXS or GISAXS pixel mode, use 2D matrix
-    if (!qXMatrix?.length || !qXMatrix[0]?.length) {
+    // For SAXS or GISAXS pixel mode, use 1D vector
+    if (!qXVector?.length) {
       return formatTickAsInteger;
     }
     return (pixelX: number) => {
       const col = Math.round(Math.max(0, Math.min(cols - 1, pixelX)));
-      const qValue = qXMatrix[0]?.[col];
+      const qValue = qXVector[col];
       if (qValue === undefined) return "";
       return formatQValue(qValue);
     };
-  }, [showQSpaceAxes, qXMatrix, cols, isGisaxsQSpace, gisaxsQipValues]);
+  }, [showQSpaceAxes, qXVector, cols, isGisaxsQSpace, gisaxsQipValues]);
 
   const formatYTick = useMemo(() => {
     if (!showQSpaceAxes) {
@@ -217,17 +218,34 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
       };
     }
 
-    // For SAXS or GISAXS pixel mode, use 2D matrix
-    if (!qYMatrix?.length) {
+    // For SAXS or GISAXS pixel mode, use 1D vector
+    if (!qYVector?.length) {
       return formatTickAsInteger;
     }
     return (pixelY: number) => {
       const row = Math.round(Math.max(0, Math.min(rows - 1, pixelY)));
-      const qValue = qYMatrix[row]?.[0];
+      const qValue = qYVector[row];
       if (qValue === undefined) return "";
       return formatQValue(qValue);
     };
-  }, [showQSpaceAxes, qYMatrix, rows, isGisaxsQSpace, gisaxsQoopValues]);
+  }, [showQSpaceAxes, qYVector, rows, isGisaxsQSpace, gisaxsQoopValues]);
+
+  // In GISAXS Q-space mode, the beam center is at q_ip=0, q_oop=0.
+  // Convert to pixel indices in the Q-space image so the overlay
+  // appears at the correct position.
+  const effectiveBeamCenterX = useMemo(() => {
+    if (isGisaxsQSpace && gisaxsQipValues && beamCenterX !== undefined) {
+      return binarySearchClosest(gisaxsQipValues, 0);
+    }
+    return beamCenterX;
+  }, [isGisaxsQSpace, gisaxsQipValues, beamCenterX]);
+
+  const effectiveBeamCenterY = useMemo(() => {
+    if (isGisaxsQSpace && gisaxsQoopValues && beamCenterY !== undefined) {
+      return binarySearchClosest(gisaxsQoopValues, 0);
+    }
+    return beamCenterY;
+  }, [isGisaxsQSpace, gisaxsQoopValues, beamCenterY]);
 
   // Y-axis flip: always flip=true so pixel 0 is at top (image convention)
   // User's flipYAxis toggle inverts this
@@ -321,8 +339,8 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
                   );
                 }
                 // For SAXS or GISAXS pixel view with Q labels
-                const qx = qXMatrix?.[0]?.[xi];
-                const qy = qYMatrix?.[yi]?.[0];
+                const qx = qXVector?.[xi];
+                const qy = qYVector?.[yi];
                 return (
                   <div className="text-sm">
                     <div>
@@ -379,11 +397,11 @@ export const HeatmapPanel: React.FC<HeatmapPanelProps> = ({
             />
           )}
           {showBeamCenterOverlay &&
-            beamCenterX !== undefined &&
-            beamCenterY !== undefined && (
+            effectiveBeamCenterX !== undefined &&
+            effectiveBeamCenterY !== undefined && (
               <BeamCenterOverlay
-                beamCenterX={beamCenterX}
-                beamCenterY={beamCenterY}
+                beamCenterX={effectiveBeamCenterX}
+                beamCenterY={effectiveBeamCenterY}
               />
             )}
         </VisCanvas>

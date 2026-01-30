@@ -6,26 +6,35 @@ scattering images. These functions are thread-safe (no shared state) and
 designed for parallel execution via ThreadPoolExecutor.
 """
 
-from typing import Literal, Tuple
+from typing import Literal
 
 import numpy as np
+from xscattering_backend.config.logging import get_logger
+from xscattering_backend.utils.q_space import create_fiber_integrator
+
+logger = get_logger(__name__)
 
 
 def find_pixel_position_for_q_value(
     target_q: float,
     q_matrix: np.ndarray,
     direction: Literal["horizontal", "vertical"],
+    reference_index: int | None = None,
 ) -> int:
     """
     Find the pixel index corresponding to a q-value.
 
-    For horizontal linecuts: searches rows using first column of q_y_matrix
-    For vertical linecuts: searches columns using first row of q_x_matrix
+    For horizontal linecuts: searches rows using a column of q_y_matrix
+    For vertical linecuts: searches columns using a row of q_x_matrix
 
     Args:
         target_q: The q-value to find
         q_matrix: 2D array of q-values
         direction: "horizontal" or "vertical"
+        reference_index: Optional index of the reference row/column to search.
+            For horizontal: column index (default: center column).
+            For vertical: row index (default: center row).
+            Using center is more accurate than first row/column for tilted detectors.
 
     Returns:
         Pixel index (row for horizontal, column for vertical)
@@ -34,11 +43,13 @@ def find_pixel_position_for_q_value(
         return 0
 
     if direction == "horizontal":
-        # Use first column for q_y (searches rows)
-        q_vector = q_matrix[:, 0]
+        # Use specified or center column for q_y (searches rows)
+        col = reference_index if reference_index is not None else q_matrix.shape[1] // 2
+        q_vector = q_matrix[:, col]
     else:
-        # Use first row for q_x (searches columns)
-        q_vector = q_matrix[0, :]
+        # Use specified or center row for q_x (searches columns)
+        row = reference_index if reference_index is not None else q_matrix.shape[0] // 2
+        q_vector = q_matrix[row, :]
 
     # Find index of closest q-value
     differences = np.abs(q_vector - target_q)
@@ -80,7 +91,7 @@ def q_to_pixel(
     q_y: float,
     q_x_vector: np.ndarray,
     q_y_vector: np.ndarray,
-) -> Tuple[int, int]:
+) -> tuple[int, int]:
     """
     Convert q-space coordinates to pixel coordinates.
 
@@ -104,7 +115,7 @@ def extract_horizontal_linecut(
     q_y_matrix: np.ndarray,
     position: float,
     width: float = 0.0,
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Extract a horizontal linecut (intensity vs q_x at fixed q_y).
 
@@ -121,8 +132,9 @@ def extract_horizontal_linecut(
     # Find the pixel row for this q_y position
     pixel_row = find_pixel_position_for_q_value(position, q_y_matrix, "horizontal")
 
-    # Get q_x values from first row of q_x_matrix
-    q_values = q_x_matrix[0, :].copy()
+    # Get q_x values from the actual extracted row (not first row)
+    # This is important for tilted detectors where qx varies across rows
+    q_values = q_x_matrix[pixel_row, :].copy()
 
     if width <= 0:
         # Single row
@@ -148,7 +160,7 @@ def extract_vertical_linecut(
     q_y_matrix: np.ndarray,
     position: float,
     width: float = 0.0,
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Extract a vertical linecut (intensity vs q_y at fixed q_x).
 
@@ -165,8 +177,9 @@ def extract_vertical_linecut(
     # Find the pixel column for this q_x position
     pixel_col = find_pixel_position_for_q_value(position, q_x_matrix, "vertical")
 
-    # Get q_y values from first column of q_y_matrix
-    q_values = q_y_matrix[:, 0].copy()
+    # Get q_y values from the actual extracted column (not first column)
+    # This is important for tilted detectors where qy varies across columns
+    q_values = q_y_matrix[:, pixel_col].copy()
 
     if width <= 0:
         # Single column
@@ -245,7 +258,7 @@ def extract_inclined_linecut(
     q_y_position: float,
     angle: float,
     q_width: float = 0.0,
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Extract an inclined linecut along an angled path through the image.
 
@@ -377,100 +390,148 @@ def extract_inclined_linecut(
 
 
 # =============================================================================
-# GISAXS Linecut Extraction (from transformed Q-space grid)
+# GISAXS Linecut Extraction via pyFAI direct integration (single-pass)
 # =============================================================================
 
 
-def extract_gisaxs_horizontal_linecut(
-    transformed_image: np.ndarray,
-    qip_values: np.ndarray,
-    qoop_values: np.ndarray,
+def extract_gisaxs_horizontal_linecut_pyfai(
+    image_array: np.ndarray,
+    mask: np.ndarray | None,
+    calibration: dict,
     qoop_position: float,
     qoop_width: float = 0.0,
-) -> Tuple[np.ndarray, np.ndarray]:
+    npt: int | None = None,
+) -> tuple[np.ndarray, np.ndarray]:
     """
-    Extract horizontal linecut from GISAXS Q-space image.
+    Extract GISAXS horizontal linecut using pyFAI direct integration.
 
-    Returns intensity vs in-plane Q (qip) at fixed out-of-plane Q (qoop).
-    Since the transformed image is on a regular grid, this is simple array slicing.
+    Performs single-pass integration from detector pixels to 1D intensity vs qip
+    at a fixed qoop band, avoiding the double-binning of the old approach
+    (detector → 2D Q-grid → array slice).
 
     Args:
-        transformed_image: 2D intensity array on Q-grid (npt_oop, npt_ip)
-        qip_values: 1D array of in-plane Q values (length npt_ip)
-        qoop_values: 1D array of out-of-plane Q values (length npt_oop)
-        qoop_position: Out-of-plane Q position for the linecut
-        qoop_width: Width in Q-space units for averaging (0 = single row)
+        image_array: 2D detector image (NaN-masked)
+        mask: Binary mask (0=valid, 1=masked, pyFAI convention), or None
+        calibration: Calibration dict with incident_angle, sample_detector_distance, etc.
+        qoop_position: Out-of-plane Q position (in display convention, i.e. negated from pyFAI native)
+        qoop_width: Width in Q-space units for the integration band (0 = minimum single-bin width)
+        npt: Number of output points along the in-plane axis.
+             Defaults to image width to match detector resolution.
 
     Returns:
-        (qip_values, intensities) tuple - intensity vs in-plane Q
+        (qip_values, intensities) tuple
     """
-    if len(qoop_values) == 0 or len(qip_values) == 0:
-        return np.array([]), np.array([])
+    fi = create_fiber_integrator(calibration)
+    incident_angle_rad = np.radians(calibration["incident_angle"])
+    tilt_angle_rad = np.radians(calibration.get("tilt", 0.0))
 
-    # Find index for qoop position
-    qoop_idx = int(np.argmin(np.abs(qoop_values - qoop_position)))
+    # Default npt to image width (in-plane axis matches detector columns)
+    if npt is None:
+        npt = image_array.shape[1]
 
+    # Convert display qoop to pyFAI native convention.
+    # Display convention negates pyFAI's qoop (see transform_gisaxs_to_qspace:
+    # qoop_values = -result.outofplane), so we negate back for pyFAI.
+    pyFAI_qoop_center = -qoop_position
+
+    # Ensure minimum width (at least one bin) so oop_range spans a finite interval
     if qoop_width <= 0:
-        intensities = np.nan_to_num(transformed_image[qoop_idx, :], nan=0.0)
-    else:
-        # Calculate index width from Q width
-        dq = np.abs(qoop_values[1] - qoop_values[0]) if len(qoop_values) > 1 else 1.0
-        idx_width = max(1, int(qoop_width / dq / 2))
+        # Use a small default width, pyFAI needs a finite range
+        # Estimate from detector geometry: roughly pixel_size / distance * wavelength
+        qoop_width = 0.01  # nm^-1, small enough for single-bin behavior
 
-        start_idx = max(0, qoop_idx - idx_width)
-        end_idx = min(len(qoop_values), qoop_idx + idx_width + 1)
+    half_w = qoop_width / 2
+    oop_range = (pyFAI_qoop_center - half_w, pyFAI_qoop_center + half_w)
 
-        slice_data = transformed_image[start_idx:end_idx, :]
-        intensities = np.nanmean(slice_data, axis=0)
-        intensities = np.nan_to_num(intensities, nan=0.0)
+    integrate_kwargs = dict(
+        data=image_array,
+        npt_ip=npt,
+        oop_range=oop_range,
+        vertical_integration=False,
+        sample_orientation=1,
+        incident_angle=incident_angle_rad,
+        tilt_angle=tilt_angle_rad,
+        angle_unit="rad",
+        correctSolidAngle=True,
+    )
+    if mask is not None:
+        integrate_kwargs["mask"] = mask
 
-    return qip_values.copy(), intensities
+    result = fi.integrate1d_grazing_incidence(**integrate_kwargs)
+
+    qip_values = result.integrated
+    intensities = np.nan_to_num(result.intensity, nan=0.0)
+
+    return qip_values, intensities
 
 
-def extract_gisaxs_vertical_linecut(
-    transformed_image: np.ndarray,
-    qip_values: np.ndarray,
-    qoop_values: np.ndarray,
+def extract_gisaxs_vertical_linecut_pyfai(
+    image_array: np.ndarray,
+    mask: np.ndarray | None,
+    calibration: dict,
     qip_position: float,
     qip_width: float = 0.0,
-) -> Tuple[np.ndarray, np.ndarray]:
+    npt: int | None = None,
+) -> tuple[np.ndarray, np.ndarray]:
     """
-    Extract vertical linecut from GISAXS Q-space image.
+    Extract GISAXS vertical linecut using pyFAI direct integration.
 
-    Returns intensity vs out-of-plane Q (qoop) at fixed in-plane Q (qip).
-    Since the transformed image is on a regular grid, this is simple array slicing.
+    Performs single-pass integration from detector pixels to 1D intensity vs qoop
+    at a fixed qip band, avoiding the double-binning of the old approach.
 
     Args:
-        transformed_image: 2D intensity array on Q-grid (npt_oop, npt_ip)
-        qip_values: 1D array of in-plane Q values (length npt_ip)
-        qoop_values: 1D array of out-of-plane Q values (length npt_oop)
-        qip_position: In-plane Q position for the linecut
-        qip_width: Width in Q-space units for averaging (0 = single column)
+        image_array: 2D detector image (NaN-masked)
+        mask: Binary mask (0=valid, 1=masked, pyFAI convention), or None
+        calibration: Calibration dict with incident_angle, sample_detector_distance, etc.
+        qip_position: In-plane Q position
+        qip_width: Width in Q-space units for the integration band (0 = minimum single-bin width)
+        npt: Number of output points along the out-of-plane axis.
+             Defaults to image height to match detector resolution.
 
     Returns:
-        (qoop_values, intensities) tuple - intensity vs out-of-plane Q
+        (qoop_values, intensities) tuple - qoop in display convention (negated from pyFAI)
     """
-    if len(qoop_values) == 0 or len(qip_values) == 0:
-        return np.array([]), np.array([])
+    fi = create_fiber_integrator(calibration)
+    incident_angle_rad = np.radians(calibration["incident_angle"])
+    tilt_angle_rad = np.radians(calibration.get("tilt", 0.0))
 
-    # Find index for qip position
-    qip_idx = int(np.argmin(np.abs(qip_values - qip_position)))
+    # Default npt to image height (out-of-plane axis matches detector rows)
+    if npt is None:
+        npt = image_array.shape[0]
 
+    # qip is not sign-inverted between pyFAI and display convention
     if qip_width <= 0:
-        intensities = np.nan_to_num(transformed_image[:, qip_idx], nan=0.0)
-    else:
-        # Calculate index width from Q width
-        dq = np.abs(qip_values[1] - qip_values[0]) if len(qip_values) > 1 else 1.0
-        idx_width = max(1, int(qip_width / dq / 2))
+        qip_width = 0.01  # nm^-1, small default for single-bin behavior
 
-        start_idx = max(0, qip_idx - idx_width)
-        end_idx = min(len(qip_values), qip_idx + idx_width + 1)
+    half_w = qip_width / 2
+    ip_range = (qip_position - half_w, qip_position + half_w)
 
-        slice_data = transformed_image[:, start_idx:end_idx]
-        intensities = np.nanmean(slice_data, axis=1)
-        intensities = np.nan_to_num(intensities, nan=0.0)
+    integrate_kwargs = dict(
+        data=image_array,
+        npt_oop=npt,
+        ip_range=ip_range,
+        vertical_integration=True,
+        sample_orientation=1,
+        incident_angle=incident_angle_rad,
+        tilt_angle=tilt_angle_rad,
+        angle_unit="rad",
+        correctSolidAngle=True,
+    )
+    if mask is not None:
+        integrate_kwargs["mask"] = mask
 
-    return qoop_values.copy(), intensities
+    result = fi.integrate1d_grazing_incidence(**integrate_kwargs)
+
+    # Negate qoop to match display convention (same as transform_gisaxs_to_qspace)
+    qoop_values = -result.integrated
+    intensities = np.nan_to_num(result.intensity, nan=0.0)
+
+    return qoop_values, intensities
+
+
+# =============================================================================
+# GISAXS Inclined Linecut Extraction (from transformed Q-space grid)
+# =============================================================================
 
 
 def extract_gisaxs_inclined_linecut(
@@ -481,7 +542,7 @@ def extract_gisaxs_inclined_linecut(
     qoop_position: float,
     angle: float,
     q_width: float = 0.0,
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Extract inclined linecut from GISAXS Q-space image.
 

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { ScaleType, type AxisScaleType } from "@h5web/lib";
 import AzimuthalIntegrationFig from "../AzimuthalIntegrationFig";
 import type { AzimuthalIntegration, AzimuthalData } from "../types";
 
@@ -75,7 +76,8 @@ describe("AzimuthalIntegrationFig Component", () => {
     azimuthalData2: [createMockAzimuthalData(1)],
     zoomedXPixelRange: null as [number, number] | null,
     zoomedYPixelRange: null as [number, number] | null,
-    qMagnitudeMatrix: createQMagnitudeMatrix(100, 100)
+    qMagnitudeMatrix: createQMagnitudeMatrix(100, 100),
+    yScaleType: ScaleType.Linear as AxisScaleType
   };
 
   describe("Basic Rendering", () => {

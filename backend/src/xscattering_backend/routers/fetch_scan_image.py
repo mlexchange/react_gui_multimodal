@@ -1,5 +1,3 @@
-from typing import Optional
-
 import msgpack
 import numpy as np
 from fastapi import APIRouter, HTTPException, Query
@@ -14,17 +12,17 @@ router = APIRouter()
 @router.get("/fetch-scan-image")
 async def fetch_scan_image(
     scan_uri: str,
-    mask_uri: Optional[str] = Query(None, description="Optional mask URI or mask_id"),
+    mask_uri: str | None = Query(None, description="Optional mask URI or mask_id"),
     # Experiment type determines whether to include GISAXS transform
     experiment_type: str = Query("SAXS", description="SAXS or GISAXS"),
     # Calibration params (required for GISAXS transform)
-    sample_detector_distance: Optional[float] = Query(None, description="Distance in mm"),
-    beam_center_x: Optional[float] = Query(None, description="Beam center X in pixels"),
-    beam_center_y: Optional[float] = Query(None, description="Beam center Y in pixels"),
-    pixel_size_x: Optional[float] = Query(None, description="Pixel size X in micrometers"),
-    pixel_size_y: Optional[float] = Query(None, description="Pixel size Y in micrometers"),
-    wavelength: Optional[float] = Query(None, description="Wavelength in Angstroms"),
-    incident_angle: Optional[float] = Query(None, description="Incident angle in degrees"),
+    sample_detector_distance: float | None = Query(None, description="Distance in mm"),
+    beam_center_x: float | None = Query(None, description="Beam center X in pixels"),
+    beam_center_y: float | None = Query(None, description="Beam center Y in pixels"),
+    pixel_size_x: float | None = Query(None, description="Pixel size X in micrometers"),
+    pixel_size_y: float | None = Query(None, description="Pixel size Y in micrometers"),
+    wavelength: float | None = Query(None, description="Wavelength in Angstroms"),
+    incident_angle: float | None = Query(None, description="Incident angle in degrees"),
     tilt: float = Query(0.0, description="Tilt angle in degrees"),
     tilt_plan_rotation: float = Query(0.0, description="Tilt plane rotation in degrees"),
 ):
@@ -147,13 +145,13 @@ async def fetch_scan_image(
 
 
 def _has_required_calibration(
-    sample_detector_distance: Optional[float],
-    beam_center_x: Optional[float],
-    beam_center_y: Optional[float],
-    pixel_size_x: Optional[float],
-    pixel_size_y: Optional[float],
-    wavelength: Optional[float],
-    incident_angle: Optional[float],
+    sample_detector_distance: float | None,
+    beam_center_x: float | None,
+    beam_center_y: float | None,
+    pixel_size_x: float | None,
+    pixel_size_y: float | None,
+    wavelength: float | None,
+    incident_angle: float | None,
 ) -> bool:
     """Check if all required calibration parameters are provided."""
     return all(

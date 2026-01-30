@@ -16,9 +16,9 @@ from xscattering_backend.cache.image_cache import get_cached_processed_image
 from xscattering_backend.cache.saxs_q_cache import get_or_compute_saxs_q_matrices
 from xscattering_backend.config.models import SingleLinecutRequest
 from xscattering_backend.utils.linecut_extraction import (
-    extract_gisaxs_horizontal_linecut,
+    extract_gisaxs_horizontal_linecut_pyfai,
     extract_gisaxs_inclined_linecut,
-    extract_gisaxs_vertical_linecut,
+    extract_gisaxs_vertical_linecut_pyfai,
     extract_horizontal_linecut,
     extract_inclined_linecut,
     extract_vertical_linecut,
@@ -151,11 +151,13 @@ def _extract_saxs_linecut(request: SingleLinecutRequest, calibration_dict: dict)
 
 def _extract_gisaxs_linecut(request: SingleLinecutRequest, calibration_dict: dict) -> tuple[np.ndarray, np.ndarray]:
     """
-    Extract linecut from GISAXS transformed Q-space image.
+    Extract linecut from GISAXS experiment.
 
-    Uses the cached GISAXS transform which includes the transformed image
-    and Q-value arrays. Linecuts are extracted using simple array slicing
-    since the transformed image is on a regular Q-grid.
+    For horizontal and vertical linecuts, uses pyFAI direct integration from
+    detector pixels (single-pass, avoiding double-binning artifacts).
+
+    For inclined linecuts, uses the cached GISAXS 2D transform (pyFAI has
+    no native inclined integration).
 
     Args:
         request: The linecut request
@@ -164,51 +166,52 @@ def _extract_gisaxs_linecut(request: SingleLinecutRequest, calibration_dict: dic
     Returns:
         (q_values, intensities) tuple
     """
-    from xscattering_backend.cache.gisaxs_cache import get_or_compute_gisaxs_transform
-
-    # Get the cached GISAXS transform
-    gisaxs_result = get_or_compute_gisaxs_transform(
-        request.scan_uri.lstrip("/"),
-        calibration_dict,
-        mask_uri=request.mask_uri,
-    )
-
-    transformed_image = gisaxs_result.transformed_image
-    qip_values = gisaxs_result.qip_values
-    qoop_values = gisaxs_result.qoop_values
-
-    # Extract linecut based on type
-    # For GISAXS: horizontal = constant qoop (returns qip vs intensity)
-    #             vertical = constant qip (returns qoop vs intensity)
-    if request.linecut_type == "horizontal":
-        if request.position is None:
-            raise ValueError("position (qoop) is required for horizontal linecuts")
-        return extract_gisaxs_horizontal_linecut(
-            transformed_image,
-            qip_values,
-            qoop_values,
-            request.position,  # qoop position
-            request.width or 0.0,  # qoop width
+    # For horizontal and vertical: use pyFAI direct integration from raw detector image
+    if request.linecut_type in ("horizontal", "vertical"):
+        processed = get_cached_processed_image(
+            request.scan_uri.lstrip("/"),
+            mask_uri=request.mask_uri,
         )
-    elif request.linecut_type == "vertical":
-        if request.position is None:
-            raise ValueError("position (qip) is required for vertical linecuts")
-        return extract_gisaxs_vertical_linecut(
-            transformed_image,
-            qip_values,
-            qoop_values,
-            request.position,  # qip position
-            request.width or 0.0,  # qip width
-        )
+
+        if request.linecut_type == "horizontal":
+            if request.position is None:
+                raise ValueError("position (qoop) is required for horizontal linecuts")
+            return extract_gisaxs_horizontal_linecut_pyfai(
+                processed.array,
+                processed.mask,
+                calibration_dict,
+                request.position,  # qoop position (display convention)
+                request.width or 0.0,
+            )
+        else:  # vertical
+            if request.position is None:
+                raise ValueError("position (qip) is required for vertical linecuts")
+            return extract_gisaxs_vertical_linecut_pyfai(
+                processed.array,
+                processed.mask,
+                calibration_dict,
+                request.position,  # qip position
+                request.width or 0.0,
+            )
+
     elif request.linecut_type == "inclined":
+        # Inclined linecuts still use cached 2D transform (no pyFAI native support)
+        from xscattering_backend.cache.gisaxs_cache import get_or_compute_gisaxs_transform
+
+        gisaxs_result = get_or_compute_gisaxs_transform(
+            request.scan_uri.lstrip("/"),
+            calibration_dict,
+            mask_uri=request.mask_uri,
+        )
+
         if request.q_x_position is None or request.q_y_position is None:
             raise ValueError("q_x_position (qip) and q_y_position (qoop) are required for inclined linecuts")
         if request.angle is None:
             raise ValueError("angle is required for inclined linecuts")
         return extract_gisaxs_inclined_linecut(
-            transformed_image,
-            qip_values,
-            qoop_values,
+            gisaxs_result.transformed_image,
+            gisaxs_result.qip_values,
+            gisaxs_result.qoop_values,
             request.q_x_position,  # qip position
             request.q_y_position,  # qoop position
             request.angle,

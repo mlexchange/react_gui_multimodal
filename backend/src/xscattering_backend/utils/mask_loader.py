@@ -7,7 +7,6 @@ with parsing for various file formats.
 
 import io
 import tempfile
-from typing import Tuple
 
 import numpy as np
 from xscattering_backend.cache.mask_cache import (
@@ -192,7 +191,7 @@ def load_mask_from_tiled(mask_uri: str) -> np.ndarray:
 def load_mask_from_bytes(
     file_content: bytes,
     filename: str,
-) -> Tuple[np.ndarray, str]:
+) -> tuple[np.ndarray, str]:
     """
     Load a mask from uploaded file content.
 
