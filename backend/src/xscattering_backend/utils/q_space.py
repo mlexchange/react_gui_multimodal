@@ -166,10 +166,12 @@ def transform_gisaxs_to_qspace(
     """
     fi = _create_fiber_integrator(calibration)
 
-    # Get incident angle in degrees (required for GISAXS)
+    # Get incident angle (required for GISAXS), convert to radians
     incident_angle_deg = calibration.get("incident_angle")
     if incident_angle_deg is None:
         raise ValueError("incident_angle is required for GISAXS transformation")
+    incident_angle_rad = np.radians(incident_angle_deg)
+    tilt_angle_rad = np.radians(calibration.get("tilt", 0.0))
 
     # Match output resolution to detector dimensions for 1:1 mapping
     height, width = image_array.shape
@@ -189,24 +191,23 @@ def transform_gisaxs_to_qspace(
         npt_oop=npt_oop,
         unit_ip="qip_nm^-1",
         unit_oop="qoop_nm^-1",
-        incident_angle=incident_angle_deg,
-        tilt_angle=0.0,
+        incident_angle=incident_angle_rad,
+        tilt_angle=tilt_angle_rad,
         sample_orientation=1,
-        angle_unit="deg",
+        angle_unit="rad",
     )
 
     # Compute pixel-space Q matrices for overlay mapping
     # These give qip/qoop value at each detector pixel
-    # Configure unit objects with incident angle and sample orientation
-    incident_angle_rad = np.radians(incident_angle_deg)
-
     qip_unit = units.get_unit_fiber("qip_nm^-1")
     qip_unit.incident_angle = incident_angle_rad
+    qip_unit.tilt_angle = tilt_angle_rad
     qip_unit.sample_orientation = 1
     qip_pixel_matrix = fi.array_from_unit(shape=image_array.shape, unit=qip_unit)
 
     qoop_unit = units.get_unit_fiber("qoop_nm^-1")
     qoop_unit.incident_angle = incident_angle_rad
+    qoop_unit.tilt_angle = tilt_angle_rad
     qoop_unit.sample_orientation = 1
     qoop_pixel_matrix = fi.array_from_unit(shape=image_array.shape, unit=qoop_unit)
 
