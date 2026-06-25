@@ -1,0 +1,69 @@
+/* H5Web customizations for Scattering visualizations */
+
+/* White toolbar background to match content */
+:root {
+  --h5w-toolbar--bgColor: white;
+}
+
+/* Make horizontal ColorBar thinner */
+[data-horizontal] {
+  height: 3rem !important;
+  grid-template-rows: 1rem 1.75rem !important;
+  padding: 4px 0 !important;
+}
+
+/* Regular font for labels */
+[class*="visCanvas"] {
+  --h5w-axisLabels--fontWeight: 400;
+}
+
+/* Y-axis sizing for panels WITH label (left panel only) */
+[data-has-y-label="true"] [class*="visCanvas"] {
+  grid-template-columns: 81px minmax(0, 1fr) 4px !important;
+}
+[data-has-y-label="true"] [class*="axis"][data-type="ordinate"] {
+  width: 81px !important;
+}
+[data-has-y-label="true"]
+  [class*="axis"][data-type="ordinate"]
+  text[class*="label"] {
+  transform: rotate(-90deg) translateY(20px);
+}
+
+/* Y-axis sizing for panels WITHOUT label (middle/right panels) */
+[data-has-y-label="false"] [class*="visCanvas"] {
+  grid-template-columns: 49px minmax(0, 1fr) 4px !important;
+}
+[data-has-y-label="false"] [class*="axis"][data-type="ordinate"] {
+  width: 49px !important;
+}
+
+/* Summary figure - narrower Y-axis, wider right margin for annotations */
+[data-summary-fig="true"] [class*="visCanvas"] {
+  grid-template-columns: 61px minmax(0, 1fr) 24px !important;
+}
+[data-summary-fig="true"] [class*="axis"][data-type="ordinate"] {
+  width: 61px !important;
+}
+[data-summary-fig="true"]
+  [class*="axis"][data-type="ordinate"]
+  text[class*="label"] {
+  transform: rotate(-90deg) translateY(35px);
+}
+
+/* Linecut figures - narrower Y-axis */
+[data-linecut-fig="true"] [class*="visCanvas"] {
+  grid-template-columns: 76px minmax(0, 1fr) 4px !important;
+}
+[data-linecut-fig="true"] [class*="axis"][data-type="ordinate"] {
+  width: 76px !important;
+}
+[data-linecut-fig="true"]
+  [class*="axis"][data-type="ordinate"]
+  text[class*="label"] {
+  transform: rotate(-90deg) translateY(17px);
+}
+
+.react-tooltip {
+  z-index: 9999;
+}

@@ -5,7 +5,7 @@
 # The frontend service depends on the backend service.
 # The backend service is built from the Dockerfile in the backend directory.
 # The frontend service is built from the Dockerfile in the frontend directory.
-# The frontend service maps port 3000 on the host to port 80 in the container.
+# The frontend service maps port 4000 on the host to port 80 in the container.
 # The backend service maps port 8000 on the host to port 8000 in the container.
 # The backend service has environment variables for Tiled API configuration.
 # The TILED_URI_IMAGES and TILED_URI_MASK environment variables are set to the host's IP address.
@@ -18,10 +18,6 @@
 # This file orchestrates multiple containers and defines how they work together
 # ------------------------------------------------------------------------------
 
-# The version of the docker-compose specification being used
-# 3.8 is a relatively recent version with good feature support
-version: "3.8"
-
 # Define the services (containers) that make up your application
 services:
   # Frontend service definition
@@ -32,10 +28,17 @@ services:
       context: ./frontend
       # The name of the Dockerfile to use (can be omitted if named "Dockerfile")
       dockerfile: Dockerfile
+      # Build arguments - passed to Docker build stage where Vite needs them
+      # These are baked into the static files at build time, not runtime
+      args:
+        - SCATTERING_TILED_URL=${SCATTERING_TILED_URL}
+        - SCATTERING_TILED_API_KEY=${SCATTERING_TILED_API_KEY}
+        - SCATTERING_TILED_CALIBRATION_URL=${SCATTERING_TILED_CALIBRATION_URL:-}
+        - SCATTERING_TILED_CALIBRATION_API_KEY=${SCATTERING_TILED_CALIBRATION_API_KEY:-}
     # Port mapping from host to container
     ports:
-      - "127.0.0.1:3000:80" # Maps port 3000 on your host machine to port 80 in the container
-        # This means you can access the frontend at http://localhost:3000
+      - "127.0.0.1:4000:80" # Maps port 4000 on your host machine to port 80 in the container
+        # This means you can access the frontend at http://localhost:4000
     # Dependency configuration - ensures backend starts before frontend
     depends_on:
       - backend
@@ -58,11 +61,16 @@ services:
     environment:
       # Configuration for the Tiled API that your backend connects to
       # host.docker.internal is a special Docker DNS name that resolves to the host machine
-      - TILED_URI_IMAGES=${TILED_URI_IMAGES}
-      - TILED_URI_MASK=${TILED_URI_MASK}
-      # This uses the host machine's environment variable of the same name
-      # The ${} syntax allows you to pass through environment variables from your host
-      - TILED_API_KEY=${TILED_API_KEY}
+      - SCATTERING_TILED_URL=${SCATTERING_TILED_URL}
+      - SCATTERING_TILED_API_KEY=${SCATTERING_TILED_API_KEY}
+      # Optional: Enable Save to Tiled feature
+      - SCATTERING_TILED_RESULTS_URL=${SCATTERING_TILED_RESULTS_URL:-}
+      - SCATTERING_TILED_RESULTS_API_KEY=${SCATTERING_TILED_RESULTS_API_KEY:-}
+      # Optional: Calibration Tiled server
+      - SCATTERING_TILED_CALIBRATION_URL=${SCATTERING_TILED_CALIBRATION_URL:-}
+      - SCATTERING_TILED_CALIBRATION_API_KEY=${SCATTERING_TILED_CALIBRATION_API_KEY:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 networks:
   # Create a network named "app-network"

@@ -1,0 +1,1203 @@
+import React, {
+  useEffect,
+  useState,
+  useMemo,
+  useCallback,
+  useRef
+} from "react";
+import {
+  ScaleType,
+  Toolbar,
+  Separator,
+  DomainWidget,
+  ColorMapSelector,
+  ScaleSelector,
+  ToggleBtn,
+  type ColorMap,
+  type CustomDomain,
+  type HistogramParams,
+  type InteractionInfo
+} from "@h5web/lib";
+import { getSafeDomainForScale, type Domain } from "./utils/linePlotUtils";
+import {
+  ArrowsHorizontalIcon,
+  ArrowsVerticalIcon,
+  GridFourIcon,
+  StackIcon,
+  ChartLineIcon,
+  MaskHappyIcon,
+  GitDiffIcon,
+  CrosshairSimpleIcon,
+  LinkSimpleIcon
+} from "@phosphor-icons/react";
+
+import { HeatmapPanel, type ZoomState } from "./HeatmapPanel";
+import { PrevNextSelect, LoadingOverlay } from "@/components/shared";
+import { IconButton } from "@/components/ui";
+import { SnapshotMenu } from "./SnapshotMenu";
+import { type LinecutOverlayProps } from "./utils/generateOverlays";
+import { calculateQSpaceToPixelWidth } from "./utils/calculateQSpaceToPixelWidth";
+import { calculateInclinedQSpaceToPixelWidth } from "./utils/calculateQSpaceToPixelWidthInclinedLinecut";
+import { SCALE_OPTIONS, type ColorScaleType } from "./utils/constants";
+import { arrayToNdarray } from "./utils/h5webUtils";
+
+import { notifications } from "@/components/ui";
+import {
+  CalibrationParams,
+  Linecut,
+  InclinedLinecut,
+  AzimuthalIntegration,
+  OperationType,
+  ToolbarIcon,
+  isGisaxsCalibrationComplete
+} from "./types";
+import { getArrayMinMax } from "./utils/getArrayMinAndMax";
+import { calculateDifferenceArray } from "./utils/calculateDifferenceArray";
+import { calculateDivisionArray } from "./utils/calculateDivisionArray";
+import { calculateGlobalPercentiles } from "./utils/transformationUtils";
+import {
+  fetchWithCache,
+  type GISAXSTransformedData
+} from "./services/scatteringImageCache";
+
+const INTERACTION_HELP: InteractionInfo[] = [
+  { shortcut: "Drag", description: "Pan" },
+  { shortcut: "Wheel", description: "Zoom X-axis" },
+  { shortcut: "Shift+Wheel", description: "Zoom Y-axis" },
+  { shortcut: "Ctrl+Drag", description: "Select area to zoom" }
+];
+
+// Props interface
+interface H5WebScatterSubplotProps {
+  // Image selection
+  leftImageIndex?: number | "";
+  rightImageIndex?: number | "";
+  onLeftIndexChange: (index: number | "") => void;
+  onRightIndexChange: (index: number | "") => void;
+  scanUris?: string[];
+  imageNames?: string[];
+  isFetchingData?: boolean;
+  isLoadingImages?: boolean;
+  setIsLoadingImages?: (isLoading: boolean) => void;
+  // Operation type (difference/ratio)
+  operationType: OperationType;
+  onOperationTypeChange: (value: OperationType) => void;
+  // Image data callbacks
+  setImageHeight: (height: number) => void;
+  setImageWidth: (width: number) => void;
+  setImageData1: (data: number[][]) => void;
+  setImageData2: (data: number[][]) => void;
+  // Linecuts and overlays
+  horizontalLinecuts: Linecut[];
+  verticalLinecuts: Linecut[];
+  inclinedLinecuts: InclinedLinecut[];
+  azimuthalIntegrations: AzimuthalIntegration[];
+  // Q-space data
+  qMagnitudeMatrix?: number[][] | null;
+  maxQValue: number;
+  calibrationParams: CalibrationParams | null;
+  qYVector: number[];
+  qXVector: number[];
+  // Q-space data for HeatmapPanel (raw 2D matrices for SAXS tick formatters)
+  qYMatrix: number[][];
+  qXMatrix: number[][];
+  // Mask
+  maskUri?: string | null;
+  maskData?: Uint8Array | null;
+  maskShape?: [number, number] | null;
+  // Display options
+  experimentType?: string;
+  showQSpaceAxes: boolean;
+  setShowQSpaceAxes: (value: boolean) => void;
+  showMaskOverlay: boolean;
+  setShowMaskOverlay: (value: boolean) => void;
+  // GISAXS callback
+  onGisaxsPixelQUpdate?: (
+    qipMatrix: number[][],
+    qoopMatrix: number[][],
+    qipAxisValues?: number[],
+    qoopAxisValues?: number[]
+  ) => void;
+  // Zoom callback - broadcasts visible pixel range to parent
+  onZoomChange?: (
+    xVisibleDomain: [number, number] | null,
+    yVisibleDomain: [number, number] | null
+  ) => void;
+  // Sync zoom toggle - controls whether heatmap zoom syncs with linecut figures
+  syncZoom: boolean;
+  onSyncZoomToggle: () => void;
+}
+
+const H5WebScatterSubplot: React.FC<H5WebScatterSubplotProps> = React.memo(
+  ({
+    // Image selection
+    leftImageIndex,
+    rightImageIndex,
+    onLeftIndexChange,
+    onRightIndexChange,
+    scanUris,
+    imageNames = [],
+    isFetchingData = false,
+    isLoadingImages,
+    setIsLoadingImages,
+    // Operation type
+    operationType,
+    onOperationTypeChange,
+    // Image data callbacks
+    setImageHeight,
+    setImageWidth,
+    setImageData1,
+    setImageData2,
+    // Linecuts and overlays
+    horizontalLinecuts,
+    verticalLinecuts,
+    inclinedLinecuts,
+    azimuthalIntegrations,
+    // Q-space data
+    qMagnitudeMatrix,
+    calibrationParams,
+    maxQValue,
+    qYVector,
+    qXVector,
+    // Q-space data for HeatmapPanel
+    qYMatrix,
+    qXMatrix,
+    // Mask
+    maskUri,
+    maskData,
+    maskShape,
+    // Display options
+    experimentType = "SAXS",
+    showQSpaceAxes,
+    setShowQSpaceAxes,
+    showMaskOverlay,
+    setShowMaskOverlay,
+    // GISAXS callback
+    onGisaxsPixelQUpdate,
+    // Zoom callback
+    onZoomChange,
+    // Sync zoom toggle
+    syncZoom,
+    onSyncZoomToggle
+  }) => {
+    const [isComparisonLoading, setIsComparisonLoading] = useState(false);
+    const [isTogglingQSpace, setIsTogglingQSpace] = useState(false);
+    const [sharedZoomState, setSharedZoomState] = useState<ZoomState | null>(
+      null
+    );
+
+    // Refs for snapshot functionality
+    const leftPanelRef = useRef<HTMLDivElement>(null);
+    const rightPanelRef = useRef<HTMLDivElement>(null);
+    const comparisonPanelRef = useRef<HTMLDivElement>(null);
+    const allPanelsRef = useRef<HTMLDivElement>(null);
+
+    // Track if Q-space toggle is internal (from button) vs external (auto-toggle)
+    const isInternalQSpaceToggle = useRef(false);
+    const prevShowQSpaceAxes = useRef(showQSpaceAxes);
+
+    const handleLeftPanelZoom = useCallback(
+      (state: ZoomState | null) => {
+        setSharedZoomState(state);
+        if (onZoomChange) {
+          if (state === null) {
+            onZoomChange(null, null);
+          } else {
+            onZoomChange(state.xVisibleDomain, state.yVisibleDomain);
+          }
+        }
+      },
+      [onZoomChange]
+    );
+
+    // Handler to toggle operation type with loading state
+    const handleOperationTypeToggle = useCallback(() => {
+      setIsComparisonLoading(true);
+      setTimeout(() => {
+        onOperationTypeChange(
+          operationType === "subtract" ? "divide" : "subtract"
+        );
+        setIsComparisonLoading(false);
+      }, 100);
+    }, [operationType, onOperationTypeChange]);
+
+    // Handler to toggle Q-space with loading state (for user-initiated toggles)
+    const handleQSpaceToggle = useCallback(() => {
+      isInternalQSpaceToggle.current = true;
+      setIsTogglingQSpace(true);
+      setTimeout(() => {
+        setShowQSpaceAxes(!showQSpaceAxes);
+        setIsTogglingQSpace(false);
+      }, 50);
+    }, [showQSpaceAxes, setShowQSpaceAxes]);
+
+    // Show loading overlay when Q-space is toggled externally (e.g., auto-toggle)
+    useEffect(() => {
+      // Skip if value hasn't changed
+      if (prevShowQSpaceAxes.current === showQSpaceAxes) {
+        return;
+      }
+
+      // If this was an internal toggle, just update the ref and skip
+      if (isInternalQSpaceToggle.current) {
+        isInternalQSpaceToggle.current = false;
+        prevShowQSpaceAxes.current = showQSpaceAxes;
+        return;
+      }
+
+      // External toggle - show loading overlay briefly
+      setIsTogglingQSpace(true);
+      const timer = setTimeout(() => {
+        setIsTogglingQSpace(false);
+      }, 100);
+
+      prevShowQSpaceAxes.current = showQSpaceAxes;
+      return () => clearTimeout(timer);
+    }, [showQSpaceAxes]);
+
+    // Compute number of files for selectors
+    const numOfFiles = imageNames.length;
+    // Raw data from fetch (pixel space images)
+    const [leftArray, setLeftArray] = useState<number[][]>([]);
+    const [rightArray, setRightArray] = useState<number[][]>([]);
+
+    // GISAXS-specific data (only present for GISAXS experiments)
+    const [leftGisaxsTransformed, setLeftGisaxsTransformed] =
+      useState<GISAXSTransformedData | null>(null);
+    const [rightGisaxsTransformed, setRightGisaxsTransformed] =
+      useState<GISAXSTransformedData | null>(null);
+
+    // Toolbar state
+    const [scaleType, setScaleType] = useState<ColorScaleType>(
+      ScaleType.Linear
+    );
+    const [colorMap, setColorMap] = useState<ColorMap>("Viridis");
+    const [diffColorMap, setDiffColorMap] = useState<ColorMap>("PuOr");
+    const [invertColorMap, setInvertColorMap] = useState(false);
+    const [invertDiffColorMap, setInvertDiffColorMap] = useState(false);
+    const [flipXAxis, setFlipXAxis] = useState(false);
+    const [flipYAxis, setFlipYAxis] = useState(false);
+    const [showGrid, setShowGrid] = useState(false);
+    const [showLinecutOverlays, setShowLinecutOverlays] = useState(true);
+    const [showBeamCenterOverlay, setShowBeamCenterOverlay] = useState(false);
+    const [customDomain, setCustomDomain] = useState<CustomDomain>([
+      null,
+      null
+    ]);
+
+    // Calculate and set initial domain based on 1% and 99% percentiles when data changes
+    useEffect(() => {
+      if (leftArray.length === 0 || rightArray.length === 0) {
+        return;
+      }
+
+      // Use the display arrays (which may be Q-space transformed for GISAXS)
+      const arrays =
+        experimentType === "GISAXS" &&
+        showQSpaceAxes &&
+        leftGisaxsTransformed &&
+        rightGisaxsTransformed
+          ? {
+              left: leftGisaxsTransformed.array,
+              right: rightGisaxsTransformed.array
+            }
+          : { left: leftArray, right: rightArray };
+
+      // Calculate 1% and 99% percentiles across both arrays
+      const [p1, p99] = calculateGlobalPercentiles(
+        arrays.left,
+        arrays.right,
+        1,
+        99
+      );
+
+      // Set as custom domain (will be used by DomainWidget)
+      setCustomDomain([p1, p99]);
+    }, [
+      leftArray,
+      rightArray,
+      leftGisaxsTransformed,
+      rightGisaxsTransformed,
+      experimentType,
+      showQSpaceAxes
+    ]);
+
+    // Determine if q-space toggle is enabled (calibration must be set with valid q-matrices)
+    const canToggleQSpace = useMemo(() => {
+      if (!qXMatrix?.length || !qYMatrix?.length) return false;
+      if (!qXMatrix[0]?.length || !qYMatrix[0]?.length) return false;
+      const qxValue = qXMatrix[0][0];
+      const qyValue = qYMatrix[0][0];
+      return isFinite(qxValue) && isFinite(qyValue);
+    }, [qXMatrix, qYMatrix]);
+
+    // Handler for scale type changes (type-safe wrapper)
+    const handleScaleChange = useCallback((newScale: ColorScaleType) => {
+      setScaleType(newScale);
+    }, []);
+
+    // Calculate result based on operation type
+    const calculateResult = useCallback(
+      (array1: number[][], array2: number[][]) => {
+        if (operationType === "subtract") {
+          return calculateDifferenceArray(array1, array2);
+        } else {
+          return calculateDivisionArray(array1, array2);
+        }
+      },
+      [operationType]
+    );
+
+    // Build GISAXS calibration params for fetch (if applicable)
+    // Returns null if GISAXS calibration is incomplete (including missing incident_angle)
+    const gisaxsCalibration = useMemo(() => {
+      if (experimentType !== "GISAXS") return null;
+      // Don't return calibration unless GISAXS-specific requirements are met
+      if (!isGisaxsCalibrationComplete(calibrationParams)) return null;
+      // All required fields are guaranteed to be defined after isGisaxsCalibrationComplete check
+      return {
+        sample_detector_distance: calibrationParams!.sample_detector_distance!,
+        beam_center_x: calibrationParams!.beam_center_x!,
+        beam_center_y: calibrationParams!.beam_center_y!,
+        pixel_size_x: calibrationParams!.pixel_size_x!,
+        pixel_size_y: calibrationParams!.pixel_size_y!,
+        wavelength: calibrationParams!.wavelength!,
+        incident_angle: calibrationParams!.incident_angle!,
+        tilt: calibrationParams!.tilt ?? 0,
+        tilt_plan_rotation: calibrationParams!.tilt_plan_rotation ?? 0
+      };
+    }, [experimentType, calibrationParams]);
+
+    // Fetch images when indices change
+    useEffect(() => {
+      if (
+        typeof leftImageIndex !== "number" ||
+        typeof rightImageIndex !== "number"
+      ) {
+        return;
+      }
+
+      if (!scanUris || scanUris.length === 0) {
+        return;
+      }
+
+      const leftScanUri = scanUris[leftImageIndex];
+      const rightScanUri = scanUris[rightImageIndex];
+
+      if (!leftScanUri || !rightScanUri) {
+        console.error("Scan URIs not found for selected indices");
+        return;
+      }
+
+      setIsLoadingImages?.(true);
+
+      Promise.all([
+        fetchWithCache(leftScanUri, maskUri, experimentType, gisaxsCalibration),
+        fetchWithCache(rightScanUri, maskUri, experimentType, gisaxsCalibration)
+      ])
+        .then(([leftProcessed, rightProcessed]) => {
+          // Use image data (pixel space)
+          const imageArray1 = leftProcessed.array;
+          const imageArray2 = rightProcessed.array;
+
+          // Set dimensions and data for linecuts
+          setImageHeight(imageArray1.length);
+          setImageWidth(imageArray1[0].length);
+          setImageData1(imageArray1);
+          setImageData2(imageArray2);
+
+          // Store raw arrays (pixel space)
+          setLeftArray(imageArray1);
+          setRightArray(imageArray2);
+
+          // Store GISAXS-specific data if present
+          setLeftGisaxsTransformed(leftProcessed.gisaxsTransformed ?? null);
+          setRightGisaxsTransformed(rightProcessed.gisaxsTransformed ?? null);
+          // Use pixel Q from left image (same for both since same calibration)
+          const pixelQ = leftProcessed.gisaxsPixelQ ?? null;
+
+          // Notify parent of GISAXS pixel Q data and axis values
+          // Pixel Q matrices are used for pixel-space overlays
+          // 1D axis values are used for Q-space mode slider bounds and overlays
+          if (pixelQ && onGisaxsPixelQUpdate) {
+            const qipAxis = leftProcessed.gisaxsTransformed?.qipValues;
+            const qoopAxis = leftProcessed.gisaxsTransformed?.qoopValues;
+            onGisaxsPixelQUpdate(
+              pixelQ.qipMatrix,
+              pixelQ.qoopMatrix,
+              qipAxis,
+              qoopAxis
+            );
+          }
+
+          setIsLoadingImages?.(false);
+          notifications.hide("loading-images");
+        })
+        .catch((error) => {
+          console.error("Error fetching scatter subplot:", error);
+          setIsLoadingImages?.(false);
+          notifications.update({
+            id: "loading-images",
+            color: "red",
+            title: "Error loading images",
+            message:
+              error instanceof Error ? error.message : "Failed to load images",
+            autoClose: 5000
+          });
+        });
+    }, [
+      leftImageIndex,
+      rightImageIndex,
+      scanUris,
+      setImageHeight,
+      setImageWidth,
+      setImageData1,
+      setImageData2,
+      setIsLoadingImages,
+      maskUri,
+      experimentType,
+      gisaxsCalibration,
+      onGisaxsPixelQUpdate
+    ]);
+
+    // Select which arrays to use based on experiment type and Q-space toggle
+    const displayArrays = useMemo(() => {
+      // For GISAXS in Q-space mode, use transformed images if available
+      if (
+        experimentType === "GISAXS" &&
+        showQSpaceAxes &&
+        leftGisaxsTransformed &&
+        rightGisaxsTransformed
+      ) {
+        return {
+          left: leftGisaxsTransformed.array,
+          right: rightGisaxsTransformed.array
+        };
+      }
+      // Otherwise use pixel-space images
+      return {
+        left: leftArray,
+        right: rightArray
+      };
+    }, [
+      experimentType,
+      showQSpaceAxes,
+      leftArray,
+      rightArray,
+      leftGisaxsTransformed,
+      rightGisaxsTransformed
+    ]);
+
+    // Mask is only shown in pixel-space view (not in Q-space view)
+    // For GISAXS Q-space, the mask is already applied to the image (NaN values)
+    const displayMask = useMemo(() => {
+      // Don't show mask overlay in Q-space view
+      if (showQSpaceAxes) {
+        return { data: null, shape: null };
+      }
+      // Show pixel-space mask for pixel view
+      return {
+        data: maskData ?? null,
+        shape: maskShape ?? null
+      };
+    }, [showQSpaceAxes, maskData, maskShape]);
+
+    // Determine if linecut overlays should actually be rendered
+    // Disable for GISAXS pixel-space (constant-Q lines are curved in pixel coordinates)
+    const shouldShowLinecutOverlays = useMemo(() => {
+      if (!showLinecutOverlays) return false;
+      if (experimentType === "GISAXS" && !showQSpaceAxes) return false;
+      return true;
+    }, [showLinecutOverlays, experimentType, showQSpaceAxes]);
+
+    // Prepare data for visualization (just replace NaN with 0, let toolbar handle scale/domain)
+    const transformedData = useMemo(() => {
+      if (displayArrays.left.length === 0 || displayArrays.right.length === 0) {
+        return null;
+      }
+
+      // Replace NaN values with 0 for visualization
+      const array1 = displayArrays.left.map((row) =>
+        row.map((val) => (Number.isNaN(val) ? 0 : val))
+      );
+      const array2 = displayArrays.right.map((row) =>
+        row.map((val) => (Number.isNaN(val) ? 0 : val))
+      );
+
+      const diff = calculateResult(array1, array2);
+
+      return { array1, array2, diff };
+    }, [displayArrays, calculateResult]);
+
+    // Convert arrays to ndarrays
+    const leftNdarray = useMemo(() => {
+      return transformedData ? arrayToNdarray(transformedData.array1) : null;
+    }, [transformedData]);
+
+    const rightNdarray = useMemo(() => {
+      return transformedData ? arrayToNdarray(transformedData.array2) : null;
+    }, [transformedData]);
+
+    // Calculate shared domain for left/right images
+    const sharedDomain = useMemo((): Domain | undefined => {
+      if (!transformedData) return undefined;
+
+      const [min1, max1] = getArrayMinMax(transformedData.array1);
+      const [min2, max2] = getArrayMinMax(transformedData.array2);
+      const globalMin = Math.min(min1, min2);
+      const globalMax = Math.max(max1, max2);
+
+      return [globalMin, globalMax];
+    }, [transformedData]);
+
+    // Make domain safe for the current scale type
+    const safeSharedDomain = useMemo((): Domain | undefined => {
+      if (!sharedDomain) return undefined;
+      return getSafeDomainForScale(sharedDomain, scaleType);
+    }, [sharedDomain, scaleType]);
+
+    // Compute comparison (diff/ratio) using domain-clamped values
+    // This ensures the comparison reflects what's visually shown in the main images
+    const clampedDiffData = useMemo(() => {
+      if (!transformedData || !safeSharedDomain) return null;
+
+      // Use custom domain if set, otherwise use safe shared domain
+      const minVal = customDomain[0] ?? safeSharedDomain[0];
+      const maxVal = customDomain[1] ?? safeSharedDomain[1];
+
+      // Clamp values to the effective domain before comparison
+      const clamp = (val: number) => Math.max(minVal, Math.min(maxVal, val));
+
+      const clampedArray1 = transformedData.array1.map((row) => row.map(clamp));
+      const clampedArray2 = transformedData.array2.map((row) => row.map(clamp));
+
+      return calculateResult(clampedArray1, clampedArray2);
+    }, [transformedData, safeSharedDomain, customDomain, calculateResult]);
+
+    const diffNdarray = useMemo(() => {
+      return clampedDiffData ? arrayToNdarray(clampedDiffData) : null;
+    }, [clampedDiffData]);
+
+    // Compute histogram bounds using tighter percentiles to exclude extreme outliers
+    // This makes the histogram more useful for data with long tails
+    const histogramBounds = useMemo((): [number, number] | undefined => {
+      if (!transformedData) return undefined;
+
+      // Use 0.5% and 99.5% percentiles to exclude extreme outliers
+      const [histMin, histMax] = calculateGlobalPercentiles(
+        transformedData.array1,
+        transformedData.array2,
+        0.5,
+        99.5
+      );
+
+      // Ensure valid bounds
+      if (
+        !Number.isFinite(histMin) ||
+        !Number.isFinite(histMax) ||
+        histMin >= histMax
+      ) {
+        return undefined;
+      }
+
+      // For log/sqrt scales, ensure positive minimum
+      if (
+        (scaleType === ScaleType.Log || scaleType === ScaleType.Sqrt) &&
+        histMin <= 0
+      ) {
+        // Find smallest positive value in the percentile range
+        const safeMin = Math.max(histMin, 1e-10);
+        return [safeMin, histMax];
+      }
+
+      return [histMin, histMax];
+    }, [transformedData, scaleType]);
+
+    // Compute histogram for DomainWidget (combines both left and right arrays)
+    // Uses tighter percentile bounds to show useful distribution, excluding outliers
+    const histogramParams = useMemo((): HistogramParams | undefined => {
+      if (!transformedData || !histogramBounds) return undefined;
+
+      const [domainMin, domainMax] = histogramBounds;
+      const numBins = 50;
+
+      // Create bin edges based on scale type
+      const bins = new Float32Array(numBins + 1);
+      const useLogBins =
+        (scaleType === ScaleType.Log || scaleType === ScaleType.Sqrt) &&
+        domainMin > 0;
+
+      if (useLogBins) {
+        // Logarithmically-spaced bins for log/sqrt scales
+        const logMin = Math.log10(domainMin);
+        const logMax = Math.log10(domainMax);
+        const logStep = (logMax - logMin) / numBins;
+        for (let i = 0; i <= numBins; i++) {
+          bins[i] = Math.pow(10, logMin + i * logStep);
+        }
+      } else {
+        // Linearly-spaced bins for linear/symlog scales
+        const binWidth = (domainMax - domainMin) / numBins;
+        for (let i = 0; i <= numBins; i++) {
+          bins[i] = domainMin + i * binWidth;
+        }
+      }
+
+      // Count values in each bin (from both arrays)
+      const values = new Float32Array(numBins);
+
+      const countInBins = (arr: number[][]) => {
+        for (let i = 0; i < arr.length; i++) {
+          for (let j = 0; j < arr[i].length; j++) {
+            const val = arr[i][j];
+            if (val >= domainMin && val <= domainMax) {
+              // Find bin index based on scale type
+              let binIdx: number;
+              if (useLogBins && val > 0) {
+                const logVal = Math.log10(val);
+                const logMin = Math.log10(domainMin);
+                const logMax = Math.log10(domainMax);
+                binIdx = Math.floor(
+                  ((logVal - logMin) / (logMax - logMin)) * numBins
+                );
+              } else {
+                binIdx = Math.floor(
+                  ((val - domainMin) / (domainMax - domainMin)) * numBins
+                );
+              }
+              // Handle edge case where val === domainMax
+              if (binIdx >= numBins) binIdx = numBins - 1;
+              if (binIdx >= 0) values[binIdx]++;
+            }
+          }
+        }
+      };
+
+      countInBins(transformedData.array1);
+      countInBins(transformedData.array2);
+
+      return {
+        values,
+        bins,
+        colorMap,
+        invertColorMap
+      };
+    }, [transformedData, histogramBounds, scaleType, colorMap, invertColorMap]);
+
+    // Calculate symmetric domain for comparison (centered at 0)
+    const comparisonDomain = useMemo((): [number, number] | undefined => {
+      if (!clampedDiffData) return undefined;
+
+      const [minDiff, maxDiff] = getArrayMinMax(clampedDiffData);
+      const maxAbs = Math.max(Math.abs(minDiff), Math.abs(maxDiff));
+
+      return [-maxAbs, maxAbs];
+    }, [clampedDiffData]);
+
+    // Calculate pixel width using local q-to-pixel scale (not affected by edge clamping)
+    const calculateLocalPixelWidth = useCallback(
+      (qWidth: number, qVector: number[]): number => {
+        if (qWidth <= 0 || !qVector || qVector.length < 2) return 0;
+
+        // Calculate average q-to-pixel ratio from the center of the vector
+        // This gives a consistent width regardless of position
+        const len = qVector.length;
+        const mid = Math.floor(len / 2);
+        const start = Math.max(0, mid - 10);
+        const end = Math.min(len - 1, mid + 10);
+        const qRange = Math.abs(qVector[end] - qVector[start]);
+        const pixelRange = end - start;
+        if (pixelRange === 0 || qRange === 0) return 0;
+        const qPerPixel = qRange / pixelRange;
+        return Math.abs(qWidth / qPerPixel);
+      },
+      []
+    );
+
+    // Transform linecuts to overlay format for left image
+    const leftImageLinecuts = useMemo(() => {
+      const linecuts: LinecutOverlayProps["linecuts"] = [];
+
+      // Add horizontal linecuts (use qYVector for position-aware width calculation)
+      horizontalLinecuts.forEach((lc) => {
+        const pixelWidth = calculateQSpaceToPixelWidth(
+          lc.position,
+          lc.width,
+          qYVector
+        );
+        linecuts.push({
+          position: lc.pixelPosition,
+          width: pixelWidth,
+          color: lc.leftColor,
+          type: "horizontal",
+          hidden: lc.hidden
+        });
+      });
+
+      // Add vertical linecuts (use qXVector for position-aware width calculation)
+      verticalLinecuts.forEach((lc) => {
+        const pixelWidth = calculateQSpaceToPixelWidth(
+          lc.position,
+          lc.width,
+          qXVector
+        );
+        linecuts.push({
+          position: lc.pixelPosition,
+          width: pixelWidth,
+          color: lc.leftColor,
+          type: "vertical",
+          hidden: lc.hidden
+        });
+      });
+
+      return linecuts;
+    }, [horizontalLinecuts, verticalLinecuts, qYVector, qXVector]);
+
+    // Transform linecuts to overlay format for right image
+    const rightImageLinecuts = useMemo(() => {
+      const linecuts: LinecutOverlayProps["linecuts"] = [];
+
+      // Add horizontal linecuts (use qYVector for position-aware width calculation)
+      horizontalLinecuts.forEach((lc) => {
+        const pixelWidth = calculateQSpaceToPixelWidth(
+          lc.position,
+          lc.width,
+          qYVector
+        );
+        linecuts.push({
+          position: lc.pixelPosition,
+          width: pixelWidth,
+          color: lc.rightColor,
+          type: "horizontal",
+          hidden: lc.hidden
+        });
+      });
+
+      // Add vertical linecuts (use qXVector for position-aware width calculation)
+      verticalLinecuts.forEach((lc) => {
+        const pixelWidth = calculateQSpaceToPixelWidth(
+          lc.position,
+          lc.width,
+          qXVector
+        );
+        linecuts.push({
+          position: lc.pixelPosition,
+          width: pixelWidth,
+          color: lc.rightColor,
+          type: "vertical",
+          hidden: lc.hidden
+        });
+      });
+
+      return linecuts;
+    }, [horizontalLinecuts, verticalLinecuts, qYVector, qXVector]);
+
+    // Calculate inclined linecut pixel width using position and angle-aware calculation
+    const calculateInclinedPixelWidth = useCallback(
+      (
+        qXPosition: number,
+        qYPosition: number,
+        angle: number,
+        qWidth: number
+      ): number => {
+        if (!qXVector.length || !qYVector.length) {
+          // Fallback to average of horizontal/vertical if vectors not available
+          const hPixelWidth = calculateLocalPixelWidth(qWidth, qYVector);
+          const vPixelWidth = calculateLocalPixelWidth(qWidth, qXVector);
+          return (hPixelWidth + vPixelWidth) / 2;
+        }
+        return calculateInclinedQSpaceToPixelWidth(
+          qXPosition,
+          qYPosition,
+          angle,
+          qWidth,
+          qXVector,
+          qYVector
+        );
+      },
+      [qXVector, qYVector, calculateLocalPixelWidth]
+    );
+
+    // Transform inclined linecuts to overlay format for left image
+    const leftInclinedLinecuts = useMemo(() => {
+      return inclinedLinecuts.map((lc) => ({
+        angle: lc.angle,
+        qWidth: lc.qWidth,
+        qXPosition: lc.qXPosition,
+        qYPosition: lc.qYPosition,
+        color: lc.leftColor,
+        hidden: lc.hidden
+      }));
+    }, [inclinedLinecuts]);
+
+    // Transform inclined linecuts to overlay format for right image
+    const rightInclinedLinecuts = useMemo(() => {
+      return inclinedLinecuts.map((lc) => ({
+        angle: lc.angle,
+        qWidth: lc.qWidth,
+        qXPosition: lc.qXPosition,
+        qYPosition: lc.qYPosition,
+        color: lc.rightColor,
+        hidden: lc.hidden
+      }));
+    }, [inclinedLinecuts]);
+
+    // Transform azimuthal integrations to overlay format for left image
+    const leftAzimuthalIntegrations = useMemo(() => {
+      return azimuthalIntegrations.map((int) => ({
+        qRange: int.qRange,
+        azimuthRange: int.azimuthRange,
+        color: int.leftColor,
+        hidden: int.hidden
+      }));
+    }, [azimuthalIntegrations]);
+
+    // Transform azimuthal integrations to overlay format for right image
+    const rightAzimuthalIntegrations = useMemo(() => {
+      return azimuthalIntegrations.map((int) => ({
+        qRange: int.qRange,
+        azimuthRange: int.azimuthRange,
+        color: int.rightColor,
+        hidden: int.hidden
+      }));
+    }, [azimuthalIntegrations]);
+
+    // No data selected state - show message like ScatterSubplot
+    const hasValidIndices =
+      typeof leftImageIndex === "number" && typeof rightImageIndex === "number";
+    const hasData =
+      leftNdarray &&
+      rightNdarray &&
+      diffNdarray &&
+      safeSharedDomain &&
+      comparisonDomain;
+
+    if (!hasValidIndices) {
+      return (
+        <div className="flex h-full min-h-[400px] items-center justify-center">
+          <div className="text-center p-8">
+            <p className="text-xl text-gray-600 mb-2">No data loaded</p>
+            <p className="text-sm text-gray-500">
+              Please select a Tiled container using the "Select Data" button
+              above
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    // Loading state - data is being fetched
+    if (!hasData) {
+      return (
+        <div className="flex h-full min-h-[400px] items-center justify-center">
+          <div className="text-center p-8 flex flex-col items-center gap-3">
+            <div className="w-8 h-8 border-[3px] border-gray-200 border-t-blue-500 rounded-full animate-spin" />
+            <p className="text-base text-gray-600">Loading images...</p>
+          </div>
+        </div>
+      );
+    }
+
+    // Get image dimensions for axis config
+    const leftRows = leftNdarray.shape[0];
+    const leftCols = leftNdarray.shape[1];
+
+    // Comparison label based on operation type
+    const comparisonLabel =
+      operationType === "subtract" ? "Difference" : "Ratio";
+
+    // Compute effective domain for the main display
+    const effectiveDomain: Domain = [
+      customDomain[0] ?? safeSharedDomain?.[0] ?? 0,
+      customDomain[1] ?? safeSharedDomain?.[1] ?? 1
+    ];
+
+    return (
+      <div className="flex flex-col w-full h-full min-h-0">
+        {/* Toolbar - shrink-0 ensures it only takes needed height */}
+        <div className="shrink-0">
+          <Toolbar interactions={INTERACTION_HELP}>
+            <ToggleBtn
+              label="Q-Space"
+              Icon={ChartLineIcon as ToolbarIcon}
+              value={showQSpaceAxes}
+              onToggle={handleQSpaceToggle}
+              disabled={!canToggleQSpace || isTogglingQSpace}
+            />
+
+            <ToggleBtn
+              label="Linecuts"
+              Icon={StackIcon as ToolbarIcon}
+              value={showLinecutOverlays}
+              onToggle={() => setShowLinecutOverlays(!showLinecutOverlays)}
+              disabled={experimentType === "GISAXS" && !showQSpaceAxes}
+            />
+
+            <ToggleBtn
+              label="Mask"
+              Icon={MaskHappyIcon as ToolbarIcon}
+              value={showMaskOverlay}
+              onToggle={() => setShowMaskOverlay(!showMaskOverlay)}
+              // Disable mask in Q-space (already applied as NaN) or when no mask loaded
+              disabled={!maskData || showQSpaceAxes}
+            />
+
+            <ToggleBtn
+              label="Beam center"
+              Icon={CrosshairSimpleIcon as ToolbarIcon}
+              value={showBeamCenterOverlay}
+              onToggle={() => setShowBeamCenterOverlay(!showBeamCenterOverlay)}
+              // Disable when no beam center is calibrated
+              disabled={
+                calibrationParams?.beam_center_x === undefined ||
+                calibrationParams?.beam_center_y === undefined
+              }
+            />
+
+            <Separator />
+
+            <ScaleSelector
+              value={scaleType}
+              onScaleChange={handleScaleChange}
+              options={SCALE_OPTIONS}
+            />
+
+            <ColorMapSelector
+              value={colorMap}
+              onValueChange={setColorMap}
+              invert={invertColorMap}
+              onInversionChange={() => setInvertColorMap(!invertColorMap)}
+            />
+
+            <DomainWidget
+              dataDomain={safeSharedDomain}
+              customDomain={customDomain}
+              scaleType={scaleType}
+              histogram={histogramParams}
+              onCustomDomainChange={setCustomDomain}
+            />
+
+            <Separator />
+
+            <ColorMapSelector
+              value={diffColorMap}
+              onValueChange={setDiffColorMap}
+              invert={invertDiffColorMap}
+              onInversionChange={() =>
+                setInvertDiffColorMap(!invertDiffColorMap)
+              }
+            />
+
+            <Separator />
+
+            <ToggleBtn
+              label="Flip X"
+              Icon={ArrowsHorizontalIcon as ToolbarIcon}
+              value={flipXAxis}
+              onToggle={() => setFlipXAxis(!flipXAxis)}
+            />
+            <ToggleBtn
+              label="Flip Y"
+              Icon={ArrowsVerticalIcon as ToolbarIcon}
+              value={flipYAxis}
+              onToggle={() => setFlipYAxis(!flipYAxis)}
+            />
+
+            <ToggleBtn
+              label="Grid"
+              Icon={GridFourIcon as ToolbarIcon}
+              value={showGrid}
+              onToggle={() => setShowGrid(!showGrid)}
+            />
+
+            <ToggleBtn
+              label="Sync zoom"
+              Icon={LinkSimpleIcon as ToolbarIcon}
+              value={syncZoom}
+              onToggle={onSyncZoomToggle}
+            />
+
+            <Separator />
+
+            <SnapshotMenu
+              leftPanelRef={leftPanelRef}
+              rightPanelRef={rightPanelRef}
+              comparisonPanelRef={comparisonPanelRef}
+              allPanelsRef={allPanelsRef}
+            />
+          </Toolbar>
+        </div>
+
+        {/* Heatmap grid - unequal columns so image areas are same size */}
+        <div
+          ref={allPanelsRef}
+          className="grid gap-0 w-full flex-1 min-h-0 overflow-visible py-2 px-2 relative"
+          style={{
+            gridTemplateColumns:
+              "calc(33.33% + 21px) calc(33.33% - 10.5px) calc(33.33% - 10.5px)"
+          }}
+        >
+          {isLoadingImages && <LoadingOverlay message="Loading images..." />}
+          {isTogglingQSpace && (
+            <LoadingOverlay
+              message={
+                showQSpaceAxes
+                  ? "Switching to pixel space..."
+                  : "Switching to Q-space..."
+              }
+            />
+          )}
+          <div ref={leftPanelRef} className="grid min-h-0">
+            <HeatmapPanel
+              header={
+                <PrevNextSelect
+                  value={leftImageIndex ?? ""}
+                  onChange={onLeftIndexChange}
+                  options={imageNames.map((name, index) => ({
+                    value: String(index),
+                    label: name
+                  }))}
+                  disabled={
+                    isFetchingData || isLoadingImages || numOfFiles === 0
+                  }
+                  numItems={numOfFiles}
+                />
+              }
+              dataArray={leftNdarray}
+              domain={effectiveDomain}
+              colorMap={colorMap}
+              scaleType={scaleType}
+              invertColorMap={invertColorMap}
+              rows={leftRows}
+              cols={leftCols}
+              flipXAxis={flipXAxis}
+              flipYAxis={flipYAxis}
+              showGrid={showGrid}
+              linecuts={leftImageLinecuts}
+              inclinedLinecuts={leftInclinedLinecuts}
+              inclinedPixelWidthCalculator={calculateInclinedPixelWidth}
+              azimuthalIntegrations={leftAzimuthalIntegrations}
+              showLinecutOverlays={shouldShowLinecutOverlays}
+              qMagnitudeMatrix={qMagnitudeMatrix}
+              beamCenterX={calibrationParams?.beam_center_x}
+              beamCenterY={calibrationParams?.beam_center_y}
+              maxQValue={maxQValue}
+              showQSpaceAxes={showQSpaceAxes}
+              qXVector={qXVector}
+              qYVector={qYVector}
+              experimentType={experimentType}
+              maskData={displayMask.data}
+              maskShape={displayMask.shape}
+              showMaskOverlay={showMaskOverlay}
+              showBeamCenterOverlay={showBeamCenterOverlay}
+              gisaxsQipValues={leftGisaxsTransformed?.qipValues}
+              gisaxsQoopValues={leftGisaxsTransformed?.qoopValues}
+              isZoomSource={true}
+              onZoomChange={handleLeftPanelZoom}
+            />
+          </div>
+          <div ref={rightPanelRef} className="grid min-h-0">
+            <HeatmapPanel
+              header={
+                <PrevNextSelect
+                  value={rightImageIndex ?? ""}
+                  onChange={onRightIndexChange}
+                  options={imageNames.map((name, index) => ({
+                    value: String(index),
+                    label: name
+                  }))}
+                  disabled={
+                    isFetchingData || isLoadingImages || numOfFiles === 0
+                  }
+                  numItems={numOfFiles}
+                />
+              }
+              dataArray={rightNdarray}
+              domain={effectiveDomain}
+              colorMap={colorMap}
+              scaleType={scaleType}
+              invertColorMap={invertColorMap}
+              rows={leftRows}
+              cols={leftCols}
+              flipXAxis={flipXAxis}
+              flipYAxis={flipYAxis}
+              showGrid={showGrid}
+              linecuts={rightImageLinecuts}
+              inclinedLinecuts={rightInclinedLinecuts}
+              inclinedPixelWidthCalculator={calculateInclinedPixelWidth}
+              azimuthalIntegrations={rightAzimuthalIntegrations}
+              showLinecutOverlays={shouldShowLinecutOverlays}
+              qMagnitudeMatrix={qMagnitudeMatrix}
+              beamCenterX={calibrationParams?.beam_center_x}
+              beamCenterY={calibrationParams?.beam_center_y}
+              maxQValue={maxQValue}
+              showQSpaceAxes={showQSpaceAxes}
+              qXVector={qXVector}
+              qYVector={qYVector}
+              experimentType={experimentType}
+              maskData={displayMask.data}
+              maskShape={displayMask.shape}
+              showMaskOverlay={showMaskOverlay}
+              showBeamCenterOverlay={showBeamCenterOverlay}
+              gisaxsQipValues={rightGisaxsTransformed?.qipValues}
+              gisaxsQoopValues={rightGisaxsTransformed?.qoopValues}
+              showYAxisLabel={false}
+              syncedZoomState={sharedZoomState}
+              disableInteractions={true}
+            />
+          </div>
+          <div ref={comparisonPanelRef} className="grid min-h-0">
+            <HeatmapPanel
+              header={
+                <div className="flex items-center gap-1">
+                  <span className="font-medium">{comparisonLabel}</span>
+                  <IconButton
+                    variant="subtle"
+                    size="sm"
+                    onClick={handleOperationTypeToggle}
+                    disabled={isComparisonLoading}
+                    tooltip={
+                      operationType === "subtract"
+                        ? "Switch to ratio"
+                        : "Switch to difference"
+                    }
+                  >
+                    <GitDiffIcon size={16} />
+                  </IconButton>
+                </div>
+              }
+              dataArray={diffNdarray}
+              domain={comparisonDomain}
+              colorMap={diffColorMap}
+              scaleType={ScaleType.Linear}
+              invertColorMap={invertDiffColorMap}
+              rows={leftRows}
+              cols={leftCols}
+              flipXAxis={flipXAxis}
+              flipYAxis={flipYAxis}
+              showGrid={showGrid}
+              isLoading={isComparisonLoading}
+              loadingMessage="Calculating..."
+              showQSpaceAxes={showQSpaceAxes}
+              qXVector={qXVector}
+              qYVector={qYVector}
+              experimentType={experimentType}
+              beamCenterX={calibrationParams?.beam_center_x}
+              beamCenterY={calibrationParams?.beam_center_y}
+              showBeamCenterOverlay={showBeamCenterOverlay}
+              gisaxsQipValues={leftGisaxsTransformed?.qipValues}
+              gisaxsQoopValues={leftGisaxsTransformed?.qoopValues}
+              showYAxisLabel={false}
+              syncedZoomState={sharedZoomState}
+              disableInteractions={true}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+);
+
+H5WebScatterSubplot.displayName = "H5WebScatterSubplot";
+
+export default H5WebScatterSubplot;

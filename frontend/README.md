@@ -1,50 +1,53 @@
-# React + TypeScript + Vite
+# X-ray Scattering Analysis Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React visualization tool for SAXS/GISAXS data analysis.
 
-Currently, two official plugins are available:
+## Quick Start
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
-
-- Configure the top-level `parserOptions` property like this:
-
-```js
-export default tseslint.config({
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+```bash
+npm install
+npm run dev
 ```
 
-- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
-- Optionally add `...tseslint.configs.stylisticTypeChecked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
+## Architecture
 
-```js
-// eslint.config.js
-import react from 'eslint-plugin-react'
+```
+src/
+├── components/
+│   ├── Scattering/       # Main analysis module
+│   │   ├── hooks/        # State management
+│   │   ├── services/     # API communication
+│   │   ├── utils/        # Utilities
+│   │   └── types.ts      # Type definitions
+│   ├── shared/           # Reusable components
+│   └── ui/               # UI primitives
+└── app/                  # Entry point
+```
 
-export default tseslint.config({
-  // Set the react version
-  settings: { react: { version: '18.3' } },
-  plugins: {
-    // Add the react plugin
-    react,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended rules
-    ...react.configs.recommended.rules,
-    ...react.configs['jsx-runtime'].rules,
-  },
-})
+## Environment Variables
+
+Injected at build time via Vite (`import.meta.env`). Changes require a rebuild.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SCATTERING_TILED_URL` | `http://localhost:8000` | Tiled data server URL |
+| `SCATTERING_TILED_API_KEY` | `""` | Tiled API key |
+| `SCATTERING_TILED_CALIBRATION_URL` | `""` | Tiled calibration server URL (for PONI files and masks) |
+| `SCATTERING_TILED_CALIBRATION_API_KEY` | `""` | Tiled calibration server API key |
+
+## Scattering Component Props
+
+When consuming the library build, the `<Scattering>` component accepts:
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `standalone` | `boolean` | `false` | Show an ALS header and use full viewport height |
+| `enableTiledCalibration` | `boolean` | `true` | When `false`, disables Tiled calibration loading. When `true`, enabled if the backend supports it. |
+| `enableTiledResults` | `boolean` | `true` | When `false`, disables save-to-Tiled buttons. When `true`, enabled if the backend supports it. |
+
+## Build
+
+```bash
+npm run build       # Library build
+npm run build:app   # Standalone app build
 ```

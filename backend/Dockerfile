@@ -12,25 +12,37 @@ FROM python:3.13-slim
 # All subsequent commands will be run from this directory
 WORKDIR /app
 
-# Copy only the requirements file first
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+# Copy dependency files first for better layer caching
 # This takes advantage of Docker's layer caching
-# If requirements.txt doesn't change, Docker will reuse the cached dependencies
-COPY requirements.txt .
-# Install Python dependencies specified in requirements.txt
-# --no-cache-dir reduces the image size by not storing the pip cache
-RUN pip install --no-cache-dir -r requirements.txt
+# If pyproject.toml and uv.lock don't change, Docker will reuse the cached dependencies
+COPY pyproject.toml uv.lock ./
+
+# Install Python dependencies using uv
+# --system installs packages into the system Python rather than creating a virtual environment
+# --locked ensures the exact versions from uv.lock are used
+# --no-cache reduces the image size by not storing the uv cache
+RUN uv sync --no-cache --no-dev
 
 # Copy the rest of the application code
 # This step is done after installing dependencies for better caching
-# When you change your code but not requirements.txt, only this layer is rebuilt
+# When you change your code but not pyproject.toml/uv.lock, only this layer is rebuilt
 COPY . .
 
-# Inform Docker that the container will listen on port 8000
+# Inform Docker/Podman that the container will listen on port 8000
 # This is for documentation - it doesn't actually publish the port
 EXPOSE 8000
 
 # Define the command to run the FastAPI application
+# uv run executes the command in the environment with installed dependencies
 # uvicorn is the ASGI server that will run your FastAPI app
 # --host 0.0.0.0 makes the server available to all network interfaces
 # --port 8000 specifies the port the server will listen on
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uv", "run", "uvicorn", "xscattering_backend.main:app", "--host", "0.0.0.0", "--port", "8000"]

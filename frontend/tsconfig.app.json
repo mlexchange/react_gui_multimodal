@@ -15,16 +15,21 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
-    /* Linting - MODIFIED SECTION */
-    "strict": false,           /* Changed from true to false */
-    "noUnusedLocals": false,   /* Changed from true to false */
-    "noUnusedParameters": false, /* Changed from true to false */
-    "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true,
+    /* Path aliases */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    },
 
-    /* Additional options to address errors */
-    "noImplicitAny": false,
-    "strictNullChecks": false
+    /* JSON imports for vite.config.ts */
+    "resolveJsonModule": true,
+
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true
   },
   "include": ["src"]
 }

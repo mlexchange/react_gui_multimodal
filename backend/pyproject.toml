@@ -1,0 +1,35 @@
+[project]
+name = "xscattering-backend"
+version = "0.1.0"
+description = "FastAPI backend for X-ray scattering analysis"
+requires-python = ">=3.13"
+dependencies = [
+    "fabio>=2025.10.0",
+    "fastapi[standard]>=0.124.0",
+    "msgpack>=1.1.2",
+    "numpy>=2.3.5",
+    "pyfai==2025.12.1",
+    "python-dotenv>=1.2.1",
+    "tiled[client]==0.1.0b16",
+]
+
+[project.scripts]
+xscattering-backend = "xscattering_backend.main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/xscattering_backend"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/"]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.5.1",
+]
+
+[tool.black]
+line-length = 127
